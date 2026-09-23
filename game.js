@@ -411,7 +411,7 @@ function openStageSelection() {
   selectMusic("selection");
   clearHeld();
   showScreen(ui.stageScreen);
-  document.getElementById("stageFighter").textContent = stats[playerChoice].name + (gameMode === "versus" ? " VS " + stats[opponentChoice].name : " · TORNEO DE " + (roster.length-1) + " RIVALES");
+  document.getElementById("stageFighter").textContent = stats[playerChoice].name + (gameMode === "versus" ? " VS " + stats[opponentChoice].name : " · TORNEO DE " + (roster.length-1) + ((roster.length-1)===1 ? " RIVAL" : " RIVALES"));
   chooseStage(stageChoice, false);
   ensureAudio();
 }
@@ -1997,6 +1997,23 @@ function updateBoomerang(p,dt) {
 }
 
 function drawSpriteFrame(frame, alpha = 1, ghost = false) {
+  if (["angel", "primitivo"].includes(frame.kind)) {
+    const image = assets[frame.kind];
+    if (!image.complete || !image.naturalWidth) return;
+    const size = stats[frame.kind].size * FIGHTER_SCALE;
+    const motion = frame.motion;
+    ctx.save();
+    ctx.translate(frame.x + motion.dx, frame.y + motion.dy);
+    ctx.rotate(motion.rotation);
+    ctx.scale((frame.facing === stats[frame.kind].defaultFace ? 1 : -1) * motion.scaleX, motion.scaleY);
+    ctx.globalAlpha = alpha;
+    if (ghost) ctx.globalCompositeOperation = "screen";
+    ctx.imageSmoothingEnabled = true;
+    const width = size * image.naturalWidth / image.naturalHeight;
+    ctx.drawImage(image, -width / 2, -size, width, size);
+    ctx.restore();
+    return;
+  }
   const sprite = blendedSprite(frame);
   if (!sprite) return;
   const cell = 270;
