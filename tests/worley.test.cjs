@@ -36,3 +36,14 @@ test('less than a full bar cannot launch the cinematic',()=>{
  assert.equal(g.run('workCinematic'),null);
  assert.equal(g.run('player.power'),99);
 });
+test('both fighters select distinct poses for combat actions',()=>{
+ for(const kind of ['angel','primitivo']){
+  const g=setup(kind);
+  assert.equal(g.run('poseFor(player)'),0);
+  assert.equal(g.run("attack(player,'punch');poseFor(player)"),1);
+  g.run('player.action="idle";player.actionTime=0;player.crouching=true');
+  assert.equal(g.run('poseFor(player)'),5);
+  g.run('player.crouching=false;player.action="hit";player.actionTime=.2');
+  assert.equal(g.run('poseFor(player)'),3);
+ }
+});
