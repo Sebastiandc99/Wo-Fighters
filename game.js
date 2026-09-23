@@ -58,6 +58,8 @@ const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(st
 const assets = {
   angel: loadImage("assets/angel-sprite.png"),
   primitivo: loadImage("assets/primitivo-sprite.png"),
+  angelAtlas: loadImage("assets/angel-poses.webp"),
+  primitivoAtlas: loadImage("assets/primitivo-poses.webp"),
   jairo: loadImage("assets/jairo-atlas-v1.webp"),
   paula: loadImage("assets/paula-atlas-v1.webp"),
   padrino: loadImage("assets/padrino-atlas-v2.webp"),
@@ -1499,6 +1501,7 @@ function poseFor(f) {
     if(f.action==="special") return 4;
     if(f.action==="punch" || f.action==="uppercut") return 1;
     if(f.action==="kick") return 2;
+    if(f.crouching || f.guarding || f.action==="block") return 5;
     return 0;
   }
   if(f.kind === "galante" && state === "intro" && introElapsed < ROUND_AUDIO[match.round].timing.fight) return 15;
@@ -1998,7 +2001,8 @@ function updateBoomerang(p,dt) {
 
 function drawSpriteFrame(frame, alpha = 1, ghost = false) {
   if (["angel", "primitivo"].includes(frame.kind)) {
-    const image = assets[frame.kind];
+    const atlas = assets[frame.kind + "Atlas"];
+    const image = atlas.complete && atlas.naturalWidth ? atlas : assets[frame.kind];
     if (!image.complete || !image.naturalWidth) return;
     const size = stats[frame.kind].size * FIGHTER_SCALE;
     const motion = frame.motion;
@@ -2009,8 +2013,13 @@ function drawSpriteFrame(frame, alpha = 1, ghost = false) {
     ctx.globalAlpha = alpha;
     if (ghost) ctx.globalCompositeOperation = "screen";
     ctx.imageSmoothingEnabled = true;
-    const width = size * image.naturalWidth / image.naturalHeight;
-    ctx.drawImage(image, -width / 2, -size, width, size);
+    if (image === atlas) {
+      const pose = Math.max(0, Math.min(5, frame.pose));
+      ctx.drawImage(atlas, (pose % 3) * 512, Math.floor(pose / 3) * 512, 512, 512, -size / 2, -size, size, size);
+    } else {
+      const width = size * image.naturalWidth / image.naturalHeight;
+      ctx.drawImage(image, -width / 2, -size, width, size);
+    }
     ctx.restore();
     return;
   }
