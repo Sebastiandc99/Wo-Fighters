@@ -56,10 +56,10 @@ const stageRoster = Object.keys(stages);
 const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(stages[key].src)]));
 
 const assets = {
-  angel: loadImage("assets/angel-sprite.png"),
-  primitivo: loadImage("assets/primitivo-sprite.png"),
-  angelAtlas: loadImage("assets/angel-poses.webp"),
-  primitivoAtlas: loadImage("assets/primitivo-poses.webp"),
+  angel: loadImage("assets/angel-cutout-v2.webp"),
+  primitivo: loadImage("assets/primitivo-cutout-v2.webp"),
+  angelAtlas: loadImage("assets/angel-poses-v2.webp"),
+  primitivoAtlas: loadImage("assets/primitivo-poses-v2.webp"),
   jairo: loadImage("assets/jairo-atlas-v1.webp"),
   paula: loadImage("assets/paula-atlas-v1.webp"),
   padrino: loadImage("assets/padrino-atlas-v2.webp"),
@@ -455,6 +455,7 @@ function startGame(choice, opponentKind = null, keepCampaign = false) {
 }
 
 function startRound() {
+  workCinematic = null;
   stopRoundVoice();
   stopAllCombatSounds();
   roundVoiceStarted = false;
@@ -629,6 +630,8 @@ function update(dt) {
   updatePlayer(dt);
   if (gameMode === "versus" || online?.active) updateHuman(cpu, held2);
   else if (aiEnabled) updateAI(dt);
+  // A CPU super can start during updateAI: suspend regular attacks immediately.
+  if (workCinematic) { updateWorkCinematic(dt); return; }
   fighters.forEach(f => updateFighter(f, dt));
   separateFighters();
   updateCamera(dt);
@@ -944,6 +947,7 @@ function queueAction(f, type) {
 }
 
 function jump(f) {
+  if (workCinematic) return false;
   if (state !== "playing" || !f) return false;
   if (!f.grounded || isLocked(f)) {
     if (humanFighter(f)) queueAction(f, "jump");
@@ -965,6 +969,7 @@ function evade(f) {
   return attack(f,["blotta","galante"].includes(f.kind)?"teleport":"roll");
 }
 function attack(f, type) {
+  if (workCinematic) return false;
   if (state !== "playing" || !f || !["punch", "kick", "special", "teleport", "slam", "roll"].includes(type)) return false;
   if (type === "teleport" && !["blotta","galante"].includes(f.kind)) return false;
   if (["roll","teleport"].includes(type) && (!f.grounded || (type==="roll" && ["blotta","galante"].includes(f.kind)))) return false;
@@ -1396,7 +1401,7 @@ function updateParticles(dt) {
 }
 
 function powerColor(kind) {
-  return { jairo: "#ff426b", paula: "#60d9ff", padrino: "#ff902e", galante: "#ffdb43", flor: "#d7ff99", facu: "#ffe47a", sergio: "#ffc650", blotta: "#76daff", tunki: "#ff8bd5", marechal: "#a5eaff" }[kind];
+  return { angel: "#ffe269", primitivo: "#ffb65b", jairo: "#ff426b", paula: "#60d9ff", padrino: "#ff902e", galante: "#ffdb43", flor: "#d7ff99", facu: "#ffe47a", sergio: "#ffc650", blotta: "#76daff", tunki: "#ff8bd5", marechal: "#a5eaff" }[kind] || "#ffe47a";
 }
 
 function addEffect(type, x, y, color, radius, life) {
@@ -2089,8 +2094,8 @@ function drawFighter(f) {
 }
 
 function drawProjectileTrail(p) {
-  if (["water", "critical", "crash"].includes(p.style)) return;
-  if (p.trail.length < 2) return;
+  if (["water", "critical", "crash", "beam", "forklift"].includes(p.style)) return;
+  if (!p.trail || p.trail.length < 2) return;
   const x = lerp(p.prevX, p.x, renderAlpha);
   const y = lerp(p.prevY, p.y, renderAlpha);
   const tail = p.trail[p.trail.length - 1];
@@ -2604,7 +2609,14 @@ document.getElementById("soloBtn").addEventListener("click", () => startMode("so
 document.getElementById("versusBtn").addEventListener("click", () => startMode("versus"));
 document.getElementById("modeBackBtn").addEventListener("click", mainMenu);
 document.getElementById("fighterBackBtn").addEventListener("click", backFromFighters);
-document.querySelectorAll("[data-pick]").forEach(btn => btn.addEventListener("click", () => chooseFighter(btn.dataset.pick)));
+document.querySelectorAll("[data-pick]").forEach(btn => {
+  const preview = () => {
+    if (state === "select" && btn.dataset.pick !== "random") chooseFighter(btn.dataset.pick);
+  };
+  btn.addEventListener("pointerenter", preview);
+  btn.addEventListener("focus", preview);
+  btn.addEventListener("click", () => chooseFighter(btn.dataset.pick));
+});
 ui.confirmBtn.addEventListener("click", () => { requestMobileLandscape(); sfx("confirm"); confirmFighter(); });
 document.querySelectorAll("[data-stage]").forEach(button => button.addEventListener("click", () => chooseStage(button.dataset.stage)));
 document.getElementById("stageBackBtn").addEventListener("click", openSelection);
@@ -2653,6 +2665,7 @@ function refreshHumans() {
   updatePlayer(); if (cpu && (gameMode === "versus" || online?.active)) updateHuman(cpu, held2);
 }
 function performAction(action, slot = 1, remote = false) {
+  if (workCinematic) return;
   if (online?.active && !remote) { if (slot !== 1) return; online.input(held, action); if (online.guest) return; }
   if (state !== "playing" || (slot === 2 && gameMode !== "versus" && !online?.active)) return;
   const f = slot === 2 ? cpu : player;
@@ -2689,7 +2702,7 @@ window.addEventListener("keydown", event => {
     if (code in offsets) {
       const selected = selectionPlayer === 2 ? opponentChoice : playerChoice;
       const choices=roster;
-      chooseFighter(choices[(roster.indexOf(selected)+offsets[code]+choices.length)%choices.length]);
+      chooseFighter(choices[((roster.indexOf(selected)+offsets[code])%choices.length+choices.length)%choices.length]);
     }
     if (["Enter", "Space", "KeyJ", "Numpad1"].includes(code)) confirmFighter();
     if (code === "Escape") backFromFighters();
@@ -3020,12 +3033,14 @@ function startWorkCinematic(owner) {
   const target=owner===player?cpu:player;
   workCinematic={owner,target,elapsed:0,impact:false};
   owner.action="special";owner.actionTime=owner.actionDuration=1.85;
+  owner.specialSpawned=true;owner.specialCooldown=.7;
   target.action="hit";target.actionTime=target.actionDuration=1.85;
   target.vx=target.vy=0;target.guarding=false;target.crouching=false;
+  for (const f of [owner,target]) { f.queuedAction=null;f.queueTime=0;f.moveIntent=0; }
   screenShake=8;sfx("special");
 }
 function updateWorkCinematic(dt) {
-  const c=workCinematic;c.elapsed+=dt;stageTime+=dt;
+  const c=workCinematic;c.elapsed+=dt;
   c.owner.animClock+=dt;c.target.animClock+=dt;
   if(!c.impact && c.elapsed>=1.12) {
     c.impact=true;
@@ -3037,10 +3052,11 @@ function updateWorkCinematic(dt) {
     burst(t.x,t.y-95,"#ffdc62",36);screenShake=12;sfx("slam");
   }
   if(c.elapsed>=1.85 || state!=="playing") {
-    c.owner.action="idle";c.owner.actionTime=0;
+    c.owner.action="idle";c.owner.actionTime=c.owner.actionDuration=0;c.owner.moveSpec=null;
     if(c.target.action==="hit" && c.target.actionTime>0)c.target.actionTime=Math.min(c.target.actionTime,.25);
     workCinematic=null;
   }
+  fighters.forEach(f => updateAnimation(f,dt));
 }
 function drawWorkCinematic() {
   const c=workCinematic,t=c.elapsed,owner=c.owner,target=c.target;
