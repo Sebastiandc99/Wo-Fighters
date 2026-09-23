@@ -48,14 +48,16 @@ const ui = {
 };
 
 const stages = {
-  arcade: { name: "PATIO ARCADE", src: "assets/arena.jpg", description: "El escenario original de KP FIGHTER." },
-  mine: { name: "GALERÍA SUBTERRÁNEA", src: "assets/stage-mine.webp", description: "Roca, luces cálidas y combate bajo tierra." },
-  newmont: { name: "PLANTA MINERA", src: "assets/stage-plant-v2.webp", description: "La planta minera, a cielo abierto." }
+  generadores: { name: "GENERADORES DE RINCÓN", src: "assets/escenario-generadores.webp", description: "Generadores y paneles solares al pie de la cordillera." },
+  planta: { name: "PLANTA DE PROCESO", src: "assets/escenario-planta.webp", description: "Estructuras de proceso bajo el cielo de la Puna." },
+  salinas: { name: "SALINAS", src: "assets/escenario-salinas.webp", description: "Piletas de salmuera en el Salar del Rincón." }
 };
 const stageRoster = Object.keys(stages);
 const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(stages[key].src)]));
 
 const assets = {
+  angel: loadImage("assets/angel-sprite.png"),
+  primitivo: loadImage("assets/primitivo-sprite.png"),
   jairo: loadImage("assets/jairo-atlas-v1.webp"),
   paula: loadImage("assets/paula-atlas-v1.webp"),
   padrino: loadImage("assets/padrino-atlas-v2.webp"),
@@ -78,6 +80,8 @@ const assets = {
 };
 
 const POSES = {
+  angel: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
+  primitivo: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
   jairo: {idle:0, punch:1, kick:2, hit:3, power:4, sweep:5},
   paula: {idle:0, punch:1, kick:2, hit:3, power:4, sweep:5},
   padrino: {idle:0, punch:1, kick:2, hit:3, power:4, sweep:5},
@@ -91,6 +95,8 @@ const POSES = {
 };
 
 const stats = {
+  angel: { name:"ÁNGEL", normalDamage:9, resistance:98, powerDamage:23, agility:7, speed:274, jump:615, defaultFace:1, size:237, height:202, width:27, description:"CARGA SUSPENDIDA (30%) · ↓ + PODER: GANCHO MAESTRO (100%)", ability:null },
+  primitivo: { name:"PRIMITIVO", normalDamage:10, resistance:110, powerDamage:22, agility:4, speed:238, jump:590, defaultFace:1, size:237, height:203, width:32, description:"DESCARGA EXPRESS (30%) · ↓ + PODER: LANZAMIENTO DE CONTENEDOR (100%)", ability:null },
   jairo: { name: "JAIRO", normalDamage: 8, resistance: 98, powerDamage: 26, agility: 7, speed: 274, jump: 615, defaultFace: 1, size: 226, height: 198, width: 25, description: "PODER: LÍNEA ROJA · ↓ + PODER: BARRAS", ability: null },
   paula: { name: "PAULA", normalDamage: 8, resistance: 92, powerDamage: 27, agility: 7, speed: 274, jump: 620, defaultFace: 1, size: 220, height: 194, width: 24, description: "HYDRO BLAST · CHORRO DE AGUA", ability: null },
   padrino: { name: "EL PADRINO", normalDamage: 9, resistance: 102, powerDamage: 25, agility: 6, speed: 262, jump: 605, defaultFace: 1, size: 210, height: 184, width: 27, description: "PERROS SALCHICHA · RODADA", ability: null },
@@ -104,7 +110,7 @@ const stats = {
 };
 
 // Reference strong hit 10 maps to the existing 5-point uppercut; bars stay normalized.
-const powerDamage = f => stats[f.kind].powerDamage * .5;
+const powerDamage = f => ["angel","primitivo"].includes(f.kind) ? stats[f.kind].powerDamage : stats[f.kind].powerDamage * .5;
 const mobilityTempo = f => .82 + stats[f.kind].agility * .035;
 const damageTaken = (f, damage) => Math.round(damage * 100000 / stats[f.kind].resistance) / 1000;
 function timedMove(f, spec, evasion=false) {
@@ -112,7 +118,7 @@ function timedMove(f, spec, evasion=false) {
   return {...spec, startup:spec.startup/(evasion?tempo:1), active:spec.active/(evasion?tempo:1), recovery:spec.recovery/tempo};
 }
 
-const roster = ["sergio", "blotta", "tunki", "marechal", "facu", "flor", "galante", "padrino", "paula", "jairo"];
+const roster = ["angel", "primitivo"];
 const FLOOR = 448;
 const STEP = 1 / 120;
 const JUMP_BOOST = 1.25;
@@ -171,19 +177,20 @@ let musicGain = null;
 let musicStartedAt = 0;
 
 let state = "title";
-let playerChoice = "sergio";
-let opponentChoice = "blotta";
+let playerChoice = "angel";
+let opponentChoice = "primitivo";
 let gameMode = "solo";
 let campaign = null;
 let selectionPlayer = 1;
 let modeChoice = "solo";
-let stageChoice = "arcade";
+let stageChoice = "generadores";
 let match = { round: 1, playerWins: 0, cpuWins: 0, complete: false, repeat: false };
 let resolvingContacts = false;
 let player = null;
 let cpu = null;
 let fighters = [];
 let projectiles = [];
+let workCinematic = null;
 let particles = [];
 let afterimages = [];
 let effects = [];
@@ -267,7 +274,7 @@ function mainMenu() {
   stopRoundVoice(); stopAllCombatSounds();
   clearHeld();
   campaign = null;
-  fighters = []; player = cpu = null;
+  fighters = []; player = cpu = null; workCinematic = null;
   projectiles = []; particles = []; afterimages = []; effects = [];
   hitStop = screenShake = accumulator = 0;
   state = "title";
@@ -582,7 +589,8 @@ function update(dt) {
     if (state === "finished" && resultElapsed >= .8) ui.resultPanel.hidden = false;
     if (state === "finished" && match.nextOpponent && resultElapsed >= 2.65) { nextOpponent(); return; }
     if (state === "finished" && !match.nextOpponent && resultElapsed >= 2.2 && !match.endShown) showGameOver();
-    if (state === "finished" && resultElapsed >= 3.8 && match.winner === 1 && gameMode === "solo" && !match.campaignRun) showRanking();
+    // El ranking de KP Fighter pertenece a otra aplicación.
+    // No enviamos resultados de Worley Fighters a ese servidor.
     if (state === "roundOver" && resultElapsed >= .8) document.getElementById("roundNotice").hidden = false;
     if (state === "roundOver" && resultElapsed >= 2.65) {
       match.round = match.playerWins + match.cpuWins + 1;
@@ -590,6 +598,7 @@ function update(dt) {
     }
     return;
   }
+  if (workCinematic) { updateWorkCinematic(dt); return; }
   if (hitStop > 0) {
     suspendCombatSounds(false);
     hitStop = Math.max(0, hitStop - dt);
@@ -705,7 +714,7 @@ function updateAI(dt) {
   }
   if (distance > 120 * FIGHTER_SCALE) {
     cpu.moveIntent = toward;
-    if (distance > 235 && cpu.power >= 35 && cpu.specialCooldown === 0 && Math.random() < level.power) attack(cpu, "special");
+    if (distance > 235 && cpu.power >= 30 && cpu.specialCooldown === 0 && Math.random() < level.power) attack(cpu, "special");
     else if (distance < 215 && cpu.grounded && Math.random() < level.tactics * .2) jump(cpu);
     return;
   }
@@ -963,8 +972,10 @@ function attack(f, type) {
     return false;
   }
   if (type === "special" && f.kind === "facu" && f.mustacheAway) return false;
+  const workFighter = ["angel", "primitivo"].includes(f.kind);
+  const workSuper = workFighter && type === "special" && (humanFighter(f) ? fighterInput(f).down : f.power >= 100 && Math.random() < .55);
   const crash = f.kind === "jairo" && type === "special" && (humanFighter(f) ? fighterInput(f).down : f.power >= 45 && Math.random() < .45);
-  const cost = type === "special" ? (crash ? 45 : 35) : type === "slam" ? 30 : 0;
+  const cost = type === "special" ? (workFighter ? workSuper ? 100 : 30 : crash ? 45 : 35) : type === "slam" ? 30 : 0;
   if (cost && (f.power < cost || f.specialCooldown > 0 || (!f.grounded && type !== "slam"))) {
     if (humanFighter(f)) sfx("empty");
     return false;
@@ -988,6 +999,12 @@ function attack(f, type) {
   f.queuedAction = null;
   f.queueTime = 0;
   f.power -= cost;
+  if (workSuper) {
+    f.specialStyle = f.kind === "angel" ? "hookSuper" : "containerSuper";
+    f.vx = 0;
+    startWorkCinematic(f);
+    return true;
+  }
   if (cost) f.specialCooldown = f.kind === "jairo" ? (crash ? 2 : 1.3) : type === "special" ? .7 : 1.35;
   if (type === "roll") {
     const other=f===player?cpu:player;
@@ -1005,7 +1022,7 @@ function attack(f, type) {
     f.vx = f.vy = 0;
   } else if (type === "special") {
     f.specialSpawned = false;
-    f.specialStyle = f.kind === "jairo" ? (crash ? "crash" : "critical") : f.kind === "paula" ? "water" : f.kind === "padrino" ? "dog" : f.kind === "galante" ? "whip" : f.kind === "flor" ? "hockey" : f.kind === "facu" ? "boomerang" : f.kind === "sergio" ? (f.projectileToggle++ % 2 ? "bottle" : "meat") : f.kind === "tunki" ? "flowers" : f.kind === "marechal" ? "lightning" : "ki";
+    f.specialStyle = f.kind === "angel" ? "beam" : f.kind === "primitivo" ? "forklift" : f.kind === "jairo" ? (crash ? "crash" : "critical") : f.kind === "paula" ? "water" : f.kind === "padrino" ? "dog" : f.kind === "galante" ? "whip" : f.kind === "flor" ? "hockey" : f.kind === "facu" ? "boomerang" : f.kind === "sergio" ? (f.projectileToggle++ % 2 ? "bottle" : "meat") : f.kind === "tunki" ? "flowers" : f.kind === "marechal" ? "lightning" : "ki";
     if (COMBAT_AUDIO[f.specialStyle]) f.attackSound = startCombatSound(f.specialStyle);
     f.vx = 0;
   } else if (f.kickStyle === "volley") {
@@ -1025,6 +1042,7 @@ function attack(f, type) {
 }
 
 function spawnProjectile(owner, style) {
+  if (["beam","forklift"].includes(style)) { spawnWorkProjectile(owner,style); return; }
   if (["critical", "crash"].includes(style)) { spawnSchedule(owner, style); return; }
   if (style === "whip") { strikeWhip(owner); return; }
   if (style === "boomerang") { spawnBoomerang(owner); return; }
@@ -1050,6 +1068,7 @@ function updateProjectiles(dt) {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
     if (["critical", "crash"].includes(p.style)) { updateSchedule(p, dt); if (state !== "playing") return; continue; }
+    if (["beam","forklift"].includes(p.style)) { updateWorkProjectile(p,dt); if (state !== "playing") return; continue; }
     if (p.style === "boomerang") { updateBoomerang(p, dt); if (state !== "playing") return; continue; }
     p.life -= dt;
     p.x += p.vx * dt;
@@ -1192,9 +1211,9 @@ function showGameOver() {
   ui.resultKicker.textContent = "GAME OVER";
   if (online?.active) document.getElementById("onlineEndActions").hidden = false;
   const humanWinner = online?.active ? match.winner === (online.guest ? 1 : 0) : match.campaignRun || match.winner === 0 || gameMode === "versus";
-  document.getElementById("winnerForm").hidden = !humanWinner;
-  document.getElementById("cpuResultNote").hidden = humanWinner || !!online?.active;
-  if (humanWinner) {
+  document.getElementById("winnerForm").hidden = true;
+  document.getElementById("cpuResultNote").hidden = true;
+  if (false && humanWinner) {
     const input = document.getElementById("winnerName");
     input.value = "";
     document.getElementById("saveError").textContent = "";
@@ -1471,9 +1490,17 @@ function draw() {
   particles.forEach(drawParticle);
   effects.forEach(drawEffect);
   ctx.restore();
+  if (workCinematic) drawWorkCinematic();
 }
 
 function poseFor(f) {
+  if (["angel","primitivo"].includes(f.kind)) {
+    if(f.action==="hit") return 3;
+    if(f.action==="special") return 4;
+    if(f.action==="punch" || f.action==="uppercut") return 1;
+    if(f.action==="kick") return 2;
+    return 0;
+  }
   if(f.kind === "galante" && state === "intro" && introElapsed < ROUND_AUDIO[match.round].timing.fight) return 15;
   if(f.action==="roll")return 8;
   const progress = actionProgress(f);
@@ -1774,6 +1801,7 @@ function drawMotionLines(f, motion) {
 }
 
 function spriteFrame(frame) {
+  if (["angel","primitivo"].includes(frame.kind)) return workSpriteFrame(frame);
   if(["galante", "padrino", "paula", "jairo"].includes(frame.kind)) return atlasSpriteFrame(frame);
   if(frame.pose===13 || frame.pose===14)return classicKickFrame(frame);
   if (frame.kind === "flor") return florSpriteFrame(frame);
@@ -2058,6 +2086,7 @@ function drawProjectileTrail(p) {
 }
 
 function drawProjectile(p) {
+  if (["beam","forklift"].includes(p.style)) { drawWorkProjectile(p); return; }
   if (["critical", "crash"].includes(p.style)) { drawSchedule(p); return; }
   if (p.style === "water") { drawWaterJet(p); return; }
   ctx.save();
@@ -2557,6 +2586,8 @@ document.getElementById("stageConfirmBtn").addEventListener("click", () => { req
 ui.pauseBtn.addEventListener("click", togglePause);
 document.getElementById("resumeBtn").addEventListener("click", () => { if (state === "paused") togglePause(); });
 document.getElementById("quitBtn").addEventListener("click", mainMenu);
+document.getElementById("worleyAgainBtn").addEventListener("click", openModeSelection);
+document.getElementById("worleyMenuBtn").addEventListener("click", mainMenu);
 document.getElementById("titleRankingBtn").addEventListener("click", showRanking);
 document.getElementById("rankingMenuBtn").addEventListener("click", mainMenu);
 document.getElementById("newGameBtn").addEventListener("click", openModeSelection);
@@ -2709,8 +2740,7 @@ window.addEventListener("resize", syncViewport);
 window.addEventListener("orientationchange", syncViewport);
 document.addEventListener("fullscreenchange", syncViewport);
 syncViewport();
-if (window.location?.search && new URLSearchParams(window.location.search).has("ranking")) showRanking();
-else selectMusic("title");
+selectMusic("title");
 requestAnimationFrame(loop);
 
 // Generated 4x4 atlases share normalized cells for attacks and movement.
@@ -2899,4 +2929,115 @@ function drawWaterCharge(f) {
   const x=lerp(f.prevX,f.x,renderAlpha)+f.facing*40*FIGHTER_SCALE,y=lerp(f.prevY,f.y,renderAlpha)-135*FIGHTER_SCALE;
   ctx.save();ctx.strokeStyle="#8eeeff";ctx.lineWidth=2.5;ctx.shadowColor="#159fff";ctx.shadowBlur=10*drawingScale;
   for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(x,y,5+t*17+i*3,stageTime*16+i*2,stageTime*16+i*2+4.3);ctx.stroke();}ctx.restore();
+}
+
+
+// WORLEY FIGHTERS: sprites and special attacks use the supplied character concepts.
+function workSpriteFrame(frame) {
+  const key = "work:" + frame.kind + ":" + frame.pose;
+  if (spriteFrames.has(key)) return spriteFrames.get(key);
+  const image=assets[frame.kind];
+  if (!image.complete || !image.naturalWidth) return null;
+  const surface=document.createElement("canvas");surface.width=surface.height=270;
+  const paint=surface.getContext("2d");
+  paint.imageSmoothingEnabled=true;
+  const scale=Math.min(230/image.width,254/image.height);
+  paint.translate(135,260);
+  if(frame.pose===1) paint.rotate(-.045);
+  if(frame.pose===2) paint.rotate(.085);
+  if(frame.pose===3) paint.rotate(-.10);
+  if(frame.pose===4) paint.rotate(-.085);
+  paint.drawImage(image,-image.width*scale/2,-image.height*scale,image.width*scale,image.height*scale);
+  spriteFrames.set(key,surface);return surface;
+}
+function spawnWorkProjectile(owner,style) {
+  const target=owner===player?cpu:player;
+  const direction=owner.facing;
+  const p={owner,style,x:style==="beam"?target.x:owner.x+direction*55,y:style==="beam"?-44:FLOOR-48,
+    prevX:owner.x,prevY:0,vx:direction*(style==="beam"?0:810),vy:style==="beam"?720:0,
+    radius:style==="beam"?42:49,damage:powerDamage(owner),life:2.3,age:0,contactDone:false};
+  projectiles.push(p);
+  addEffect("ring",p.x,style==="beam"?FLOOR-125:p.y,"#ffd15a",70,.33);
+  sfx(style==="beam"?"special":"roll");
+}
+function updateWorkProjectile(p,dt) {
+  p.age+=dt;p.life-=dt;p.prevX=p.x;p.prevY=p.y;
+  p.x+=p.vx*dt;p.y+=p.vy*dt;
+  const target=p.owner===player?cpu:player;
+  const box={left:p.x-p.radius,right:p.x+p.radius,top:p.y-(p.style==="beam"?48:32),bottom:p.y+(p.style==="beam"?48:32)};
+  if(target.invuln<=0 && overlaps(box,hurtBox(target)) && !p.contactDone) {
+    p.contactDone=true;
+    hit(target,p.damage,p.style==="beam"?p.owner.facing*320:p.owner.facing*370,
+      p.style==="beam"?-210:-110,p.owner,{sourceX:p.x,direction:p.owner.facing,projectile:true,overhead:p.style==="beam",x:p.x,y:p.y});
+    burst(p.x,p.y,"#ffd15a",28);sfx("slam");
+  }
+  if(p.contactDone || p.life<=0 || p.y>FLOOR+50 || p.x<STAGE_LEFT-70 || p.x>STAGE_RIGHT+70){
+    const i=projectiles.indexOf(p);if(i>=0)projectiles.splice(i,1);
+  }
+}
+function drawWorkProjectile(p) {
+  ctx.save();ctx.translate(p.x,p.y);
+  if(p.style==="beam") {
+    ctx.strokeStyle="#d5dee5";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,-600);ctx.lineTo(0,-45);ctx.stroke();
+    ctx.fillStyle="#252c37";ctx.fillRect(-44,-42,88,62);
+    ctx.fillStyle="#e9ac32";for(let x=-41;x<43;x+=20)ctx.fillRect(x,-42,8,62);
+    ctx.fillStyle="#d6dee8";ctx.fillRect(-9,-52,18,12);
+  } else {
+    ctx.scale(Math.sign(p.vx)||1,1);
+    ctx.fillStyle="#efaa22";ctx.fillRect(-47,-49,64,40);ctx.fillRect(-29,-75,33,28);
+    ctx.fillStyle="#142c43";ctx.fillRect(-25,-71,25,21);
+    ctx.fillStyle="#22242c";for(const x of [-29,15]){ctx.beginPath();ctx.arc(x,0,12,0,7);ctx.fill()}
+    ctx.strokeStyle="#d5d7df";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(25,-28);ctx.lineTo(68,-28);ctx.lineTo(68,-2);ctx.stroke();
+  }ctx.restore();
+}
+function startWorkCinematic(owner) {
+  const target=owner===player?cpu:player;
+  workCinematic={owner,target,elapsed:0,impact:false};
+  owner.action="special";owner.actionTime=owner.actionDuration=1.85;
+  target.action="hit";target.actionTime=target.actionDuration=1.85;
+  target.vx=target.vy=0;target.guarding=false;target.crouching=false;
+  screenShake=8;sfx("special");
+}
+function updateWorkCinematic(dt) {
+  const c=workCinematic;c.elapsed+=dt;stageTime+=dt;
+  c.owner.animClock+=dt;c.target.animClock+=dt;
+  if(!c.impact && c.elapsed>=1.12) {
+    c.impact=true;
+    const t=c.target,o=c.owner;
+    t.action="idle";t.actionTime=0;t.invuln=0;t.guarding=false;
+    // Bypass guarding; resistance still follows the regular hit calculation.
+    hit(t,o.kind==="angel"?34:35,o.facing*240,-140,o,
+      {sourceX:t.x,direction:o.facing,projectile:true,overhead:true,x:t.x,y:t.y-95});
+    burst(t.x,t.y-95,"#ffdc62",36);screenShake=12;sfx("slam");
+  }
+  if(c.elapsed>=1.85 || state!=="playing") {
+    c.owner.action="idle";c.owner.actionTime=0;
+    if(c.target.action==="hit" && c.target.actionTime>0)c.target.actionTime=Math.min(c.target.actionTime,.25);
+    workCinematic=null;
+  }
+}
+function drawWorkCinematic() {
+  const c=workCinematic,t=c.elapsed,owner=c.owner,target=c.target;
+  ctx.save();
+  ctx.fillStyle="rgba(3,9,27,"+(t<.25?.72:.54)+")";ctx.fillRect(0,0,960,540);
+  const color=owner.kind==="angel"?"#ffe269":"#ffb65b";
+  ctx.textAlign="center";ctx.shadowColor=color;ctx.shadowBlur=20;ctx.fillStyle=color;
+  ctx.font="italic bold 42px Arial";ctx.fillText(owner.kind==="angel"?"GANCHO MAESTRO":"LANZAMIENTO DE CONTENEDOR",480,86);
+  ctx.font="bold 19px Arial";ctx.fillStyle="#fff";ctx.fillText(owner.kind==="angel"?"¡IZAR · CONTROLAR · TERMINAR!":"¡LANZAMIENTO TOTAL!",480,120);
+  const x=target.x-cameraX;
+  if(owner.kind==="angel") {
+    const lift=t<.85?-85*Math.min(1,t/.85):t<1.12?-85:-85+85*Math.min(1,(t-1.12)/.25);
+    ctx.strokeStyle="#ecf5ff";ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x,-10);ctx.lineTo(x,Math.max(145,250+lift));ctx.stroke();
+    ctx.fillStyle="#ffcf43";ctx.fillRect(x-25,245+lift,50,32);
+    ctx.font="bold 70px Arial";ctx.fillText("⌄",x,318+lift);
+  } else {
+    const travel=Math.min(1,Math.max(0,(t-.22)/.85));
+    const boxX=(owner.x-cameraX)+(x-(owner.x-cameraX))*travel;
+    ctx.save();ctx.translate(boxX,295);ctx.rotate(-.12+travel*.25);
+    ctx.fillStyle="#1258ab";ctx.fillRect(-130,-84,260,168);
+    ctx.strokeStyle="#9dd9ff";ctx.lineWidth=7;ctx.strokeRect(-130,-84,260,168);
+    ctx.fillStyle="#dceeff";ctx.font="bold 29px Arial";ctx.fillText("WORLEY",0,10);ctx.restore();
+  }
+  if(t>=1.12 && t<1.45){ctx.fillStyle="rgba(255,240,177,"+(.55-(t-1.12)*1.4)+")";ctx.fillRect(0,0,960,540)}
+  ctx.restore();
 }

@@ -1064,3 +1064,14 @@ body:not(.online-mode) #onlineRival, body:not(.online-mode) #onlineStatus, body:
 .online-mode .choice-tile[disabled] { opacity: .8; }
 .online-card button:disabled { opacity: .55; }
 @media (max-height: 500px) { .online-card { padding: 1cqw; } .online-card h2 { margin: .1em 0 .4em; } .online-message { margin: .5cqw auto; } }
+
+/* Worley Fighters: supplied locations and the first two character portraits. */
+.title-screen, .select-screen { background: linear-gradient(180deg,rgba(3,12,37,.35),rgba(3,9,31,.86)), url("assets/escenario-planta.webp") center / cover no-repeat; }
+.title-center h1 { font-size: clamp(2.2rem,6.6vw,7rem); }
+.select-screen .choice-dock, .phone-portrait .select-screen .choice-dock { left:69%;top:40%;width:54%; }
+.choice-row { grid-template-columns:repeat(2,minmax(0,1fr));max-width:370px;margin:auto; }
+.portrait-angel,.portrait-primitivo { left:7%; border:0; background:transparent;box-shadow:none; }
+.portrait-angel img,.portrait-primitivo img { object-fit:contain;object-position:center bottom;filter:drop-shadow(4px 6px 2px #0009); }
+.choice-tile[data-pick="angel"] img,.choice-tile[data-pick="primitivo"] img { object-fit:cover;object-position:center 24%; }
+button[hidden], .arcade-btn[hidden] { display:none !important; }
+.worley-end-actions { display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:14px; }
