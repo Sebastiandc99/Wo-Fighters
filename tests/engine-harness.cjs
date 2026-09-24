@@ -1,6 +1,6 @@
 const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
 // Test the real engine and real input handlers without a browser or third-party dependencies.
-function game() {
+function game(sourcePath = path.join(__dirname, "..", "game.js")) {
   const nodes = new Map();
   const context2d = new Proxy({}, {
     get: (_, name) => name.startsWith("create") ? () => ({ addColorStop(offset, color) {
@@ -52,7 +52,7 @@ function game() {
     Image: class { constructor() { this.complete = true; this.naturalWidth = 810; } },
     performance: { now: () => 0 }, requestAnimationFrame() {}, setTimeout() {}, console
   });
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8"), sandbox);
+  vm.runInContext(fs.readFileSync(sourcePath, "utf8"), sandbox);
   const run = code => vm.runInContext(code, sandbox);
   run('muted = true; aiEnabled = false; startGame("sergio"); state = "playing";');
   const tick = seconds => run("for (let n = 0; n < " + Math.round(seconds * 120) + "; n++) update(STEP)");

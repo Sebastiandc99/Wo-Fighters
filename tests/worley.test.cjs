@@ -4,7 +4,7 @@ const {game}=require('./engine-harness.cjs');
 function setup(kind='angel'){
  const g=game();g.run(`startGame('${kind}','${kind==='angel'?'primitivo':'angel'}');state='playing';player.x=260;cpu.x=570;player.power=100;player.specialCooldown=0;`);return g;
 }
-test('the Worley roster and stages are independent',()=>{
+test('the Wo roster and stages are independent',()=>{
  const g=setup();assert.deepEqual(Array.from(g.run('roster')),['angel','primitivo']);
  assert.deepEqual(Array.from(g.run('stageRoster')),['generadores','planta','salinas']);
 });
@@ -40,9 +40,10 @@ test('both fighters select distinct poses for combat actions',()=>{
  for(const kind of ['angel','primitivo']){
   const g=setup(kind);
   assert.equal(g.run('poseFor(player)'),0);
-  assert.equal(g.run("attack(player,'punch');poseFor(player)"),1);
+  assert.equal(g.run("attack(player,'punch');poseFor(player)"),0);
+  g.tick(.1);assert.equal(g.run("poseFor(player)"),1);
   g.run('player.action="idle";player.actionTime=0;player.crouching=true');
-  assert.equal(g.run('poseFor(player)'),5);
+  assert.equal(g.run('poseFor(player)'),8);
   g.run('player.crouching=false;player.action="hit";player.actionTime=.2');
   assert.equal(g.run('poseFor(player)'),3);
  }
@@ -96,11 +97,33 @@ test('a new round clears an interrupted cinematic',()=>{
  assert.equal(g.run('workCinematic'),null);frames(g,5);
  g.key('KeyJ');assert.equal(g.run('player.action'),'punch');
 });
-test('mouse, focus and all arrow directions select one of the two fighters',()=>{
+test('only click or arrows choose a fighter; hover and focus do not select',()=>{
  const g=setup();g.run('openSelection()');
- g.nodes.get('pick-primitivo').listeners.pointerenter();assert.equal(g.run('playerChoice'),'primitivo');
- g.nodes.get('pick-angel').listeners.focus();assert.equal(g.run('playerChoice'),'angel');
+ g.run("chooseFighter('angel')");
+ g.nodes.get('pick-primitivo').listeners.pointerenter?.();
+ g.nodes.get('pick-primitivo').listeners.focus?.();
+ assert.equal(g.run('playerChoice'),'angel');
+ g.nodes.get('pick-primitivo').listeners.click();assert.equal(g.run('playerChoice'),'primitivo');
  for(const code of ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight']){
   g.key(code);assert.ok(['angel','primitivo'].includes(g.run('playerChoice')));
+ }
+});
+
+test('fighters turn toward each other when sides are exchanged',()=>{
+ const g=setup();g.tick(.1);
+ assert.equal(g.run('player.facing'),1);assert.equal(g.run('cpu.facing'),-1);
+ g.run('player.x=650;cpu.x=250');g.tick(.1);
+ assert.equal(g.run('player.facing'),-1);assert.equal(g.run('cpu.facing'),1);
+});
+test('both fighters use walk, jump, guard, sweep and uppercut animation frames',()=>{
+ for(const kind of ['angel','primitivo']) {
+  const g=setup(kind);g.key('KeyD');const poses=new Set();
+  for(let i=0;i<45;i++){g.tick(1/120);poses.add(g.run('poseFor(player)'));}
+  assert.ok(poses.has(6));assert.ok(poses.has(7));
+  g.key('KeyD','keyup');g.tick(.2);g.key('KeyI');g.tick(.05);assert.equal(g.run('poseFor(player)'),9);
+  g.key('KeyI','keyup');g.key('KeyW');assert.equal(g.run('poseFor(player)'),10);
+  g.key('KeyK');g.tick(.1);assert.equal(g.run('poseFor(player)'),13);
+  g.tick(1.3);g.key('KeyS');g.key('KeyK');g.tick(.15);assert.equal(g.run('poseFor(player)'),5);
+  g.tick(.7);g.key('KeyJ');g.tick(.15);assert.equal(g.run('poseFor(player)'),12);
  }
 });

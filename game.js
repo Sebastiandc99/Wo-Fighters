@@ -56,10 +56,8 @@ const stageRoster = Object.keys(stages);
 const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(stages[key].src)]));
 
 const assets = {
-  angel: loadImage("assets/angel-cutout-v2.webp"),
-  primitivo: loadImage("assets/primitivo-cutout-v2.webp"),
-  angelAtlas: loadImage("assets/angel-poses-v2.webp"),
-  primitivoAtlas: loadImage("assets/primitivo-poses-v2.webp"),
+  angel: loadImage("assets/angel-atlas-v3.webp"),
+  primitivo: loadImage("assets/primitivo-atlas-v3.webp"),
   jairo: loadImage("assets/jairo-atlas-v1.webp"),
   paula: loadImage("assets/paula-atlas-v1.webp"),
   padrino: loadImage("assets/padrino-atlas-v2.webp"),
@@ -97,8 +95,8 @@ const POSES = {
 };
 
 const stats = {
-  angel: { name:"ÁNGEL", normalDamage:9, resistance:98, powerDamage:23, agility:7, speed:274, jump:615, defaultFace:1, size:237, height:202, width:27, description:"CARGA SUSPENDIDA (30%) · ↓ + PODER: GANCHO MAESTRO (100%)", ability:null },
-  primitivo: { name:"PRIMITIVO", normalDamage:10, resistance:110, powerDamage:22, agility:4, speed:238, jump:590, defaultFace:1, size:237, height:203, width:32, description:"DESCARGA EXPRESS (30%) · ↓ + PODER: LANZAMIENTO DE CONTENEDOR (100%)", ability:null },
+  angel: { name:"ÁNGEL", normalDamage:9, resistance:98, powerDamage:23, agility:7, speed:274, jump:615, defaultFace:1, size:260, height:198, width:25, description:"CARGA SUSPENDIDA (30%) · ↓ + PODER: GANCHO MAESTRO (100%)", ability:null },
+  primitivo: { name:"PRIMITIVO", normalDamage:10, resistance:110, powerDamage:22, agility:4, speed:238, jump:595, defaultFace:1, size:242, height:184, width:32, description:"DESCARGA EXPRESS (30%) · ↓ + PODER: LANZAMIENTO DE CONTENEDOR (100%)", ability:null },
   jairo: { name: "JAIRO", normalDamage: 8, resistance: 98, powerDamage: 26, agility: 7, speed: 274, jump: 615, defaultFace: 1, size: 226, height: 198, width: 25, description: "PODER: LÍNEA ROJA · ↓ + PODER: BARRAS", ability: null },
   paula: { name: "PAULA", normalDamage: 8, resistance: 92, powerDamage: 27, agility: 7, speed: 274, jump: 620, defaultFace: 1, size: 220, height: 194, width: 24, description: "HYDRO BLAST · CHORRO DE AGUA", ability: null },
   padrino: { name: "EL PADRINO", normalDamage: 9, resistance: 102, powerDamage: 25, agility: 6, speed: 262, jump: 605, defaultFace: 1, size: 210, height: 184, width: 27, description: "PERROS SALCHICHA · RODADA", ability: null },
@@ -593,7 +591,7 @@ function update(dt) {
     if (state === "finished" && match.nextOpponent && resultElapsed >= 2.65) { nextOpponent(); return; }
     if (state === "finished" && !match.nextOpponent && resultElapsed >= 2.2 && !match.endShown) showGameOver();
     // El ranking de KP Fighter pertenece a otra aplicación.
-    // No enviamos resultados de Worley Fighters a ese servidor.
+    // No enviamos resultados de Wo Fighters a ese servidor.
     if (state === "roundOver" && resultElapsed >= .8) document.getElementById("roundNotice").hidden = false;
     if (state === "roundOver" && resultElapsed >= 2.65) {
       match.round = match.playerWins + match.cpuWins + 1;
@@ -1501,14 +1499,7 @@ function draw() {
 }
 
 function poseFor(f) {
-  if (["angel","primitivo"].includes(f.kind)) {
-    if(f.action==="hit") return 3;
-    if(f.action==="special") return 4;
-    if(f.action==="punch" || f.action==="uppercut") return 1;
-    if(f.action==="kick") return 2;
-    if(f.crouching || f.guarding || f.action==="block") return 5;
-    return 0;
-  }
+  if (workCinematic?.owner === f) return POSES[f.kind].power;
   if(f.kind === "galante" && state === "intro" && introElapsed < ROUND_AUDIO[match.round].timing.fight) return 15;
   if(f.action==="roll")return 8;
   const progress = actionProgress(f);
@@ -1534,6 +1525,7 @@ function poseFor(f) {
   }
   if(f.action==="kick" && f.kickStyle==="airKick")return progress<.12?10:13;
   if(f.action==="kick" && f.kickStyle==="volley")return progress<.19?POSES[f.kind].idle:14;
+  if (["angel", "primitivo"].includes(f.kind) && f.lowAttack && f.action === "kick") return POSES[f.kind].sweep;
   if (f.kind === "flor" && f.lowAttack && f.action === "kick") return POSES.flor.sweep;
   if (f.kind === "facu" && f.lowAttack && f.action === "kick") return POSES.facu.sweep;
   if (f.kind === "marechal" && f.lowAttack && f.action === "kick") return POSES.marechal.sweep;
@@ -1548,6 +1540,7 @@ function poseFor(f) {
   if (f.action === "kick") return progress < .12 ? POSES[f.kind].idle : POSES[f.kind].kick;
   if (f.action === "special") {
     if (progress < .15) return POSES[f.kind].idle;
+    if (["angel", "primitivo"].includes(f.kind)) return POSES[f.kind].power;
     if (f.kind === "blotta") return POSES.blotta.power;
     if (f.kind === "tunki") return POSES.tunki.power;
     if (f.kind === "padrino") return POSES.padrino.power;
@@ -1809,8 +1802,7 @@ function drawMotionLines(f, motion) {
 }
 
 function spriteFrame(frame) {
-  if (["angel","primitivo"].includes(frame.kind)) return workSpriteFrame(frame);
-  if(["galante", "padrino", "paula", "jairo"].includes(frame.kind)) return atlasSpriteFrame(frame);
+  if(["angel", "primitivo", "galante", "padrino", "paula", "jairo"].includes(frame.kind)) return atlasSpriteFrame(frame);
   if(frame.pose===13 || frame.pose===14)return classicKickFrame(frame);
   if (frame.kind === "flor") return florSpriteFrame(frame);
   if (frame.kind === "facu") return facuSpriteFrame(frame);
@@ -2005,29 +1997,6 @@ function updateBoomerang(p,dt) {
 }
 
 function drawSpriteFrame(frame, alpha = 1, ghost = false) {
-  if (["angel", "primitivo"].includes(frame.kind)) {
-    const atlas = assets[frame.kind + "Atlas"];
-    const image = atlas.complete && atlas.naturalWidth ? atlas : assets[frame.kind];
-    if (!image.complete || !image.naturalWidth) return;
-    const size = stats[frame.kind].size * FIGHTER_SCALE;
-    const motion = frame.motion;
-    ctx.save();
-    ctx.translate(frame.x + motion.dx, frame.y + motion.dy);
-    ctx.rotate(motion.rotation);
-    ctx.scale((frame.facing === stats[frame.kind].defaultFace ? 1 : -1) * motion.scaleX, motion.scaleY);
-    ctx.globalAlpha = alpha;
-    if (ghost) ctx.globalCompositeOperation = "screen";
-    ctx.imageSmoothingEnabled = true;
-    if (image === atlas) {
-      const pose = Math.max(0, Math.min(5, frame.pose));
-      ctx.drawImage(atlas, (pose % 3) * 512, Math.floor(pose / 3) * 512, 512, 512, -size / 2, -size, size, size);
-    } else {
-      const width = size * image.naturalWidth / image.naturalHeight;
-      ctx.drawImage(image, -width / 2, -size, width, size);
-    }
-    ctx.restore();
-    return;
-  }
   const sprite = blendedSprite(frame);
   if (!sprite) return;
   const cell = 270;
@@ -2610,11 +2579,6 @@ document.getElementById("versusBtn").addEventListener("click", () => startMode("
 document.getElementById("modeBackBtn").addEventListener("click", mainMenu);
 document.getElementById("fighterBackBtn").addEventListener("click", backFromFighters);
 document.querySelectorAll("[data-pick]").forEach(btn => {
-  const preview = () => {
-    if (state === "select" && btn.dataset.pick !== "random") chooseFighter(btn.dataset.pick);
-  };
-  btn.addEventListener("pointerenter", preview);
-  btn.addEventListener("focus", preview);
   btn.addEventListener("click", () => chooseFighter(btn.dataset.pick));
 });
 ui.confirmBtn.addEventListener("click", () => { requestMobileLandscape(); sfx("confirm"); confirmFighter(); });
@@ -2971,24 +2935,7 @@ function drawWaterCharge(f) {
 }
 
 
-// WORLEY FIGHTERS: sprites and special attacks use the supplied character concepts.
-function workSpriteFrame(frame) {
-  const key = "work:" + frame.kind + ":" + frame.pose;
-  if (spriteFrames.has(key)) return spriteFrames.get(key);
-  const image=assets[frame.kind];
-  if (!image.complete || !image.naturalWidth) return null;
-  const surface=document.createElement("canvas");surface.width=surface.height=270;
-  const paint=surface.getContext("2d");
-  paint.imageSmoothingEnabled=true;
-  const scale=Math.min(230/image.width,254/image.height);
-  paint.translate(135,260);
-  if(frame.pose===1) paint.rotate(-.045);
-  if(frame.pose===2) paint.rotate(.085);
-  if(frame.pose===3) paint.rotate(-.10);
-  if(frame.pose===4) paint.rotate(-.085);
-  paint.drawImage(image,-image.width*scale/2,-image.height*scale,image.width*scale,image.height*scale);
-  spriteFrames.set(key,surface);return surface;
-}
+// WO FIGHTERS: sprites and special attacks use the supplied character concepts.
 function spawnWorkProjectile(owner,style) {
   const target=owner===player?cpu:player;
   const direction=owner.facing;

@@ -4,20 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#020716">
-  <meta name="description" content="Worley Fighters, juego arcade de lucha para computadora y celular.">
-  <title>WORLEY FIGHTERS</title>
+  <meta name="description" content="Wo Fighters, juego arcade de lucha para computadora y celular.">
+  <title>WO FIGHTERS</title>
   <link rel="preload" href="assets/fonts/Bangers-Regular.woff" as="font" type="font/woff" crossorigin>
   <link rel="preload" href="assets/fonts/VT323-Regular.woff" as="font" type="font/woff" crossorigin>
-  <link rel="stylesheet" href="style.css?v=20260923w4">
+  <link rel="stylesheet" href="style.css?v=20260924wo1">
 </head>
 <body>
-  <main id="arcade" class="arcade" aria-label="Worley Fighters">
+  <main id="arcade" class="arcade" aria-label="Wo Fighters">
     <div class="cabinet-bezel" aria-hidden="true"></div>
 
     <section id="titleScreen" class="screen title-screen active" aria-labelledby="gameTitle">
       <div class="title-center">
         <p class="title-super">ARCADE</p>
-        <h1 id="gameTitle"><span>WORLEY</span> FIGHTERS</h1>
+        <h1 id="gameTitle"><span>WO</span> FIGHTERS</h1>
         <button id="startBtn" class="start-btn" type="button">PRESIONA START</button>
         <button id="titleOnlineBtn" class="arcade-btn title-online" type="button" hidden>JUGAR ONLINE</button>
         <button id="titleRankingBtn" class="arcade-btn title-ranking" type="button" hidden>RANKING</button>
@@ -27,7 +27,7 @@
 
     <section id="modeScreen" class="screen menu-screen" aria-labelledby="modeTitle">
       <div class="menu-card">
-        <p class="menu-kicker">WORLEY FIGHTERS</p>
+        <p class="menu-kicker">WO FIGHTERS</p>
         <h2 id="modeTitle">ELIGE EL MODO</h2>
         <div class="mode-options">
           <button id="soloBtn" data-mode="solo" class="mode-option selected" type="button"><strong>1 JUGADOR</strong><span>TORNEO INDIVIDUAL</span></button>
@@ -41,7 +41,7 @@
 
     <section id="onlineScreen" class="screen menu-screen" aria-labelledby="onlineTitle">
       <div class="menu-card online-card">
-        <p class="menu-kicker">WORLEY FIGHTERS · DOS DISPOSITIVOS</p>
+        <p class="menu-kicker">WO FIGHTERS · DOS DISPOSITIVOS</p>
         <h2 id="onlineTitle">JUGAR ONLINE</h2>
         <div id="onlineOptions" class="online-options"><button id="createRoomBtn" class="arcade-btn primary" type="button">CREAR SALA</button><button id="joinRoomBtn" class="arcade-btn" type="button">UNIRSE A SALA</button></div>
         <form id="joinRoomForm" class="online-join" hidden><label for="roomInput">CÓDIGO DE SALA</label><div><input id="roomInput" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="KP7X92" required><button id="connectRoomBtn" class="arcade-btn primary" type="submit">CONECTAR</button></div></form>
@@ -106,7 +106,7 @@
     </section>
 
     <section id="gameScreen" class="screen fight-screen" aria-label="Combate">
-      <canvas id="game" width="960" height="540" aria-label="Combate de Worley Fighters"></canvas>
+      <canvas id="game" width="960" height="540" aria-label="Combate de Wo Fighters"></canvas>
 
       <div class="hud" aria-hidden="true">
         <div class="hud-side left-hud">
@@ -216,6 +216,6 @@
     <div class="scanlines" aria-hidden="true"></div>
   </main>
 
-  <script src="game.js?v=20260923w4"></script>
+  <script src="game.js?v=20260924wo1"></script>
 </body>
 </html>
