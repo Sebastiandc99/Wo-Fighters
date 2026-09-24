@@ -3,7 +3,9 @@ const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
 function game() {
   const nodes = new Map();
   const context2d = new Proxy({}, {
-    get: (_, name) => name.startsWith("create") ? () => ({ addColorStop() {} }) : () => {},
+    get: (_, name) => name.startsWith("create") ? () => ({ addColorStop(offset, color) {
+      if (typeof color !== 'string' || !/^(#|rgba?\(|transparent)/.test(color)) throw new TypeError('Invalid canvas gradient color: '+color);
+    } }) : () => {},
     set: () => true
   });
   function node(id, dataset = {}) {
@@ -22,9 +24,9 @@ function game() {
     }
     return nodes.get(id);
   }
-  const picks = ["sergio", "blotta", "tunki", "marechal", "facu", "flor", "galante", "padrino", "paula", "jairo"].map(kind => node("pick-" + kind, { pick: kind }));
-  const portraits = ["sergio", "blotta", "tunki", "marechal", "facu", "flor", "galante", "padrino", "paula", "jairo"].map(kind => node("portrait-" + kind, { portrait: kind }));
-  const stages = ["arcade", "mine", "newmont"].map(stage => node("stage-" + stage, { stage }));
+  const picks = ["angel", "primitivo"].map(kind => node("pick-" + kind, { pick: kind }));
+  const portraits = ["angel", "primitivo"].map(kind => node("portrait-" + kind, { portrait: kind }));
+  const stages = ["generadores", "planta", "salinas"].map(stage => node("stage-" + stage, { stage }));
   const leftRounds = [0, 1].map(i => node("left-round-" + i));
   const rightRounds = [0, 1].map(i => node("right-round-" + i));
   const holds = ["left", "right", "down", "guard"].map(hold => node("hold-" + hold, { hold }));

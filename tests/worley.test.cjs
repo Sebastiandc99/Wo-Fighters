@@ -47,3 +47,60 @@ test('both fighters select distinct poses for combat actions',()=>{
   assert.equal(g.run('poseFor(player)'),3);
  }
 });
+
+function frames(g, seconds) {
+ g.run(`for(let i=0;i<${Math.round(seconds*120)};i++){update(STEP);draw();updateHud();}`);
+}
+test('CPU construction powers render every frame and leave keyboard controls working',()=>{
+ for(const kind of ['angel','primitivo']){
+  const g=setup(kind);
+  g.run("player.x=150;cpu.x=650;attack(cpu,'special')");
+  assert.doesNotThrow(()=>frames(g,3));
+  assert.equal(g.run('projectiles.length'),0);
+  const before=g.run('player.x');g.key('KeyD');frames(g,.3);g.key('KeyD','keyup');
+  assert.ok(g.run('player.x')>before+20);
+  g.key('KeyJ');assert.equal(g.run('player.action'),'punch');
+  assert.ok(g.run('roundTime')<57);
+  assert.ok(g.run('fighters.every(f=>Number.isFinite(f.x)&&Number.isFinite(f.animation.motion.rotation))'));
+ }
+});
+test('CPU cinematic started inside update does not spawn an ordinary projectile or freeze animation',()=>{
+ for(const kind of ['angel','primitivo']){
+  const g=setup(kind);
+  g.run("aiEnabled=true;let fired=false;updateAI=()=>{if(!fired){fired=true;cpu.power=100;Math.random=()=>0;attack(cpu,'special')}}");
+  frames(g,.4);
+  assert.equal(g.run('workCinematic.owner===cpu'),true);
+  assert.equal(g.run('projectiles.length'),0);
+  frames(g,1.65);assert.equal(g.run('workCinematic'),null);
+  frames(g,.5);g.key('KeyW');
+  assert.equal(g.run('player.grounded'),false);
+  assert.equal(g.run('projectiles.length'),0);
+ }
+});
+test('both local players regain keyboard and touch actions after a super',()=>{
+ const g=setup();g.run("gameMode='versus'");
+ g.key('KeyS');g.key('KeyL');g.key('KeyS','keyup');frames(g,1.3);
+ g.key('KeyW');g.key('Digit7');
+ assert.equal(g.run('player.grounded'),true);
+ assert.equal(g.run('cpu.queuedAction'),null);
+ frames(g,1.1);
+ g.key('KeyJ');g.key('Digit8');
+ assert.equal(g.run('player.action'),'punch');assert.equal(g.run('cpu.action'),'kick');
+ frames(g,1);
+ const event={pointerId:1,preventDefault(){}};
+ g.taps[0].listeners.pointerdown(event);g.taps2[0].listeners.pointerdown(event);
+ assert.equal(g.run('player.grounded'),false);assert.equal(g.run('cpu.grounded'),false);
+});
+test('a new round clears an interrupted cinematic',()=>{
+ const g=setup();g.run("held.down=true;attack(player,'special');startRound()");
+ assert.equal(g.run('workCinematic'),null);frames(g,5);
+ g.key('KeyJ');assert.equal(g.run('player.action'),'punch');
+});
+test('mouse, focus and all arrow directions select one of the two fighters',()=>{
+ const g=setup();g.run('openSelection()');
+ g.nodes.get('pick-primitivo').listeners.pointerenter();assert.equal(g.run('playerChoice'),'primitivo');
+ g.nodes.get('pick-angel').listeners.focus();assert.equal(g.run('playerChoice'),'angel');
+ for(const code of ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight']){
+  g.key(code);assert.ok(['angel','primitivo'].includes(g.run('playerChoice')));
+ }
+});
