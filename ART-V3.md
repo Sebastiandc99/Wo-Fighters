@@ -12,4 +12,4 @@ Primitivo: Use case identity-preserve. Create an identity-preserving fighting ga
 
 ## Verificación
 
-`node --test tests/worley.test.cjs tests/physics-parity.test.cjs`: 14 pruebas. La referencia física registra 684 pasos de 1/120 s por personaje contra KP Fighter `7272d498a80a738c1c16ebcb026f052625dcfb4e`, con sus atributos de movilidad y daño correspondientes. Compara posición, velocidad, salto, orientación, estado, tiempo de acción, salud y defensa. Los poderes personalizados se verifican por separado.
+`node --test tests/wo.test.cjs tests/physics-parity.test.cjs`: 14 pruebas. La referencia física registra 684 pasos de 1/120 s por personaje contra KP Fighter `7272d498a80a738c1c16ebcb026f052625dcfb4e`, con sus atributos de movilidad y daño correspondientes. Compara posición, velocidad, salto, orientación, estado, tiempo de acción, salud y defensa. Los poderes personalizados se verifican por separado.

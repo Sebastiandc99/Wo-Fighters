@@ -1075,4 +1075,8 @@ body:not(.online-mode) #onlineRival, body:not(.online-mode) #onlineStatus, body:
 .choice-tile[data-pick="angel"] img,.choice-tile[data-pick="primitivo"] img { object-fit:contain;object-position:center;background:#142341; }
 .choice-tile:focus-visible { outline:3px solid white;outline-offset:4px; }
 button[hidden], .arcade-btn[hidden] { display:none !important; }
-.worley-end-actions { display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:14px; }
+.wo-end-actions { display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:14px; }
+
+/* Relative stature also remains visible in the selection portraits. */
+.portrait-angel img { transform: scale(.78); transform-origin: center bottom; }
+.portrait-primitivo img { transform: scale(1.02); transform-origin: center bottom; }

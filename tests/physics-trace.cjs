@@ -2,7 +2,7 @@ const {game}=require('./engine-harness.cjs');
 function trace(kind, source, reference=false) {
   const g=game(source), opponent=kind==='angel'?'primitivo':'angel';
   const a=reference?'jairo':kind,b=reference?'sergio':opponent;
-  const profiles={angel:{speed:274,jump:615,agility:7,width:25,height:198,normalDamage:9,resistance:98},primitivo:{speed:238,jump:595,agility:4,width:32,height:184,normalDamage:10,resistance:110}};
+  const profiles={angel:{speed:274,jump:615,agility:7,width:23,height:166,normalDamage:9,resistance:98},primitivo:{speed:238,jump:595,agility:4,width:40,height:214,normalDamage:10,resistance:110}};
   g.run(`Object.assign(stats.${a},${JSON.stringify(profiles[kind])});Object.assign(stats.${b},${JSON.stringify(profiles[opponent])});startGame('${a}','${b}');state='playing';gameMode='versus';player.x=220;cpu.x=750;`);
   const frames=[];
   function advance(seconds){for(let i=0;i<Math.round(seconds*120);i++){

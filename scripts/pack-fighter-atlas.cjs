@@ -21,6 +21,7 @@ async function pack(input, output) {
   // Sort by sprite center, then row and column; generation can cross grid boundaries.
   sprites.sort((a,b)=>Math.floor((a.top+a.height/2)/(h/4))-Math.floor((b.top+b.height/2)/(h/4)) || a.left-b.left);
   const tiles=[];
+  const scale=208/sprites[0].height;
   for(let i=0;i<sprites.length;i++) {
     const s=sprites[i],raw=Buffer.alloc(s.width*s.height*4);
     for(let y=0;y<s.height;y++)for(let x=0;x<s.width;x++) {
@@ -28,11 +29,11 @@ async function pack(input, output) {
       if(labels[source]===s.id) data.copy(raw,dest,source*4,source*4+4);
     }
     // One fixed scale keeps head/body size stable across every action.
-    const width=Math.round(s.width*.68),height=Math.round(s.height*.68);
+    const width=Math.round(s.width*scale),height=Math.round(s.height*scale);
     const buffer=await sharp(raw,{raw:{width:s.width,height:s.height,channels:4}}).resize(width,height).png().toBuffer();
     tiles.push({input:buffer,left:(i%4)*270+Math.floor((270-width)/2),top:Math.floor(i/4)*270+260-height});
   }
-  await sharp({create:{width:1080,height:1080,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).composite(tiles).webp({lossless:true}).toFile(output);
+  await sharp({create:{width:1080,height:1080,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).composite(tiles).webp({quality:94,alphaQuality:100}).toFile(output);
   console.log(output, sprites.map(s=>[s.left,s.top,s.width,s.height]));
 }
 pack(process.argv[2],process.argv[3]).catch(e=>{console.error(e);process.exitCode=1;});

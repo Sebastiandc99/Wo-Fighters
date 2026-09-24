@@ -127,3 +127,29 @@ test('both fighters use walk, jump, guard, sweep and uppercut animation frames',
   g.tick(.7);g.key('KeyJ');g.tick(.15);assert.equal(g.run('poseFor(player)'),12);
  }
 });
+
+test('different statures retain working melee contacts in both directions',()=>{
+ for(const kind of ['angel','primitivo'])for(const direction of [-1,1]) {
+  const g=setup(kind);
+  assert.ok(g.run('stats.primitivo.height > stats.angel.height * 1.2'));
+  g.run(`gameMode='versus';player.x=480;cpu.x=480+${direction}*64;player.facing=${direction};attack(player,'punch')`);
+  frames(g,.45);assert.ok(g.run('cpu.health')<100);
+ }
+});
+test('larger construction props hit once, finish their impact animation and expire',()=>{
+ for(const kind of ['angel','primitivo'])for(const direction of [-1,1]) {
+  const g=setup(kind);
+  g.run(`gameMode='versus';player.x=480;cpu.x=480+${direction}*180;player.facing=${direction};attack(player,'special')`);
+  frames(g,1.2);
+  const hp=g.run('cpu.health');assert.ok(hp<100);assert.ok(hp>70);
+  frames(g,1.8);assert.equal(g.run('cpu.health'),hp);assert.equal(g.run('projectiles.length'),0);
+ }
+});
+test('both cinematic props render through impact and release controls',()=>{
+ for(const kind of ['angel','primitivo']) {
+  const g=setup(kind);g.run("held.down=true;attack(player,'special')");
+  assert.doesNotThrow(()=>frames(g,2.3));
+  assert.equal(g.run('workCinematic'),null);g.key('KeyS','keyup');g.key('KeyW');
+  assert.equal(g.run('player.grounded'),false);
+ }
+});

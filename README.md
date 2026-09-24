@@ -15,8 +15,12 @@ Juego arcade para navegador, inspirado en la dinámica de KP Fighter y creado co
 
 ## Verificación
 
-`node --test tests/worley.test.cjs tests/physics-parity.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
+`node --test tests/wo.test.cjs tests/physics-parity.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
 
-GitHub Pages: https://sebastiandc99.github.io/Worley-Fighters/
+GitHub Pages: https://sebastiandc99.github.io/Wo-Fighters/
 
 Motor de referencia: `Sebastiandc99/KPFighter@7272d498a80a738c1c16ebcb026f052625dcfb4e`. Se conservan gravedad, aceleración, frenado, colisiones, tiempos de ataque y reacción. Ángel usa la movilidad de Jairo y Primitivo la de Sergio; mantienen sus poderes y atributos de daño propios.
+
+## Revisión visual
+
+Primitivo es más alto y robusto, pelado debajo del casco y completamente afeitado. Ángel es considerablemente más bajo. Los tamaños de colisión acompañan las nuevas proporciones. Los poderes tienen imágenes transparentes propias: montacargas con ruedas animadas, contenedor con trayectoria de lanzamiento e impacto, carga de vigas y gancho de izaje. La marca corporativa se retiró de los gráficos que la contenían.
