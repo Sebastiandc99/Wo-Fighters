@@ -108,7 +108,7 @@ const POSES = {
 };
 
 const stats = {
-  tren: {name:"TREN VALENCIA", normalDamage:8, resistance:88, powerDamage:24, superDamage:34, agility:8, speed:286, jump:620, defaultFace:1, size:242, height:190, width:25, recovery:.52, meleeReach:6, powerRange:608, superRange:684, description:"ARCO VOLTAICO (30%) · ↓ + PODER: TORMENTA ELÉCTRICA (100%)", ability:null},
+  tren: {name:"TREN VALENCIA", normalDamage:8, resistance:88, powerDamage:24, superDamage:34, agility:8, speed:286, jump:620, defaultFace:1, size:254, height:200, width:25, recovery:.52, meleeReach:6, powerRange:608, superRange:684, description:"ARCO VOLTAICO (30%) · ↓ + PODER: TORMENTA ELÉCTRICA (100%)", ability:null},
   peluche: {name:"PELUCHE", normalDamage:9, resistance:110, powerDamage:22, superDamage:34, agility:5, speed:250, jump:605, defaultFace:1, size:204, height:154, width:26, recovery:.64, meleeReach:4, powerRange:532, superRange:608, description:"HORMIGONAZO (30%) · ↓ + PODER: COLADO MASIVO (100%)", ability:null},
   angel: { name:"ÁNGEL", normalDamage:9, resistance:98, powerDamage:23, agility:7, speed:274, jump:615, defaultFace:1, size:220, height:166, width:23, description:"CARGA SUSPENDIDA (30%) · ↓ + PODER: GANCHO MAESTRO (100%)", ability:null },
   primitivo: { name:"PRIMITIVO", normalDamage:10, resistance:110, powerDamage:22, agility:4, speed:238, jump:595, defaultFace:1, size:282, height:214, width:40, bodyWidth:1.10, description:"DESCARGA EXPRESS (30%) · ↓ + PODER: LANZAMIENTO DE CONTENEDOR (100%)", ability:null },
@@ -214,6 +214,7 @@ const COMBAT_AUDIO = {
   ...Object.fromEntries(["punchHit","kickHit","uppercutHit","bodyFall","meleeSwing"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:name==="meleeSwing"?.28:.9,start:0,loop:false}])),
   ...Object.fromEntries(["beam","forklift","concrete","beamImpact","forkliftImpact","concreteImpact","hookSuper","containerSuper","concreteSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:.82,start:0,loop:false}])),
   ...Object.fromEntries(["hookSuper","containerSuper","concreteSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v2.mp3",volume:.92,start:0,loop:false}])),
+  ...Object.fromEntries(["punchHit","kickHit"].map(name=>[name,{src:"assets/wo-"+name+"-v2.mp3",volume:1.0,start:0,loop:false}])),
   critical: {src: "assets/jairo-critical-v1.mp3", volume: .8, start: 0, end: .95, loop: false},
   crash: {src: "assets/jairo-crash-v1.mp3", volume: .8, start: 0, end: 1.8, loop: false},
   water: {src: "assets/paula-water-v2.mp3", volume: .85, start: 0, end: 2.5, loop: false},
@@ -2605,13 +2606,13 @@ function syncMusic() {
   const allowed = musicTrack?.usage === "title" ? ["title", "mode"] : musicTrack?.usage === "selection" ? ["select", "stage"] : ["intro", "playing", "roundOver"];
   if (!allowed.includes(state) || muted || !audioCtx || audioCtx.state !== "running" || !musicTrack) return;
   if (!musicTrack.buffer) { loadMusic(musicTrack); return; }
-  if (musicGain) musicGain.gain.value = state === "intro" ? .18 : musicTrack.usage === "selection" ? .42 : .36;
+  if (musicGain) musicGain.gain.value = state === "intro" ? .22 : musicTrack.usage === "selection" ? .52 : .46;
   if (musicSource) return;
   musicSource = audioCtx.createBufferSource();
   musicGain = audioCtx.createGain();
   musicSource.buffer = musicTrack.buffer;
   musicSource.loop = true;
-  musicGain.gain.value = state === "intro" ? .18 : musicTrack.usage === "selection" ? .42 : .36;
+  musicGain.gain.value = state === "intro" ? .22 : musicTrack.usage === "selection" ? .52 : .46;
   musicSource.connect(musicGain).connect(audioCtx.destination);
   musicSource.start(0, musicElapsed % musicTrack.buffer.duration);
   musicStartedAt = audioCtx.currentTime || 0;

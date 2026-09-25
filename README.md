@@ -85,3 +85,9 @@ Cuarto luchador seleccionable y rival de torneo. Altura visual de referencia 1,7
 Arco Voltaico carga durante 0,19 s y dispara a 1700 unidades/s, con alcance 608 (8/10). La colisión recorre el tramo completo entre fotogramas; se puede saltar, bloquear o evadir. La descarga provoca un retroceso corto, sacudida y chispas.
 
 Tormenta Eléctrica dura 2,80 s, requiere distancia máxima 684 (9/10) y barra completa. La pose eleva ambos brazos, oscurece el escenario, anuncia tres rayos a 0,65/0,95/1,25 s, crea una pausa visual de anticipación y golpea una sola vez a 1,95 s. El rival sale despedido 0,24 s después del impacto; recupera el control al levantarse. La pausa congela sonido y efectos juntos. Audio original: `python3 scripts/build-tren-audio.py`.
+
+## Presentaciones y audio revisados
+
+Peluche y Tren tienen retratos frontales propios para la selección y sus miniaturas: Peluche con brazos cruzados y Tren saludando con el sombrero. El combate sigue usando sus poses laterales. Tren aumenta ligeramente su escala (254) y altura de colisión (200), conservando contextura normal y atributos.
+
+La música sube aproximadamente 2 dB: 0,46 en pelea, 0,52 en selección y 0,22 durante la introducción. Puño y patada usan impactos v2 procesados desde la grabación de contacto ya incluida en el juego: golpe seco para el puño y cuerpo más grave para la patada. Solo suenan al acertar. Se regeneran con `python3 scripts/build-contact-audio.py`. Prompts y archivos: [ART-PRESENTATIONS-V2.md](ART-PRESENTATIONS-V2.md).
