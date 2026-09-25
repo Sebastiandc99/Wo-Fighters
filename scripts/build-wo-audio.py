@@ -1,6 +1,6 @@
 """Original, reproducible construction power cues. No external sound recordings."""
 from pathlib import Path
-import subprocess, tempfile
+import subprocess, tempfile, sys
 import numpy as np
 from scipy.signal import butter, sosfilt
 from scipy.io.wavfile import write
@@ -38,6 +38,10 @@ def build(name,duration):
         elif kind=='crack':
             v=band*.85*np.exp(-t*5)+low*1.2
             v*=.4+.6*(np.sin(t*125)>0)
+        elif kind=='rumble':
+            v=low*1.5*np.exp(-t*5)+.7*np.sin(2*np.pi*(38*t+.6*(1-np.exp(-t*25))))*np.exp(-t*8)
+        elif kind=='riser':
+            v=(band*.4+low*.5+np.sin(2*np.pi*(80*t+170*t*t))*.2)*(t/length)**1.5
         env=np.minimum(1,t/.004)*np.minimum(1,(length-t)/.035)
         if kind in ['engine','cable','pour']:env*=np.minimum(1,t/.035)
         i=round(at*RATE);count=min(n,len(out)-i)
@@ -55,16 +59,27 @@ def build(name,duration):
     elif name=='forkliftImpact':
         add(0,.40,'thud');add(.015,.60,'steel',.9)
     elif name=='hookSuper':
-        add(0,.25,'shing');add(.20,.85,'cable');add(.78,.32,'whoosh',.7);add(1.12,.55,'steel');add(1.12,.4,'thud')
+        add(0,.32,'shing',1.1);add(0,.35,'rumble',.5);add(.20,.85,'cable',1.1);add(.38,.72,'riser',.6)
+        add(.78,.32,'whoosh',1.1);add(1.12,.65,'steel',1.3);add(1.12,.50,'thud',1.2);add(1.12,.65,'rumble',1.1)
+        add(1.30,.26,'steel',.45);add(1.48,.28,'steel',.3)
     elif name=='containerSuper':
-        add(0,.25,'shing');add(.14,.30,'steel',.65);add(.30,.80,'whoosh');add(1.12,.62,'steel',1.2);add(1.12,.50,'thud',1.2)
+        add(0,.30,'shing');add(0,.38,'rumble',.6);add(.14,.30,'steel',.85);add(.30,.80,'whoosh',1.1);add(.32,.77,'riser',.7)
+        add(1.12,.65,'steel',1.5);add(1.12,.55,'thud',1.5);add(1.12,.68,'rumble',1.5);add(1.30,.40,'crack',.8)
     elif name=='concreteSuper':
-        add(0,.30,'shing');add(.40,.22,'whoosh',.8);add(.45,.86,'pour');add(.64,.65,'wet',.6)
-        add(1.35,.49,'crack',.7);add(1.90,.43,'crack');add(1.90,.55,'thud',1.4);add(2.28,.28,'thud',.8)
-    out=np.tanh(out*1.25);out*=.78/max(.001,np.max(abs(out)))
+        add(0,.30,'shing',1.1);add(0,.38,'rumble',.6);add(.40,.22,'whoosh',1.0);add(.45,.90,'pour',1.35);add(.64,.65,'wet',.9)
+        add(1.35,.49,'crack',1.0);add(1.37,.50,'riser',.7);add(1.90,.65,'crack',1.3);add(1.90,.55,'thud',1.6)
+        add(1.90,.68,'rumble',1.4);add(2.28,.30,'thud',1.0);add(2.10,.45,'wet',.6)
+    is_super=name.endswith('Super')
+    if is_super:
+        dry=out.copy()
+        for delay,gain in [(.043,.15),(.087,.10),(.139,.06)]:
+            shift=round(delay*RATE);out[shift:]+=dry[:-shift]*gain
+    out=np.tanh(out*(1.6 if is_super else 1.25));out*=(.88 if is_super else .78)/max(.001,np.max(abs(out)))
     with tempfile.TemporaryDirectory() as td:
         wav=Path(td)/'cue.wav';write(wav,RATE,(out*32767).astype(np.int16))
-        dest=ROOT/f'assets/wo-{name}-v1.mp3'
+        dest=ROOT/f'assets/wo-{name}-v{2 if is_super else 1}.mp3'
         subprocess.run(['ffmpeg','-y','-loglevel','error','-i',str(wav),'-codec:a','libmp3lame','-b:a','112k',str(dest)],check=True)
     print(name,duration,'s',round(float(np.sqrt(np.mean(out*out))),3),'RMS')
-for name,duration in [('concrete',.95),('concreteImpact',.58),('beam',.90),('forklift',1.5),('beamImpact',.8),('forkliftImpact',.7),('hookSuper',1.85),('containerSuper',1.85),('concreteSuper',2.65)]:build(name,duration)
+if __name__=='__main__':
+    for name,duration in [('concrete',.95),('concreteImpact',.58),('beam',.90),('forklift',1.5),('beamImpact',.8),('forkliftImpact',.7),('hookSuper',1.85),('containerSuper',1.85),('concreteSuper',2.65)]:
+        if '--supers' not in sys.argv or name.endswith('Super'):build(name,duration)

@@ -126,6 +126,7 @@ const powerDamage = f => ["angel","primitivo","peluche"].includes(f.kind) ? stat
 const mobilityTempo = f => .82 + stats[f.kind].agility * .035;
 const DAMAGE_SCALE = .60;
 const ROUND_SECONDS = 90;
+const ENERGY_GAIN_SCALE = .75;
 const damageTaken = (f, damage) => Math.round(damage * DAMAGE_SCALE * 100000 / stats[f.kind].resistance) / 1000;
 const fighterPowers = {
   angel: {common:"Carga suspendida", super:"Gancho maestro", superDamage:34, profile:"Ágil · control aéreo"},
@@ -189,6 +190,7 @@ let koVoice = null;
 const COMBAT_AUDIO = {
   ...Object.fromEntries(["punchHit","kickHit","uppercutHit","bodyFall","meleeSwing"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:name==="meleeSwing"?.28:.9,start:0,loop:false}])),
   ...Object.fromEntries(["beam","forklift","concrete","beamImpact","forkliftImpact","concreteImpact","hookSuper","containerSuper","concreteSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:.82,start:0,loop:false}])),
+  ...Object.fromEntries(["hookSuper","containerSuper","concreteSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v2.mp3",volume:.92,start:0,loop:false}])),
   critical: {src: "assets/jairo-critical-v1.mp3", volume: .8, start: 0, end: .95, loop: false},
   crash: {src: "assets/jairo-crash-v1.mp3", volume: .8, start: 0, end: 1.8, loop: false},
   water: {src: "assets/paula-water-v2.mp3", volume: .85, start: 0, end: 2.5, loop: false},
@@ -663,7 +665,7 @@ function update(dt) {
     if (!f.queueTime) f.queuedAction = null;
     if (!f.comboTime) f.combo = 0;
     f.animClock += dt;
-    f.power = Math.min(100, f.power + dt * 3.2);
+    f.power = Math.min(100, f.power + dt * 3.2 * ENERGY_GAIN_SCALE);
     // Freeze attack direction through active/recovery frames.
     const other = f === player ? cpu : player;
     if (f.action === "idle" || f.action === "block") f.facing = other.x >= f.x ? 1 : -1;
@@ -1200,7 +1202,7 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
   if (blocking) {
     addScore(target, 25);
     target.health = Math.max(0, Math.round((target.health - (contact.projectile ? damageTaken(target,1) : 0)) * 1000) / 1000);
-    target.power = Math.min(100, target.power + 4);
+    target.power = Math.min(100, target.power + 4 * ENERGY_GAIN_SCALE);
     target.action = "block";
     target.actionDuration = .15;
     target.actionTime = .15;
@@ -1215,8 +1217,8 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
     stopFighterSound(target);
     addScore(attacker, Math.min(damage, target.health) * 10);
     target.health = Math.max(0, Math.round((target.health - damage) * 1000) / 1000);
-    target.power = Math.min(100, target.power + damage * .8);
-    attacker.power = Math.min(100, attacker.power + damage * .7);
+    target.power = Math.min(100, target.power + damage * .8 * ENERGY_GAIN_SCALE);
+    attacker.power = Math.min(100, attacker.power + damage * .7 * ENERGY_GAIN_SCALE);
     attacker.combo = attacker.comboTime > 0 ? attacker.combo + 1 : 1;
     attacker.comboTime = .72;
     target.invuln = .09;
@@ -3140,15 +3142,22 @@ function updateWorkCinematic(dt) {
   const c=workCinematic;c.elapsed+=dt;advanceCombatSounds(dt);
   updateParticles(dt);updateEffects(dt);screenShake=Math.max(0,screenShake-dt*24);
   c.owner.animClock+=dt;c.target.animClock+=dt;
+  // Sustained pressure builds before the impact; the simulation/audio clocks stay together.
+  if(c.elapsed>.38 && c.elapsed<c.impactAt) {
+    const pressure=Math.min(1,(c.elapsed-.38)/(c.impactAt-.38));
+    screenShake=Math.max(screenShake,(c.owner.kind==="peluche"?2:1)+pressure*4);
+  }
   if(!c.impact && c.elapsed>=c.impactAt) {
     c.impact=true;
     const t=c.target,o=c.owner;
     t.action="idle";t.actionTime=0;t.invuln=0;t.guarding=false;
     hit(t,fighterPowers[o.kind].superDamage,o.facing*240,-140,o,
       {sourceX:t.x,direction:o.facing,projectile:true,overhead:true,x:t.x,y:t.y-95});
-    burst(t.x,t.y-95,"#ffdc62",36);dustBurst(t.x,FLOOR,24);
+    burst(t.x,t.y-95,c.owner.kind==="peluche"?"#e5eadb":"#ffdc62",44);dustBurst(t.x,FLOOR,32);
     if(o.kind==="peluche")t.concreteCoat=1.1;
-    screenShake=12;
+    screenShake=18;
+    // The cinematic already owns time. Ordinary melee hit-stop used to mute its climax.
+    hitStop=0;syncCombatSounds();
   }
   if(c.elapsed>=c.duration || state!=="playing") {
     stopCombatSound(c.sound,true);
@@ -3163,6 +3172,7 @@ function drawWorkCinematic() {
   if(owner.kind==="peluche") {drawConcreteCinematic(c);return;}
   ctx.save();
   ctx.fillStyle="rgba(3,9,27,"+(t<.25?.56:.30)+")";ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
+  drawSuperAtmosphere(c);
   const color=owner.kind==="angel"?"#ffe269":"#ffb65b";
   ctx.textAlign="center";ctx.shadowColor=color;ctx.shadowBlur=12;ctx.fillStyle=color;
   ctx.font="italic bold 34px Arial";ctx.fillText(owner.kind==="angel"?"GANCHO MAESTRO":"LANZAMIENTO DE CONTENEDOR",480,92);
@@ -3174,6 +3184,11 @@ function drawWorkCinematic() {
     const bottom=t<.38?lerp(-20,head+55,smoothstep(t/.38)):head+55-workHookLift(t);
     ctx.strokeStyle="#394452";ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(x,-10);ctx.lineTo(x,bottom-167);ctx.stroke();
     ctx.strokeStyle="#d7e6f2";ctx.lineWidth=3;ctx.stroke();
+    if(t>.30 && t<1.12) {
+      ctx.save();ctx.globalCompositeOperation="screen";ctx.strokeStyle="#a8edff";ctx.lineWidth=2;ctx.shadowColor="#72daff";ctx.shadowBlur=12;
+      for(let side of [-1,1]) {ctx.beginPath();ctx.moveTo(x+side*12,0);for(let yy=20;yy<bottom-25;yy+=20)ctx.lineTo(x+side*(12+Math.sin(yy*.4+t*21)*7),yy);ctx.stroke();}
+      ctx.restore();
+    }
     drawWorkProp("hook",x,bottom,72,Math.sin(t*9)*.025,1,fade);
   } else {
     const travel=Math.max(0,Math.min(1,(t-.30)/.82));
@@ -3186,6 +3201,7 @@ function drawWorkCinematic() {
       ctx.strokeStyle="rgba(181,221,255,.42)";ctx.lineWidth=3;
       for(let i=0;i<5;i++){const sy=baseline-35-i*24;ctx.beginPath();ctx.moveTo(boxX-c.direction*150,sy);ctx.lineTo(boxX-c.direction*(195+i*10),sy+8);ctx.stroke();}
     }
+    if(travel>0 && travel<1)for(let i=3;i>0;i--)drawWorkProp("container",boxX-c.direction*i*23,baseline+i*7,310,c.direction*(-.10+travel*.16),c.direction,.055*(4-i));
     drawWorkProp("container",boxX,baseline+bounce,310,c.direction*(-.10+travel*.16),c.direction,fade);
     drawWorkDust(boxX,FLOOR,t,c.direction,t>=1.12?1.8:.45);
   }
@@ -3196,6 +3212,79 @@ function drawWorkCinematic() {
     for(let i=0;i<14;i++) {const a=i*Math.PI*2/14;ctx.beginPath();ctx.moveTo(x+Math.cos(a)*30,FLOOR-55+Math.sin(a)*25);ctx.lineTo(x+Math.cos(a)*(40+105*p),FLOOR-55+Math.sin(a)*(35+85*p));ctx.stroke();}
   }
   if(t>=1.12 && t<1.23){ctx.globalAlpha=1;ctx.fillStyle="rgba(255,240,177,"+(.34*(1-(t-1.12)/.11))+")";ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);}
+  drawSuperImpact(c);
+  ctx.restore();
+}
+
+// Deterministic cinematic effects: paused frames hold still and draw never changes gameplay.
+function superPalette(kind) {
+  return kind==="angel" ? ["#fff0a3","#82dfff","#ffffff"]
+    : kind==="primitivo" ? ["#ffaf48","#ff663e","#ffe6a1"]
+    : ["#e9efbd","#b1c9bf","#ffffff"];
+}
+function drawSuperAtmosphere(c) {
+  const t=c.elapsed,colors=superPalette(c.owner.kind),x=c.impactX-cameraX;
+  const entry=Math.min(1,t/.12),exit=Math.min(1,(c.duration-t)/.22);
+  ctx.save();ctx.globalAlpha=entry*exit;
+  ctx.fillStyle="#020510";ctx.fillRect(0,0,VIEW_WIDTH,18);ctx.fillRect(0,VIEW_HEIGHT-20,VIEW_WIDTH,20);
+  const focusX=t<.38?c.owner.x-cameraX:x,focusY=FLOOR-100;
+  const aura=ctx.createRadialGradient(focusX,focusY,8,focusX,focusY,260);
+  aura.addColorStop(0,colors[0]+"75");aura.addColorStop(.4,colors[1]+"25");aura.addColorStop(1,"transparent");
+  ctx.fillStyle=aura;ctx.fillRect(focusX-260,focusY-260,520,520);
+  ctx.globalCompositeOperation="screen";
+  // One expanding activation burst, followed by converging speed trails.
+  const launch=Math.max(0,1-t/.48);
+  if(launch>0) {
+    ctx.strokeStyle=colors[0];ctx.lineWidth=3;
+    ctx.globalAlpha=launch;
+    ctx.beginPath();ctx.arc(focusX,focusY,25+t*340,0,Math.PI*2);ctx.stroke();
+    for(let i=0;i<18;i++) {
+      const angle=i*Math.PI/9,r=35+t*170;
+      ctx.beginPath();ctx.moveTo(focusX+Math.cos(angle)*r,focusY+Math.sin(angle)*r);
+      ctx.lineTo(focusX+Math.cos(angle)*(r+60),focusY+Math.sin(angle)*(r+60));ctx.stroke();
+    }
+  }
+  if(t<c.impactAt)for(let i=0;i<22;i++) {
+    const a=i*2.39996,phase=(t*1.8+i*.137)%1,r=170+phase*430;
+    ctx.globalAlpha=(1-phase)*.32*entry;ctx.strokeStyle=colors[i%2];ctx.lineWidth=1+i%3;
+    ctx.beginPath();ctx.moveTo(x+Math.cos(a)*r,focusY+Math.sin(a)*r*.62);
+    ctx.lineTo(x+Math.cos(a)*(r+45),focusY+Math.sin(a)*(r+45)*.62);ctx.stroke();
+  }
+  // Rising construction sparks/dust announce the impending release.
+  if(t>.25 && t<c.impactAt)for(let i=0;i<20;i++) {
+    const phase=(t*.9+i*.193)%1;
+    ctx.globalAlpha=(1-phase)*.7;ctx.fillStyle=colors[i%3];
+    ctx.fillRect(x+Math.sin(i*8.4)*100*(1-phase),FLOOR-phase*210,2+i%3,5+i%5);
+  }
+  ctx.restore();
+}
+function drawSuperImpact(c) {
+  const age=c.elapsed-c.impactAt;if(age<0 || age>.73)return;
+  const colors=superPalette(c.owner.kind),x=c.impactX-cameraX,y=FLOOR-65,q=age/.73;
+  ctx.save();ctx.globalCompositeOperation="screen";
+  // Broad flash decays once; it does not strobe or hide the fighters for the sequence.
+  if(age<.14) {ctx.globalAlpha=.55*(1-age/.14);ctx.fillStyle=colors[0];ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);}
+  const glow=ctx.createRadialGradient(x,y,5,x,y,100+q*240);
+  glow.addColorStop(0,colors[2]+"cc");glow.addColorStop(.3,colors[0]+"88");glow.addColorStop(1,"transparent");
+  ctx.globalAlpha=(1-q)*.8;ctx.fillStyle=glow;ctx.fillRect(x-350,y-350,700,700);
+  for(let j=0;j<3;j++) {
+    const wave=q-j*.12;if(wave<0)continue;
+    ctx.globalAlpha=(1-q)*(.9-j*.18);ctx.strokeStyle=colors[j];ctx.lineWidth=5*(1-q)+1;
+    ctx.beginPath();ctx.ellipse(x,FLOOR-3,25+wave*340,8+wave*65,0,0,Math.PI*2);ctx.stroke();
+  }
+  for(let i=0;i<32;i++) {
+    const a=i*2.39996,r=25+q*(170+i%5*28),length=(1-q)*(25+i%3*17);
+    ctx.strokeStyle=colors[i%3];ctx.globalAlpha=1-q;ctx.lineWidth=1+i%3;
+    ctx.beginPath();ctx.moveTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.7);
+    ctx.lineTo(x+Math.cos(a)*(r+length),y+Math.sin(a)*(r+length)*.7);ctx.stroke();
+  }
+  ctx.globalCompositeOperation="source-over";
+  for(let i=0;i<24;i++) {
+    const a=Math.PI+(i+.5)/24*Math.PI,r=q*(130+i%6*33);
+    ctx.save();ctx.globalAlpha=1-q;ctx.translate(x+Math.cos(a)*r,y+Math.sin(a)*r+q*q*135);ctx.rotate(q*(i%2?-7:7));
+    ctx.fillStyle=colors[i%3];ctx.strokeStyle="#26303b";ctx.lineWidth=1.5;
+    const size=3+i%4*2;ctx.fillRect(-size,-size,size*2,size);ctx.strokeRect(-size,-size,size*2,size);ctx.restore();
+  }
   ctx.restore();
 }
 
@@ -3255,6 +3344,7 @@ function drawConcreteCoat(f,frame) {
 function drawConcreteCinematic(c) {
   const t=c.elapsed,x=c.impactX-cameraX,impact=c.impactAt;
   ctx.save();ctx.fillStyle='rgba(3,9,27,.42)';ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
+  drawSuperAtmosphere(c);
   const arrival=smoothstep(Math.min(1,Math.max(0,(t-.22)/.28)));
   if(t<1.5) {
     drawWorkProp('concreteHose',x-85,205-(1-arrival)*290,205,0,1,Math.min(1,(1.5-t)*5));
@@ -3293,6 +3383,7 @@ function drawConcreteCinematic(c) {
     }
     if(q<.16){ctx.globalAlpha=1;ctx.fillStyle='rgba(245,247,227,'+(.5*(1-q/.16))+')';ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);}
   }
+  drawSuperImpact(c);
   ctx.globalAlpha=1;
   ctx.fillStyle='rgba(3,9,27,.72)';ctx.fillRect(215,58,530,78);
   ctx.textAlign='center';ctx.fillStyle='#eef1df';ctx.shadowColor='#e5eb99';ctx.shadowBlur=15;

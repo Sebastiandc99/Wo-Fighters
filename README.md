@@ -16,7 +16,7 @@ Juego arcade para navegador, inspirado en la dinámica de KP Fighter y creado co
 
 ## Verificación
 
-`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs tests/melee.test.cjs tests/endurance.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
+`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs tests/melee.test.cjs tests/endurance.test.cjs tests/super-show.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
 
 GitHub Pages: https://sebastiandc99.github.io/Wo-Fighters/
 
@@ -45,7 +45,7 @@ Hormigonazo lleva arco suave, gotas, impacto único, retroceso moderado y restos
 
 Ángel y Primitivo también tienen sonidos propios en sus dos poderes: cable/izaje y metal para Ángel, motor/montacargas y golpe de contenedor para Primitivo. Los sonidos se pausan y reanudan junto con las animaciones, y se limpian al salir o cambiar de ronda.
 
-34 pruebas automatizadas cubren los tres personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md).
+37 pruebas automatizadas cubren los tres personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md).
 
 ## Golpes y derribo
 
@@ -60,3 +60,11 @@ Un gancho sin bloquear lanza al rival hacia atrás, lo rota hasta caer de espald
 Todos los daños (puños, patadas, ganchos, poderes, súper y daño residual al cubrirse) se multiplican por 0,60, una sola vez antes de la resistencia. Se conserva la barra al 100% y el balance relativo: se necesita aproximadamente un 67% más de daño bruto para vencer. Las rondas duran 90 segundos. Los costos de energía siguen en 30% y 100%.
 
 La selección muestra una ficha lateral con ambos poderes, daño porcentual contra resistencia 100, energía, resistencia, velocidad y fuerza. La pausa incluye controles de teclado y táctiles, ganchos/barridas, poderes y el daño real contra el rival elegido. Los datos se calculan desde los mismos atributos del combate.
+
+## Súper cinematográficos y recarga
+
+Los tres súper suman aura de activación, líneas de velocidad, partículas ascendentes, triple onda expansiva, destello único de impacto y escombros. Ángel ilumina el cable de izaje, Primitivo deja estelas del contenedor y Peluche conserva su descarga y rotura de hormigón. Cada uno mantiene su paleta y objetos reconocibles. El temblor crece antes del golpe y se intensifica al rematar. Los efectos usan el reloj de la pelea: la pausa congela toda la secuencia.
+
+Audio v2 original con graves, subida de tensión, capas de impacto y reverberación breve; se genera con `python scripts/build-wo-audio.py --supers`. El golpe cinematográfico ya no interrumpe el sonido del remate.
+
+La energía se obtiene un 25% más despacio en todas las fuentes: recarga pasiva 2,4 puntos/s, defensa 3 puntos y ganancias por daño multiplicadas por 0,75. Desde los 40 puntos iniciales se necesitan 25 s sin combatir para llegar a 100, frente a 18,75 s antes. Costos y daño permanecen iguales.
