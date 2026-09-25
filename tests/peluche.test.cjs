@@ -3,14 +3,14 @@ const assert=require('node:assert/strict');
 const {game}=require('./engine-harness.cjs');
 function setup(rival='angel',direction=1){const g=game();g.run(`gameMode='versus';startGame('peluche','${rival}');state='playing';player.x=480;cpu.x=480+${direction}*260;player.facing=${direction};cpu.facing=${-direction};player.power=100;`);return g;}
 function frames(g,t){g.run(`for(let i=0;i<${Math.round(t*120)};i++){update(STEP);draw();updateHud();}`);}
-test('Peluche selection, attributes and complete two-opponent tournament',()=>{
+test('Peluche selection, attributes and complete three-opponent tournament',()=>{
  const g=setup();g.run("openModeSelection();gameMode='solo';openSelection();chooseFighter('angel')");
  const tile=g.nodes.get('pick-peluche');tile.listeners.pointerenter?.();assert.notEqual(g.run('playerChoice'),'peluche');
  tile.listeners.click();assert.equal(g.run('playerChoice'),'peluche');g.run("beginGame()");
- assert.deepEqual(Array.from(g.run('campaign.opponents')).sort(),['angel','primitivo']);
+ assert.deepEqual(Array.from(g.run('campaign.opponents')).sort(),['angel','primitivo','tren']);
  assert.deepEqual(Array.from(g.run('[stats.peluche.normalDamage,stats.peluche.resistance,stats.peluche.agility,stats.peluche.meleeReach,stats.peluche.recovery]')),[9,110,5,4,.64]);
  assert.ok(g.run('stats.peluche.speed>stats.primitivo.speed && stats.peluche.speed<stats.angel.speed'));
- g.run("state='playing';match.playerWins=1;finishRound(player,'TIEMPO');nextOpponent();state='playing';match.playerWins=1;finishRound(player,'TIEMPO')");assert.equal(g.run('campaign.completed'),true);assert.equal(g.run('campaign.wins'),2);
+ g.run("state='playing';match.playerWins=1;finishRound(player,'TIEMPO');nextOpponent();state='playing';match.playerWins=1;finishRound(player,'TIEMPO');nextOpponent();state='playing';match.playerWins=1;finishRound(player,'TIEMPO')");assert.equal(g.run('campaign.completed'),true);assert.equal(g.run('campaign.wins'),3);
 });
 test('Hormigonazo costs 30, arcs, hits once for base 22 and coats all rival sizes in both directions',()=>{
  for(const rival of ['angel','primitivo','peluche'])for(const dir of [-1,1]){

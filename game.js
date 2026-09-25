@@ -56,6 +56,7 @@ const stageRoster = Object.keys(stages);
 const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(stages[key].src)]));
 
 const assets = {
+  tren: loadImage("assets/tren-atlas-v1.webp"),
   peluche: loadImage("assets/peluche-atlas-v1.webp"),
   pelucheSpecial: loadImage("assets/peluche-special-v1.webp"),
   concrete: loadImage("assets/concrete-v1.webp"),
@@ -90,6 +91,7 @@ const assets = {
 };
 
 const POSES = {
+  tren: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
   peluche: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
   angel: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
   primitivo: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
@@ -106,6 +108,7 @@ const POSES = {
 };
 
 const stats = {
+  tren: {name:"TREN VALENCIA", normalDamage:8, resistance:88, powerDamage:24, superDamage:34, agility:8, speed:286, jump:620, defaultFace:1, size:242, height:190, width:25, recovery:.52, meleeReach:6, powerRange:608, superRange:684, description:"ARCO VOLTAICO (30%) · ↓ + PODER: TORMENTA ELÉCTRICA (100%)", ability:null},
   peluche: {name:"PELUCHE", normalDamage:9, resistance:110, powerDamage:22, superDamage:34, agility:5, speed:250, jump:605, defaultFace:1, size:204, height:154, width:26, recovery:.64, meleeReach:4, powerRange:532, superRange:608, description:"HORMIGONAZO (30%) · ↓ + PODER: COLADO MASIVO (100%)", ability:null},
   angel: { name:"ÁNGEL", normalDamage:9, resistance:98, powerDamage:23, agility:7, speed:274, jump:615, defaultFace:1, size:220, height:166, width:23, description:"CARGA SUSPENDIDA (30%) · ↓ + PODER: GANCHO MAESTRO (100%)", ability:null },
   primitivo: { name:"PRIMITIVO", normalDamage:10, resistance:110, powerDamage:22, agility:4, speed:238, jump:595, defaultFace:1, size:282, height:214, width:40, bodyWidth:1.10, description:"DESCARGA EXPRESS (30%) · ↓ + PODER: LANZAMIENTO DE CONTENEDOR (100%)", ability:null },
@@ -122,13 +125,14 @@ const stats = {
 };
 
 // Reference strong hit 10 maps to the existing 5-point uppercut; bars stay normalized.
-const powerDamage = f => ["angel","primitivo","peluche"].includes(f.kind) ? stats[f.kind].powerDamage : stats[f.kind].powerDamage * .5;
+const powerDamage = f => ["angel","primitivo","peluche","tren"].includes(f.kind) ? stats[f.kind].powerDamage : stats[f.kind].powerDamage * .5;
 const mobilityTempo = f => .82 + stats[f.kind].agility * .035;
 const DAMAGE_SCALE = .60;
 const ROUND_SECONDS = 90;
 const ENERGY_GAIN_SCALE = .75;
 const damageTaken = (f, damage) => Math.round(damage * DAMAGE_SCALE * 100000 / stats[f.kind].resistance) / 1000;
 const fighterPowers = {
+  tren: {common:"Arco Voltaico", super:"Tormenta Eléctrica", superDamage:34, profile:"Eléctrico · rápido y técnico"},
   angel: {common:"Carga suspendida", super:"Gancho maestro", superDamage:34, profile:"Ágil · control aéreo"},
   primitivo: {common:"Descarga express", super:"Lanzamiento de contenedor", superDamage:35, profile:"Robusto · golpes pesados"},
   peluche: {common:"Hormigonazo", super:"Colado masivo", superDamage:34, profile:"Técnico · control de distancia"}
@@ -146,7 +150,7 @@ function updateSelectionGuide(kind) {
   const panel=document.getElementById("selectionGuide");
   panel.dataset.kind=kind;
   if(!p){panel.innerHTML="";return;}
-  const art={angel:["load-v4.webp","hook-v4.webp"],primitivo:["forklift-v4.webp","container-v4.webp"],peluche:["concrete-v1.webp","concrete-hose-v1.webp"]}[kind];
+  const art={tren:["tren-voltaic.svg","tren-storm.svg"],angel:["load-v4.webp","hook-v4.webp"],primitivo:["forklift-v4.webp","container-v4.webp"],peluche:["concrete-v1.webp","concrete-hose-v1.webp"]}[kind];
   const icon=name=>`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${{
     shield:"M12 2 21 6v6c0 5-9 10-9 10S3 17 3 12V6Z M12 6v11",
     bolt:"m14 2-9 12h6l-1 8 9-13h-6Z",
@@ -173,10 +177,10 @@ function updatePauseGuide() {
 }
 function timedMove(f, spec, evasion=false) {
   const tempo=mobilityTempo(f);
-  return {...spec, reach: f.kind==="peluche" && spec.reach ? spec.reach*.82 : spec.reach, startup:spec.startup/(evasion?tempo:1), active:spec.active/(evasion?tempo:1), recovery:f.kind==="peluche" && !evasion ? stats.peluche.recovery : spec.recovery/tempo};
+  return {...spec, reach: f.kind==="peluche" && spec.reach ? spec.reach*.82 : spec.reach, startup:spec.startup/(evasion?tempo:1), active:spec.active/(evasion?tempo:1), recovery:["peluche","tren"].includes(f.kind) && !evasion ? stats[f.kind].recovery : spec.recovery/tempo};
 }
 
-const roster = ["angel", "primitivo", "peluche"];
+const roster = ["angel", "primitivo", "peluche", "tren"];
 const FLOOR = 448;
 const STEP = 1 / 120;
 const JUMP_BOOST = 1.25;
@@ -206,6 +210,7 @@ const KO_AUDIO_BASE64 = "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
 let koVoice = null;
 
 const COMBAT_AUDIO = {
+  ...Object.fromEntries(["voltaic","voltaicImpact","stormSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:name==="stormSuper"?.92:.82,start:0,loop:false}])),
   ...Object.fromEntries(["punchHit","kickHit","uppercutHit","bodyFall","meleeSwing"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:name==="meleeSwing"?.28:.9,start:0,loop:false}])),
   ...Object.fromEntries(["beam","forklift","concrete","beamImpact","forkliftImpact","concreteImpact","hookSuper","containerSuper","concreteSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:.82,start:0,loop:false}])),
   ...Object.fromEntries(["hookSuper","containerSuper","concreteSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v2.mp3",volume:.92,start:0,loop:false}])),
@@ -397,7 +402,7 @@ function makeFighter(kind, x, isPlayer) {
     crouching: false, guarding: false, guardTime: 0, crouchTime: 0,
     aiEscapeCooldown: 0, teleportDone: false, teleportSmokeStarted: false, teleportTarget: x,
     slamLaunched: false, slamDiving: false, slamLanded: false, slamFromAir: false,
-    landingSquash: 0, concreteCoat:0, knockdown:null,
+    landingSquash: 0, concreteCoat:0, electricCoat:0, knockdown:null,
     attackLanded: false, invuln: 0, specialCooldown: 0,
     projectileToggle: 0, facing: x < 480 ? 1 : -1, flash: 0,
     moveSpec: null, lowAttack: false, airAttack: false, kickStyle: null, moveIntent: 0, attackSound: null,
@@ -677,7 +682,7 @@ function update(dt) {
     return;
   }
   fighters.forEach(f => {
-    for (const name of ["invuln", "aiEscapeCooldown", "specialCooldown", "flash", "landingSquash", "guardTime", "crouchTime", "queueTime", "comboTime", "guardFlash", "concreteCoat"]) {
+    for (const name of ["invuln", "aiEscapeCooldown", "specialCooldown", "flash", "landingSquash", "guardTime", "crouchTime", "queueTime", "comboTime", "guardFlash", "concreteCoat", "electricCoat"]) {
       f[name] = Math.max(0, f[name] - dt);
     }
     if (!f.queueTime) f.queuedAction = null;
@@ -1075,7 +1080,7 @@ function attack(f, type) {
     return false;
   }
   if (type === "special" && f.kind === "facu" && f.mustacheAway) return false;
-  const workFighter = ["angel", "primitivo", "peluche"].includes(f.kind);
+  const workFighter = ["angel", "primitivo", "peluche", "tren"].includes(f.kind);
   const workSuper = workFighter && type === "special" && (humanFighter(f) ? fighterInput(f).down : f.power >= 100 && Math.random() < .55);
   const crash = f.kind === "jairo" && type === "special" && (humanFighter(f) ? fighterInput(f).down : f.power >= 45 && Math.random() < .45);
   const cost = type === "special" ? (workFighter ? workSuper ? 100 : 30 : crash ? 45 : 35) : type === "slam" ? 30 : 0;
@@ -1083,7 +1088,7 @@ function attack(f, type) {
     if (humanFighter(f)) sfx("empty");
     return false;
   }
-  if(workSuper && f.kind==="peluche" && Math.abs((f===player?cpu:player).x-f.x)>stats.peluche.superRange) { if(humanFighter(f)) sfx("empty"); return false; }
+  if(workSuper && stats[f.kind].superRange && Math.abs((f===player?cpu:player).x-f.x)>stats[f.kind].superRange) { if(humanFighter(f)) sfx("empty"); return false; }
   const low = ["punch","kick"].includes(type) && f.grounded && (humanFighter(f) ? fighterInput(f).down : f.crouching) && !cost;
   if (low && type === "punch") type = "uppercut";
   stopFighterSound(f);
@@ -1104,7 +1109,7 @@ function attack(f, type) {
   f.queueTime = 0;
   f.power -= cost;
   if (workSuper) {
-    f.specialStyle = f.kind === "peluche" ? "concreteSuper" : f.kind === "angel" ? "hookSuper" : "containerSuper";
+    f.specialStyle = f.kind === "tren" ? "stormSuper" : f.kind === "peluche" ? "concreteSuper" : f.kind === "angel" ? "hookSuper" : "containerSuper";
     f.vx = 0;
     startWorkCinematic(f);
     return true;
@@ -1126,7 +1131,7 @@ function attack(f, type) {
     f.vx = f.vy = 0;
   } else if (type === "special") {
     f.specialSpawned = false;
-    f.specialStyle = f.kind === "peluche" ? "concrete" : f.kind === "angel" ? "beam" : f.kind === "primitivo" ? "forklift" : f.kind === "jairo" ? (crash ? "crash" : "critical") : f.kind === "paula" ? "water" : f.kind === "padrino" ? "dog" : f.kind === "galante" ? "whip" : f.kind === "flor" ? "hockey" : f.kind === "facu" ? "boomerang" : f.kind === "sergio" ? (f.projectileToggle++ % 2 ? "bottle" : "meat") : f.kind === "tunki" ? "flowers" : f.kind === "marechal" ? "lightning" : "ki";
+    f.specialStyle = f.kind === "tren" ? "voltaic" : f.kind === "peluche" ? "concrete" : f.kind === "angel" ? "beam" : f.kind === "primitivo" ? "forklift" : f.kind === "jairo" ? (crash ? "crash" : "critical") : f.kind === "paula" ? "water" : f.kind === "padrino" ? "dog" : f.kind === "galante" ? "whip" : f.kind === "flor" ? "hockey" : f.kind === "facu" ? "boomerang" : f.kind === "sergio" ? (f.projectileToggle++ % 2 ? "bottle" : "meat") : f.kind === "tunki" ? "flowers" : f.kind === "marechal" ? "lightning" : "ki";
     if (COMBAT_AUDIO[f.specialStyle]) f.attackSound = startCombatSound(f.specialStyle);
     f.vx = 0;
   } else if (f.kickStyle === "volley") {
@@ -1146,6 +1151,7 @@ function attack(f, type) {
 }
 
 function spawnProjectile(owner, style) {
+  if(style==="voltaic") { spawnVoltaic(owner); return; }
   if(style==="concrete") { spawnConcrete(owner); return; }
   if (["beam","forklift"].includes(style)) { spawnWorkProjectile(owner,style); return; }
   if (["critical", "crash"].includes(style)) { spawnSchedule(owner, style); return; }
@@ -1172,6 +1178,7 @@ function spawnProjectile(owner, style) {
 function updateProjectiles(dt) {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
+    if(p.style==="voltaic") {updateVoltaic(p,dt);if(state!=="playing")return;continue;}
     if (["critical", "crash"].includes(p.style)) { updateSchedule(p, dt); if (state !== "playing") return; continue; }
     if(p.style==="concrete") { updateConcrete(p,dt); if(state!=="playing")return; continue; }
     if (["beam","forklift"].includes(p.style)) { updateWorkProjectile(p,dt); if (state !== "playing") return; continue; }
@@ -1502,7 +1509,7 @@ function updateParticles(dt) {
 }
 
 function powerColor(kind) {
-  return { peluche:"#d9e1df", angel: "#ffe269", primitivo: "#ffb65b", jairo: "#ff426b", paula: "#60d9ff", padrino: "#ff902e", galante: "#ffdb43", flor: "#d7ff99", facu: "#ffe47a", sergio: "#ffc650", blotta: "#76daff", tunki: "#ff8bd5", marechal: "#a5eaff" }[kind] || "#ffe47a";
+  return { tren:"#8eeaff", peluche:"#d9e1df", angel: "#ffe269", primitivo: "#ffb65b", jairo: "#ff426b", paula: "#60d9ff", padrino: "#ff902e", galante: "#ffdb43", flor: "#d7ff99", facu: "#ffe47a", sergio: "#ffc650", blotta: "#76daff", tunki: "#ff8bd5", marechal: "#a5eaff" }[kind] || "#ffe47a";
 }
 
 function addEffect(type, x, y, color, radius, life) {
@@ -1602,9 +1609,9 @@ function draw() {
 }
 
 function poseFor(f) {
-  if (workCinematic?.owner === f) return f.kind==="peluche" ? 17 : POSES[f.kind].power;
+  if (workCinematic?.owner === f) return ["peluche","tren"].includes(f.kind) ? 17 : POSES[f.kind].power;
   if(f.kind==="peluche" && f.action==="roll")return 18;
-  if(f.kind==="peluche" && f.action==="special") return f.specialSpawned ? 16 : 4;
+  if(["peluche","tren"].includes(f.kind) && f.action==="special") return f.specialSpawned ? 16 : 4;
   if(f.kind === "galante" && state === "intro" && introElapsed < ROUND_AUDIO[match.round].timing.fight) return 15;
   if(f.action==="roll")return 8;
   const progress = actionProgress(f);
@@ -1630,7 +1637,7 @@ function poseFor(f) {
   }
   if(f.action==="kick" && f.kickStyle==="airKick")return progress<.12?10:13;
   if(f.action==="kick" && f.kickStyle==="volley")return progress<.19?POSES[f.kind].idle:14;
-  if (["angel", "primitivo", "peluche"].includes(f.kind) && f.lowAttack && f.action === "kick") return POSES[f.kind].sweep;
+  if (["angel", "primitivo", "peluche", "tren"].includes(f.kind) && f.lowAttack && f.action === "kick") return POSES[f.kind].sweep;
   if (f.kind === "flor" && f.lowAttack && f.action === "kick") return POSES.flor.sweep;
   if (f.kind === "facu" && f.lowAttack && f.action === "kick") return POSES.facu.sweep;
   if (f.kind === "marechal" && f.lowAttack && f.action === "kick") return POSES.marechal.sweep;
@@ -1645,7 +1652,7 @@ function poseFor(f) {
   if (f.action === "kick") return progress < .12 ? POSES[f.kind].idle : POSES[f.kind].kick;
   if (f.action === "special") {
     if (progress < .15) return POSES[f.kind].idle;
-    if (["angel", "primitivo", "peluche"].includes(f.kind)) return POSES[f.kind].power;
+    if (["angel", "primitivo", "peluche", "tren"].includes(f.kind)) return POSES[f.kind].power;
     if (f.kind === "blotta") return POSES.blotta.power;
     if (f.kind === "tunki") return POSES.tunki.power;
     if (f.kind === "padrino") return POSES.padrino.power;
@@ -1916,7 +1923,7 @@ function drawMotionLines(f, motion) {
 }
 
 function spriteFrame(frame) {
-  if(["angel", "primitivo", "peluche", "galante", "padrino", "paula", "jairo"].includes(frame.kind)) return atlasSpriteFrame(frame);
+  if(["angel", "primitivo", "peluche", "tren", "galante", "padrino", "paula", "jairo"].includes(frame.kind)) return atlasSpriteFrame(frame);
   if(frame.pose===13 || frame.pose===14)return classicKickFrame(frame);
   if (frame.kind === "flor") return florSpriteFrame(frame);
   if (frame.kind === "facu") return facuSpriteFrame(frame);
@@ -2154,6 +2161,8 @@ function drawFighter(f) {
   if(f.kind === "galante") drawGalanteProps(f, frame, opacity);
   if(f.kind === "paula") drawWaterCharge(f);
   if(f.kind === "peluche") drawConcreteCharge(f);
+  if(f.kind === "tren") drawVoltaicCharge(f,frame);
+  if(f.electricCoat>0) drawElectricCoat(f,frame);
   if(f.concreteCoat>0) drawConcreteCoat(f,frame);
   if (f.guarding || f.guardFlash > 0) {
     ctx.save();
@@ -2180,7 +2189,7 @@ function drawFighter(f) {
 }
 
 function drawProjectileTrail(p) {
-  if (["water", "critical", "crash", "beam", "forklift", "concrete"].includes(p.style)) return;
+  if (["water", "critical", "crash", "beam", "forklift", "concrete", "voltaic"].includes(p.style)) return;
   if (!p.trail || p.trail.length < 2) return;
   const x = lerp(p.prevX, p.x, renderAlpha);
   const y = lerp(p.prevY, p.y, renderAlpha);
@@ -2203,6 +2212,7 @@ function drawProjectileTrail(p) {
 }
 
 function drawProjectile(p) {
+  if(p.style==="voltaic") {drawVoltaic(p);return;}
   if(p.style==="concrete") { drawConcrete(p); return; }
   if (["beam","forklift"].includes(p.style)) { drawWorkProjectile(p); return; }
   if (["critical", "crash"].includes(p.style)) { drawSchedule(p); return; }
@@ -2875,7 +2885,7 @@ function atlasSpriteFrame(frame) {
   if(spriteFrames.has(key)) return spriteFrames.get(key);
   const special=frame.kind==="peluche" && [16,17].includes(frame.pose);
   const image=special?assets.pelucheSpecial:assets[frame.kind];
-  const pose=frame.kind==="peluche" ? special ? frame.pose-16 : [0,1,2,3,4,5,6,7,8,12,14,8,9,10,11,15,0,0,13][frame.pose] : frame.pose;
+  const pose=frame.kind==="tren" ? [0,1,2,3,4,5,6,7,8,9,10,8,12,11,13,3,14,15,8][frame.pose] : frame.kind==="peluche" ? special ? frame.pose-16 : [0,1,2,3,4,5,6,7,8,12,14,8,9,10,11,15,0,0,13][frame.pose] : frame.pose;
   if(!image.complete || !image.naturalWidth) return null;
   const surface=document.createElement('canvas');surface.width=surface.height=270;
   const paint=surface.getContext('2d');paint.imageSmoothingEnabled=false;
@@ -3145,8 +3155,8 @@ function workHookLift(t) {
 }
 function startWorkCinematic(owner) {
   const target=owner===player?cpu:player;
-  const duration=owner.kind==="peluche"?2.65:1.85;
-  const impactAt=owner.kind==="peluche"?1.90:1.12;
+  const duration=owner.kind==="tren"?2.8:owner.kind==="peluche"?2.65:1.85;
+  const impactAt=owner.kind==="tren"?1.95:owner.kind==="peluche"?1.90:1.12;
   workCinematic={owner,target,elapsed:0,duration,impactAt,impact:false,originX:owner.x,impactX:target.x,direction:owner.facing,sound:startCombatSound(owner.specialStyle)};
   owner.action="special";owner.actionTime=owner.actionDuration=duration;
   owner.specialSpawned=true;owner.specialCooldown=.7;
@@ -3173,9 +3183,14 @@ function updateWorkCinematic(dt) {
       {sourceX:t.x,direction:o.facing,projectile:true,overhead:true,x:t.x,y:t.y-95});
     burst(t.x,t.y-95,c.owner.kind==="peluche"?"#e5eadb":"#ffdc62",44);dustBurst(t.x,FLOOR,32);
     if(o.kind==="peluche")t.concreteCoat=1.1;
+    if(o.kind==="tren") {t.electricCoat=1.35;burst(t.x,t.y-100,"#81dcff",40);}
     screenShake=18;
     // The cinematic already owns time. Ordinary melee hit-stop used to mute its climax.
     hitStop=0;syncCombatSounds();
+  }
+  if(c.owner.kind==="tren" && c.impact && state==="playing" && c.elapsed>c.impactAt+.24) {
+    if(!c.launched){c.launched=true;beginKnockdown(c.target,c.direction*300);}
+    if(c.target.knockdown)updateKnockdown(c.target,dt);
   }
   if(c.elapsed>=c.duration || state!=="playing") {
     stopCombatSound(c.sound,true);
@@ -3187,6 +3202,7 @@ function updateWorkCinematic(dt) {
 }
 function drawWorkCinematic() {
   const c=workCinematic,t=c.elapsed,owner=c.owner,target=c.target;
+  if(owner.kind==="tren") {drawStormCinematic(c);return;}
   if(owner.kind==="peluche") {drawConcreteCinematic(c);return;}
   ctx.save();
   ctx.fillStyle="rgba(3,9,27,"+(t<.25?.56:.30)+")";ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
@@ -3236,7 +3252,7 @@ function drawWorkCinematic() {
 
 // Deterministic cinematic effects: paused frames hold still and draw never changes gameplay.
 function superPalette(kind) {
-  return kind==="angel" ? ["#fff0a3","#82dfff","#ffffff"]
+  return kind==="tren" ? ["#81dcff","#8c91ff","#ffffff"] : kind==="angel" ? ["#fff0a3","#82dfff","#ffffff"]
     : kind==="primitivo" ? ["#ffaf48","#ff663e","#ffe6a1"]
     : ["#e9efbd","#b1c9bf","#ffffff"];
 }
@@ -3312,6 +3328,88 @@ function spawnConcrete(owner) {
   const sound=owner.attackSound||startCombatSound('concrete');owner.attackSound=null;
   projectiles.push({owner,style:'concrete',sound,direction,x,y,prevX:x,prevY:y,originX:owner.x,
     vx:direction*640,vy:-90,age:0,life:1.4,radius:27,damage:22,contactDone:false,impactAge:0});
+}
+
+// Electrical projectiles sweep their traveled segment: fast bolts cannot tunnel through a rival.
+function spawnVoltaic(owner) {
+  const direction=owner.facing,x=owner.x+direction*58,y=owner.y-118;
+  const sound=owner.attackSound||startCombatSound('voltaic');owner.attackSound=null;
+  projectiles.push({owner,style:'voltaic',sound,direction,x,y,prevX:x,prevY:y,originX:owner.x,
+    vx:direction*1700,vy:0,age:0,life:1,radius:14,damage:powerDamage(owner),spin:0,prevSpin:0,contactDone:false,impactAge:0});
+}
+function updateVoltaic(p,dt) {
+  p.age+=dt;p.life-=dt;p.prevX=p.x;p.prevY=p.y;
+  if(p.contactDone){p.impactAge+=dt;if(p.impactAge>.24)removeConcrete(p);return;}
+  const remaining=stats.tren.powerRange-Math.abs(p.x-p.originX)-p.radius;
+  if(remaining<=0 || p.life<=0){removeConcrete(p);return;}
+  p.x+=p.direction*Math.min(1700*dt,remaining);
+  const target=p.owner===player?cpu:player;
+  const box={left:Math.min(p.prevX,p.x)-p.radius,right:Math.max(p.prevX,p.x)+p.radius,top:p.y-p.radius,bottom:p.y+p.radius};
+  if(target.invuln<=0 && !isVanished(target) && overlaps(box,hurtBox(target))) {
+    p.contactDone=true;p.x=target.x;p.vx=0;stopCombatSound(p.sound);
+    hit(target,p.damage,p.direction*185,0,p.owner,{sourceX:p.owner.x,direction:p.direction,projectile:true,x:p.x,y:p.y});
+    if(target.action==='hit')target.electricCoat=.6;
+    if(state==='playing')startCombatSound('voltaicImpact');
+    burst(p.x,p.y,'#8cefff',20);addEffect('ring',p.x,p.y,'#d5fbff',44,.22);
+  } else if(p.x<STAGE_LEFT || p.x>STAGE_RIGHT) removeConcrete(p);
+}
+// Deterministic jagged branches animate from game time and therefore freeze on pause.
+function drawElectricArc(x1,y1,x2,y2,time,width=3,seed=0) {
+  const dx=x2-x1,dy=y2-y1,length=Math.hypot(dx,dy)||1,nx=-dy/length,ny=dx/length;
+  const count=Math.max(5,Math.ceil(length/24)),points=[];
+  for(let i=0;i<=count;i++) {
+    const q=i/count,j=i===0||i===count?0:Math.sin(i*17.13+Math.floor(time*28)*2.7+seed)*Math.min(22,length*.12);
+    points.push([x1+dx*q+nx*j,y1+dy*q+ny*j]);
+  }
+  ctx.save();ctx.lineJoin='miter';ctx.shadowColor='#159bff';ctx.shadowBlur=12;
+  for(const [scale,color,alpha] of [[4,'#168bff',.22],[1.8,'#62d8ff',.8],[.65,'#f4ffff',1]]) {
+    ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.lineWidth=width*scale;
+    ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();
+  }
+  ctx.shadowBlur=4;ctx.lineWidth=Math.max(1,width*.55);ctx.strokeStyle='#9deaff';ctx.globalAlpha=.85;
+  for(let i=2;i<count;i+=3){const [x,y]=points[i],sign=i%2?1:-1;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+nx*sign*22-dx/count*.4,y+ny*sign*22-dy/count*.4);ctx.lineTo(x+nx*sign*35,y+ny*sign*35);ctx.stroke();}
+  ctx.restore();
+}
+function drawVoltaic(p) {
+  const x=lerp(p.prevX,p.x,renderAlpha),length=Math.min(150,Math.abs(x-p.originX));
+  if(p.contactDone){
+    for(let i=0;i<7;i++){const a=i*Math.PI*2/7,r=18+p.impactAge*190;drawElectricArc(p.x,p.y,p.x+Math.cos(a)*r,p.y+Math.sin(a)*r,p.age,2,i);}
+    return;
+  }
+  drawElectricArc(x-p.direction*length,p.y,x+p.direction*12,p.y,p.age,5);
+}
+function drawVoltaicCharge(f,frame) {
+  if(f.action!=='special' || f.specialSpawned || workCinematic)return;
+  const t=f.actionDuration-f.actionTime,q=Math.min(1,t/f.moveSpec.startup),x=frame.x+f.facing*20,y=frame.y-118;
+  ctx.save();const glow=ctx.createRadialGradient(x,y,1,x,y,34);glow.addColorStop(0,'#ffffff');glow.addColorStop(.22,'#9cfaff');glow.addColorStop(1,'rgba(20,120,255,0)');
+  ctx.fillStyle=glow;ctx.beginPath();ctx.arc(x,y,10+24*q,0,Math.PI*2);ctx.fill();ctx.restore();
+  for(let i=0;i<4;i++){const a=i*Math.PI/2+t*13;drawElectricArc(x,y,x+Math.cos(a)*(20+q*18),y+Math.sin(a)*27,t,2,i);}
+}
+function drawElectricCoat(f,frame) {
+  const t=workCinematic?.elapsed??f.animClock;
+  for(let i=0;i<5;i++){const y=frame.y-35-i*26,x=frame.x+Math.sin(i*6+t*32)*20;drawElectricArc(x-22,y,x+24,y-32,t,1.5,i);}
+}
+function drawStormCinematic(c) {
+  const t=c.elapsed,x=c.impactX-cameraX,ownerX=c.owner.x-cameraX,age=t-c.impactAt;
+  ctx.save();ctx.fillStyle=t<.18?'rgba(1,4,22,.72)':'rgba(1,4,22,.48)';ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
+  drawSuperAtmosphere(c);
+  // Crown and raised hands lead the eye up to the storm.
+  if(t<c.impactAt){
+    for(let i=0;i<3;i++)drawElectricArc(ownerX-60+i*60,FLOOR-205,ownerX+Math.sin(t*10+i)*70,FLOOR-260-i*12,t,2.5,i);
+    for(let i=0;i<3;i++){const a=t-(.65+i*.3);if(a>=0 && a<.22)drawElectricArc(x+(i-1)*92,-20,x+(i-1)*70,FLOOR-12,t,4,i+9);}
+    // A brief dark hold before the main bolt adds anticipation without stopping the audio clock.
+    if(t>1.65){ctx.fillStyle='rgba(1,3,15,.20)';ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);}
+  }
+  if(age>=0 && age<.68) {
+    const width=age<.15?19:Math.max(2,13*(1-age/.68));
+    drawElectricArc(x-35,-20,x,FLOOR-12,t,width,2);
+    drawElectricArc(x+65,-20,x,FLOOR-12,t,width*.55,5);
+    if(age<.18){ctx.fillStyle=`rgba(212,248,255,${.58*(1-age/.18)})`;ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);}
+    for(let i=0;i<6;i++)drawElectricArc(x,FLOOR-12,x+(i-2.5)*72,FLOOR+Math.sin(i*8+t*12)*7,t,3,i);
+  }
+  drawSuperImpact(c);
+  ctx.textAlign='center';ctx.shadowBlur=15;ctx.shadowColor='#36b9ff';ctx.fillStyle='#d4faff';ctx.font='italic bold 32px Arial';ctx.fillText('TORMENTA ELÉCTRICA',VIEW_WIDTH/2,84);
+  ctx.restore();
 }
 function removeConcrete(p) {
   stopCombatSound(p.sound);const i=projectiles.indexOf(p);if(i>=0)projectiles.splice(i,1);

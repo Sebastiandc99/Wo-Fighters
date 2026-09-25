@@ -2,11 +2,16 @@
 
 Juego arcade para navegador, inspirado en la dinámica de KP Fighter y creado como proyecto independiente.
 
+## Probar esta copia descargable
+
+Descomprime el ZIP, abre una terminal dentro de la carpeta `Wo-Fighters` y ejecuta `python3 -m http.server 8000` (en Windows, `python -m http.server 8000`). Abre `http://localhost:8000` en el navegador. El servidor local permite cargar también los sonidos.
+
 ## Juego
 
 - Ángel: **Carga Suspendida** (L / botón Poder, 30% de barra, daño base 23) y **Gancho Maestro** (abajo + L / abajo + Poder, 100%, daño base 34).
 - Primitivo: **Descarga Express** (L / Poder, 30%, daño base 22) y **Lanzamiento de Contenedor** (abajo + L / abajo + Poder, 100%, daño base 35).
 - Peluche: **Hormigonazo** (L / Poder, 30%, daño base 22) y **Colado Masivo** (abajo + L / abajo + Poder, 100%, daño base 34).
+- Tren Valencia: **Arco Voltaico** (L / Poder, 30%, daño base 24) y **Tormenta Eléctrica** (abajo + L / abajo + Poder, 100%, daño base 34).
 - El especial reproduce una secuencia cinematográfica, detiene los controles de ambos personajes y aplica el impacto al final.
 - Torneo individual, dos jugadores locales, tres escenarios, controles de teclado y pantalla táctil, cámara, música, voces de rounds y KO.
 - La resistencia altera el daño final igual que en la base original. Online y ranking de KP Fighter no se conectan a este juego.
@@ -16,7 +21,7 @@ Juego arcade para navegador, inspirado en la dinámica de KP Fighter y creado co
 
 ## Verificación
 
-`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs tests/melee.test.cjs tests/endurance.test.cjs tests/super-show.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
+`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs tests/melee.test.cjs tests/endurance.test.cjs tests/super-show.test.cjs tests/tren.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
 
 GitHub Pages: https://sebastiandc99.github.io/Wo-Fighters/
 
@@ -45,7 +50,7 @@ Hormigonazo lleva arco suave, gotas, impacto único, retroceso moderado y restos
 
 Ángel y Primitivo también tienen sonidos propios en sus dos poderes: cable/izaje y metal para Ángel, motor/montacargas y golpe de contenedor para Primitivo. Los sonidos se pausan y reanudan junto con las animaciones, y se limpian al salir o cambiar de ronda.
 
-37 pruebas automatizadas cubren los tres personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md).
+43 pruebas automatizadas cubren los cuatro personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md) y [ART-TREN.md](ART-TREN.md).
 
 ## Golpes y derribo
 
@@ -72,3 +77,11 @@ La energía se obtiene un 25% más despacio en todas las fuentes: recarga pasiva
 ## Ficha arcade de selección
 
 La ficha lateral usa dos insignias con el arte real de cada poder, cifras de daño/energía y tres barras segmentadas con símbolos de resistencia, velocidad y fuerza. Los nombres completos y valores siguen disponibles en etiquetas accesibles y ayudas al pasar el cursor. La resistencia usa una escala 0–200 (100 en el centro); fuerza y velocidad conservan la escala 0–10. Paletas celeste, naranja y lima para Ángel, Primitivo y Peluche. La guía detallada permanece en pausa.
+
+## Tren Valencia
+
+Cuarto luchador seleccionable y rival de torneo. Altura visual de referencia 1,75 m: Peluche < Ángel < Tren < Primitivo; contextura normal, uniforme amarillo, anteojos y sombrero cónico elevado. Daño normal 8, resistencia 88, velocidad 8/10, alcance físico 6/10 y recuperación 0,52 s. La barra de vida sigue normalizada y los daños conservan el ajuste general ×0,60 para peleas más largas.
+
+Arco Voltaico carga durante 0,19 s y dispara a 1700 unidades/s, con alcance 608 (8/10). La colisión recorre el tramo completo entre fotogramas; se puede saltar, bloquear o evadir. La descarga provoca un retroceso corto, sacudida y chispas.
+
+Tormenta Eléctrica dura 2,80 s, requiere distancia máxima 684 (9/10) y barra completa. La pose eleva ambos brazos, oscurece el escenario, anuncia tres rayos a 0,65/0,95/1,25 s, crea una pausa visual de anticipación y golpea una sola vez a 1,95 s. El rival sale despedido 0,24 s después del impacto; recupera el control al levantarse. La pausa congela sonido y efectos juntos. Audio original: `python3 scripts/build-tren-audio.py`.

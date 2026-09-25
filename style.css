@@ -1082,9 +1082,14 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
 .portrait-primitivo img { transform: scale(1.02); transform-origin: center bottom; }
 
 /* Three fighters, with Peluche's short stature preserved in the portrait. */
-.choice-row { grid-template-columns:repeat(3,minmax(0,1fr));max-width:390px;width:90%; }
+.choice-row { grid-template-columns:repeat(4,minmax(0,1fr));max-width:420px;width:90%; }
 .portrait-peluche {left:7%;border:0;background:transparent;box-shadow:none;}
 .portrait-peluche img {object-fit:contain;object-position:center bottom;transform:scale(.73);transform-origin:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
+.portrait-tren {left:7%;border:0;background:transparent;box-shadow:none;}
+.portrait-tren img {object-fit:contain;object-position:center bottom;transform:scale(.87);transform-origin:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
+.choice-tile[data-pick="tren"] img {object-fit:contain;object-position:center;background:#142341;}
+.choice-tile[data-pick="tren"] strong {font-size:clamp(6px,.85cqw,12px);}
+.selection-guide[data-kind="tren"] {--skill-accent:#85dfff;--skill-fill:#748bff;}
 .choice-tile[data-pick="peluche"] img {object-fit:contain;object-position:center;background:#142341;}
 
 /* Small side card alongside the roster, never on top of the portrait or buttons. */

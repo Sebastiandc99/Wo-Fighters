@@ -5,7 +5,7 @@ function setup(kind='angel'){
  const g=game();g.run(`startGame('${kind}','${kind==='angel'?'primitivo':'angel'}');state='playing';player.x=260;cpu.x=570;player.power=100;player.specialCooldown=0;`);return g;
 }
 test('the Wo roster and stages are independent',()=>{
- const g=setup();assert.deepEqual(Array.from(g.run('roster')),['angel','primitivo','peluche']);
+ const g=setup();assert.deepEqual(Array.from(g.run('roster')),['angel','primitivo','peluche','tren']);
  assert.deepEqual(Array.from(g.run('stageRoster')),['generadores','planta','salinas']);
 });
 test('ordinary power costs 30 and sends the matching construction attack',()=>{
@@ -105,7 +105,7 @@ test('only click or arrows choose a fighter; hover and focus do not select',()=>
  assert.equal(g.run('playerChoice'),'angel');
  g.nodes.get('pick-primitivo').listeners.click();assert.equal(g.run('playerChoice'),'primitivo');
  for(const code of ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight']){
-  g.key(code);assert.ok(['angel','primitivo','peluche'].includes(g.run('playerChoice')));
+  g.key(code);assert.ok(['angel','primitivo','peluche','tren'].includes(g.run('playerChoice')));
  }
 });
 
