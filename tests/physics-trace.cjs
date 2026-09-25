@@ -12,9 +12,9 @@ function trace(kind, source, reference=false) {
   g.key('KeyD');advance(.35);g.key('KeyD','keyup');advance(.3);
   g.key('KeyW');advance(.25);g.key('KeyK');advance(1);
   g.run('player.x=430;cpu.x=500;player.vx=cpu.vx=0;');g.key('KeyJ');advance(.7);
-  g.run('player.x=430;cpu.x=500;player.vx=cpu.vx=0;held2.guard=true;');g.key('KeyK');advance(.8);
+  g.run('player.x=430;cpu.x=500;player.vx=cpu.vx=0;');g.key('Digit0');g.key('KeyK');advance(.8);
   g.key('KeyS');g.key('KeyK');advance(.65);g.key('KeyJ');advance(.8);g.key('KeyS','keyup');
-  g.key('KeyO');advance(.75);
+  g.key('Digit0','keyup');g.key('KeyO');advance(.75);
   g.run('player.x=650;cpu.x=250;player.vx=cpu.vx=0;');advance(.1);
   return frames;
 }

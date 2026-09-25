@@ -106,7 +106,7 @@ const POSES = {
 };
 
 const stats = {
-  peluche: {name:"PELUCHE", normalDamage:9, resistance:110, powerDamage:22, superDamage:34, agility:5, speed:250, jump:605, defaultFace:1, size:224, height:170, width:28, recovery:.64, meleeReach:4, powerRange:532, superRange:608, description:"HORMIGONAZO (30%) · ↓ + PODER: COLADO MASIVO (100%)", ability:null},
+  peluche: {name:"PELUCHE", normalDamage:9, resistance:110, powerDamage:22, superDamage:34, agility:5, speed:250, jump:605, defaultFace:1, size:204, height:154, width:26, recovery:.64, meleeReach:4, powerRange:532, superRange:608, description:"HORMIGONAZO (30%) · ↓ + PODER: COLADO MASIVO (100%)", ability:null},
   angel: { name:"ÁNGEL", normalDamage:9, resistance:98, powerDamage:23, agility:7, speed:274, jump:615, defaultFace:1, size:220, height:166, width:23, description:"CARGA SUSPENDIDA (30%) · ↓ + PODER: GANCHO MAESTRO (100%)", ability:null },
   primitivo: { name:"PRIMITIVO", normalDamage:10, resistance:110, powerDamage:22, agility:4, speed:238, jump:595, defaultFace:1, size:282, height:214, width:40, bodyWidth:1.10, description:"DESCARGA EXPRESS (30%) · ↓ + PODER: LANZAMIENTO DE CONTENEDOR (100%)", ability:null },
   jairo: { name: "JAIRO", normalDamage: 8, resistance: 98, powerDamage: 26, agility: 7, speed: 274, jump: 615, defaultFace: 1, size: 226, height: 198, width: 25, description: "PODER: LÍNEA ROJA · ↓ + PODER: BARRAS", ability: null },
@@ -160,6 +160,7 @@ const KO_AUDIO_BASE64 = "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
 let koVoice = null;
 
 const COMBAT_AUDIO = {
+  ...Object.fromEntries(["punchHit","kickHit","uppercutHit","bodyFall","meleeSwing"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:name==="meleeSwing"?.28:.9,start:0,loop:false}])),
   ...Object.fromEntries(["beam","forklift","concrete","beamImpact","forkliftImpact","concreteImpact","hookSuper","containerSuper","concreteSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:.82,start:0,loop:false}])),
   critical: {src: "assets/jairo-critical-v1.mp3", volume: .8, start: 0, end: .95, loop: false},
   crash: {src: "assets/jairo-crash-v1.mp3", volume: .8, start: 0, end: 1.8, loop: false},
@@ -349,7 +350,7 @@ function makeFighter(kind, x, isPlayer) {
     crouching: false, guarding: false, guardTime: 0, crouchTime: 0,
     aiEscapeCooldown: 0, teleportDone: false, teleportSmokeStarted: false, teleportTarget: x,
     slamLaunched: false, slamDiving: false, slamLanded: false, slamFromAir: false,
-    landingSquash: 0, concreteCoat:0,
+    landingSquash: 0, concreteCoat:0, knockdown:null,
     attackLanded: false, invuln: 0, specialCooldown: 0,
     projectileToggle: 0, facing: x < 480 ? 1 : -1, flash: 0,
     moveSpec: null, lowAttack: false, airAttack: false, kickStyle: null, moveIntent: 0, attackSound: null,
@@ -597,7 +598,8 @@ function update(dt) {
     fighters.forEach(f => {
       f.actionTime = Math.max(0, f.actionTime - dt);
       f.flash = Math.max(0, f.flash - dt);
-      if (!f.grounded) integrateBody(f, dt);
+      if (f.knockdown) updateKnockdown(f, dt);
+      else if (!f.grounded) integrateBody(f, dt);
       updateAnimation(f, dt);
     });
     if (state === "finished" && resultElapsed >= .8) ui.resultPanel.hidden = false;
@@ -756,7 +758,7 @@ function updateAI(dt) {
 
 function integrateBody(f, dt) {
   const wasOnFloor = f.grounded;
-  if (!f.grounded) f.vy += 1650 * (f.action === "slam" ? 1 : mobilityTempo(f) ** 2) * dt;
+  if (!f.grounded) f.vy += 1650 * (f.action === "slam" || f.knockdown ? 1 : mobilityTempo(f) ** 2) * dt;
   const other=f===player?cpu:player;
   f.x = Math.max(FIGHTER_LEFT, other.x-MAX_FIGHTER_DISTANCE,
     Math.min(FIGHTER_RIGHT, other.x+MAX_FIGHTER_DISTANCE, f.x + f.vx * dt));
@@ -766,6 +768,12 @@ function integrateBody(f, dt) {
     f.vy = 0;
     f.grounded = true;
     if (!wasOnFloor) {
+      if (f.knockdown?.phase === "air") {
+        f.knockdown.phase = "down"; f.knockdown.phaseTime = 0;
+        f.vx = 0; screenShake = Math.max(screenShake, 5);
+        dustBurst(f.x, FLOOR, 18);
+        if (state === "playing") startCombatSound("bodyFall");
+      }
       if(f.action==="kick" && f.kickStyle==="airKick"){
         stopFighterSound(f);f.action="idle";f.actionTime=f.actionDuration=0;f.moveSpec=null;f.kickStyle=null;f.airAttack=false;
       }
@@ -788,7 +796,35 @@ function integrateBody(f, dt) {
   } else f.grounded = false;
 }
 
+// Uppercuts keep the victim in hit reaction until the entire fall/get-up finishes.
+function beginKnockdown(f, knockX) {
+  const direction = Math.sign(knockX) || -f.facing;
+  f.knockdown = {direction, phase:"air", age:0, phaseTime:0};
+  f.vx = direction * 300; f.vy = -690; f.grounded = false;
+  f.moveSpec = null; f.kickStyle = null; f.airAttack = false;
+  f.action = "hit"; f.actionTime = f.actionDuration = 2;
+}
+
+function updateKnockdown(f, dt) {
+  const fall = f.knockdown;
+  fall.age += dt; fall.phaseTime += dt;
+  f.action = "hit"; f.actionTime = 2;
+  f.invuln = Math.max(f.invuln, .04);
+  f.queuedAction = null; f.queueTime = 0; f.moveIntent = 0;
+  if (fall.phase === "air") integrateBody(f, dt);
+  else if (state === "playing" && f.health > 0) {
+    if (fall.phase === "down" && fall.phaseTime >= .40) {
+      fall.phase = "rise"; fall.phaseTime = 0;
+    } else if (fall.phase === "rise" && fall.phaseTime >= .28) {
+      f.knockdown = null; f.action = "idle";
+      f.actionTime = f.actionDuration = 0; f.vx = f.vy = 0;
+      f.invuln = .12;
+    }
+  }
+}
+
 function updateFighter(f, dt) {
+  if (f.knockdown) { updateKnockdown(f, dt); return; }
   const other = f === player ? cpu : player;
   if (f.action === "idle") {
     const speed = stats[f.kind].speed * (humanFighter(f) ? 1 : difficulty().speed);
@@ -920,7 +956,8 @@ function attackContact(f, target) {
   return {
     attacker: f, target, damage: (spec.damage + (f.kind === "sergio" && f.action === "punch" ? 2 : 0)) * stats[f.kind].normalDamage / 10,
     knock: spec.knock, lift: rising ? spec.lift : diagonal ? 0 : f.airAttack ? -120 : 0, direction: f.facing, low, overhead: diagonal,
-    sourceX: f.x, projectile: false, x: (front + target.x) / 2, y: centerY
+    sourceX: f.x, projectile: false, attackType:f.action, knockdown:rising,
+    x: (front + target.x) / 2, y: centerY
   };
 }
 
@@ -1055,7 +1092,7 @@ function attack(f, type) {
     f.vx = f.facing * (low ? 35 : f.kind === "sergio" ? 180 : 105);
   }
   if (["punch", "uppercut", "kick"].includes(type)) {
-    f.attackSound = startCombatSound(f.kind === "sergio" && type === "punch" ? "belly" : "general");
+    f.attackSound = startCombatSound(roster.includes(f.kind) ? "meleeSwing" : f.kind === "sergio" && type === "punch" ? "belly" : "general");
   } else if (type !== "special" || !COMBAT_AUDIO[f.specialStyle]) sfx(type);
   return true;
 }
@@ -1163,12 +1200,14 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
     target.grounded = knockY === 0 && target.y >= FLOOR;
     target.crouching = target.guarding = target.lowAttack = false;
     target.queuedAction = null;
+    if (contact.knockdown && !contact.projectile) beginKnockdown(target, knockX);
     target.flash = .13;
     screenShake = damage > 11 ? 4 : 2.5;
     hitStop = damage > 11 ? .055 : .035;
     burst(contact.x ?? target.x, contact.y ?? target.y - 104, "#ffd55b", 11);
     addEffect("impact", contact.x ?? target.x, contact.y ?? target.y - 104, powerColor(attacker.kind), damage > 11 ? 57 : 38, .25);
-    sfx("hit");
+    if (contact.attackType && !contact.projectile) startCombatSound(contact.attackType + "Hit");
+    else sfx("hit");
     if (navigator.vibrate) navigator.vibrate(15);
   }
   suspendCombatSounds(false);
@@ -1595,6 +1634,15 @@ function drawShadow(f) {
 
 function fighterMotion(f) {
   const motion = { dx: 0, dy: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+  if (f.knockdown) {
+    const fall = f.knockdown;
+    const tilt = fall.phase === "air" ? smoothstep(fall.age / .32)
+      : fall.phase === "rise" ? 1 - smoothstep(fall.phaseTime / .28) : 1;
+    motion.rotation = fall.direction * Math.PI / 2 * tilt;
+    motion.dx = -Math.sin(motion.rotation) * stats[f.kind].height * FIGHTER_SCALE * .45;
+    motion.dy = -Math.abs(Math.sin(motion.rotation)) * 28;
+    return motion;
+  }
   const progress = actionProgress(f);
   if(f.action==="roll"){
     const angle=progress*Math.PI*2*f.rollDirection,radius=stats[f.kind].size*FIGHTER_SCALE*.16;
@@ -3054,6 +3102,7 @@ function startWorkCinematic(owner) {
   owner.action="special";owner.actionTime=owner.actionDuration=duration;
   owner.specialSpawned=true;owner.specialCooldown=.7;
   target.action="hit";target.actionTime=target.actionDuration=duration;
+  target.knockdown=null;
   target.vx=target.vy=0;target.guarding=false;target.crouching=false;
   for(const f of [owner,target]){f.queuedAction=null;f.queueTime=0;f.moveIntent=0;}
   screenShake=4;

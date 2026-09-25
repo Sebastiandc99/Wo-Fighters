@@ -16,11 +16,11 @@ Juego arcade para navegador, inspirado en la dinámica de KP Fighter y creado co
 
 ## Verificación
 
-`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
+`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs tests/melee.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
 
 GitHub Pages: https://sebastiandc99.github.io/Wo-Fighters/
 
-Motor de referencia: `Sebastiandc99/KPFighter@7272d498a80a738c1c16ebcb026f052625dcfb4e`. Se conservan gravedad, aceleración, frenado, colisiones, tiempos de ataque y reacción. Ángel usa la movilidad de Jairo y Primitivo la de Sergio; mantienen sus poderes y atributos de daño propios.
+Motor de referencia: `Sebastiandc99/KPFighter@7272d498a80a738c1c16ebcb026f052625dcfb4e`. Se conservan aceleración, frenado, colisiones y tiempos de ataque. El gancho ahora tiene su propia caída completa, por pedido del usuario. Ángel usa la movilidad de Jairo y Primitivo la de Sergio; mantienen sus poderes y atributos de daño propios.
 
 ## Revisión visual
 
@@ -45,4 +45,12 @@ Hormigonazo lleva arco suave, gotas, impacto único, retroceso moderado y restos
 
 Ángel y Primitivo también tienen sonidos propios en sus dos poderes: cable/izaje y metal para Ángel, motor/montacargas y golpe de contenedor para Primitivo. Los sonidos se pausan y reanudan junto con las animaciones, y se limpian al salir o cambiar de ronda.
 
-25 pruebas automatizadas cubren los tres personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md).
+31 pruebas automatizadas cubren los tres personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md).
+
+## Golpes y derribo
+
+Peluche es un poco más bajo que Ángel, tanto en el combate como en la selección. Su escala visual y su cuerpo de colisión se redujeron juntos.
+
+Los puños, patadas y ganchos tienen impactos secos propios, con graves y chasquido breve; el sonido de contacto solamente se reproduce al acertar. Los golpes al aire llevan un soplido corto. Audio original reproducible con `python scripts/build-melee-audio.py`.
+
+Un gancho sin bloquear lanza al rival hacia atrás, lo rota hasta caer de espaldas, mantiene 0,40 s en el suelo y permite levantarse en 0,28 s. Durante el derribo no se puede atacar ni recibir otro golpe; al terminar se recupera el control. Una defensa correcta evita el derribo y un K.O. mantiene al rival caído. `tests/melee.test.cjs` cubre las nueve combinaciones de personajes en ambos sentidos, pausa, bordes, defensa, audio y recuperación con teclado/táctil. La referencia de KP se vuelve a generar desde el motor original usando la tecla de guardia real; el gancho sin bloquear se verifica por separado porque su comportamiento cambió intencionalmente.

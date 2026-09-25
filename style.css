@@ -1084,5 +1084,5 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
 /* Three fighters, with Peluche's short stature preserved in the portrait. */
 .choice-row { grid-template-columns:repeat(3,minmax(0,1fr));max-width:390px;width:90%; }
 .portrait-peluche {left:7%;border:0;background:transparent;box-shadow:none;}
-.portrait-peluche img {object-fit:contain;object-position:center bottom;transform:scale(.80);transform-origin:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
+.portrait-peluche img {object-fit:contain;object-position:center bottom;transform:scale(.73);transform-origin:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
 .choice-tile[data-pick="peluche"] img {object-fit:contain;object-position:center;background:#142341;}
