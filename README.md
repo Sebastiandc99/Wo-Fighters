@@ -6,6 +6,7 @@ Juego arcade para navegador, inspirado en la dinámica de KP Fighter y creado co
 
 - Ángel: **Carga Suspendida** (L / botón Poder, 30% de barra, daño base 23) y **Gancho Maestro** (abajo + L / abajo + Poder, 100%, daño base 34).
 - Primitivo: **Descarga Express** (L / Poder, 30%, daño base 22) y **Lanzamiento de Contenedor** (abajo + L / abajo + Poder, 100%, daño base 35).
+- Peluche: **Hormigonazo** (L / Poder, 30%, daño base 22) y **Colado Masivo** (abajo + L / abajo + Poder, 100%, daño base 34).
 - El especial reproduce una secuencia cinematográfica, detiene los controles de ambos personajes y aplica el impacto al final.
 - Torneo individual, dos jugadores locales, tres escenarios, controles de teclado y pantalla táctil, cámara, música, voces de rounds y KO.
 - La resistencia altera el daño final igual que en la base original. Online y ranking de KP Fighter no se conectan a este juego.
@@ -15,7 +16,7 @@ Juego arcade para navegador, inspirado en la dinámica de KP Fighter y creado co
 
 ## Verificación
 
-`node --test tests/wo.test.cjs tests/physics-parity.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
+`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
 
 GitHub Pages: https://sebastiandc99.github.io/Wo-Fighters/
 
@@ -24,3 +25,24 @@ Motor de referencia: `Sebastiandc99/KPFighter@7272d498a80a738c1c16ebcb026f052625
 ## Revisión visual
 
 Primitivo es más alto y robusto, pelado debajo del casco y completamente afeitado. Ángel es considerablemente más bajo. Los tamaños de colisión acompañan las nuevas proporciones. Los poderes tienen imágenes transparentes propias: montacargas con ruedas animadas, contenedor con trayectoria de lanzamiento e impacto, carga de vigas y gancho de izaje. La marca corporativa se retiró de los gráficos que la contenían.
+
+
+## Peluche — supervisor civil
+
+| Atributo | Valor |
+| --- | --- |
+| Daño normal (escala de atributos de KP) | 9 |
+| Resistencia | 110 |
+| Velocidad | 5/10; 250 unidades/s |
+| Alcance físico | 4/10; 82% del alcance base de cada golpe |
+| Recuperación tras ataques | 0,64 s |
+| Hormigonazo | 22 de daño base; costo 30%; alcance 7/10 (532 unidades) |
+| Colado Masivo | 34 de daño base; costo 100%; alcance 8/10 (608 unidades) |
+
+Las barras de vida permanecen normalizadas al 100%; resistencia 110 reduce el daño recibido con el mismo cálculo del motor. El daño normal conserva la escala proporcional de los golpes de KP. El daño de los poderes es el valor base antes de resistencia y defensa.
+
+Hormigonazo lleva arco suave, gotas, impacto único, retroceso moderado y restos de mezcla visibles. Colado Masivo dura 2,65 segundos: señal, manga, descarga, atrapamiento, endurecimiento y rotura a los 1,90 segundos. No consume barra si el rival está fuera del alcance del súper. Ambos jugadores recuperan el control al terminar.
+
+Ángel y Primitivo también tienen sonidos propios en sus dos poderes: cable/izaje y metal para Ángel, motor/montacargas y golpe de contenedor para Primitivo. Los sonidos se pausan y reanudan junto con las animaciones, y se limpian al salir o cambiar de ronda.
+
+25 pruebas automatizadas cubren los tres personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md).
