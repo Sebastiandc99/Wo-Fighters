@@ -68,3 +68,7 @@ Los tres súper suman aura de activación, líneas de velocidad, partículas asc
 Audio v2 original con graves, subida de tensión, capas de impacto y reverberación breve; se genera con `python scripts/build-wo-audio.py --supers`. El golpe cinematográfico ya no interrumpe el sonido del remate.
 
 La energía se obtiene un 25% más despacio en todas las fuentes: recarga pasiva 2,4 puntos/s, defensa 3 puntos y ganancias por daño multiplicadas por 0,75. Desde los 40 puntos iniciales se necesitan 25 s sin combatir para llegar a 100, frente a 18,75 s antes. Costos y daño permanecen iguales.
+
+## Ficha arcade de selección
+
+La ficha lateral usa dos insignias con el arte real de cada poder, cifras de daño/energía y tres barras segmentadas con símbolos de resistencia, velocidad y fuerza. Los nombres completos y valores siguen disponibles en etiquetas accesibles y ayudas al pasar el cursor. La resistencia usa una escala 0–200 (100 en el centro); fuerza y velocidad conservan la escala 0–10. Paletas celeste, naranja y lima para Ángel, Primitivo y Peluche. La guía detallada permanece en pausa.

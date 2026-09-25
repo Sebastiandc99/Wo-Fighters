@@ -143,7 +143,25 @@ function powerGuide(kind, rivalKind) {
 }
 function updateSelectionGuide(kind) {
   const s=stats[kind],p=fighterPowers[kind];
-  document.getElementById("selectionGuide").innerHTML=p ? `<h4>PODERES Y ATRIBUTOS</h4>${powerGuide(kind)}<div class="fighter-attributes"><span>Resistencia <b>${s.resistance}</b></span><span>Velocidad <b>${s.agility}/10</b></span><span>Fuerza <b>${s.normalDamage}/10</b></span></div><p class="guide-note">${p.profile}</p><p class="guide-note">Daño sobre vida total, contra resistencia 100.</p>` : "";
+  const panel=document.getElementById("selectionGuide");
+  panel.dataset.kind=kind;
+  if(!p){panel.innerHTML="";return;}
+  const art={angel:["load-v4.webp","hook-v4.webp"],primitivo:["forklift-v4.webp","container-v4.webp"],peluche:["concrete-v1.webp","concrete-hose-v1.webp"]}[kind];
+  const icon=name=>`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${{
+    shield:"M12 2 21 6v6c0 5-9 10-9 10S3 17 3 12V6Z M12 6v11",
+    bolt:"m14 2-9 12h6l-1 8 9-13h-6Z",
+    fist:"M5 12V7l4-2 3 1 3-1 4 2v7l-4 7H8l-3-6H3v-5l3-1 4 4 M9 6v5 M13 6v5 M17 7v5",
+    hit:"m12 2 2 6 6-3-3 6 5 3-7 1-1 7-4-6-7 3 3-7-4-3 7-1Z"
+  }[name]}"/></svg>`;
+  const powers=[p.common,p.super].map((name,i)=>{
+    const damage=((i?p.superDamage:s.powerDamage)*DAMAGE_SCALE).toLocaleString("es-AR",{maximumFractionDigits:1});
+    const energy=i?100:30;
+    const details=`${name}: daño ${damage}% contra resistencia 100; energía ${energy}%`;
+    return `<div class="skill-medal ${i?"super-medal":""}" role="img" aria-label="${details}" title="${details}"><span class="skill-type">${i?"SÚPER":"COMÚN"}</span><div class="skill-art"><img src="assets/${art[i]}" alt="" draggable="false"></div><span class="skill-damage">${icon("hit")}<b>${damage}%</b></span><span class="skill-cost">${icon("bolt")}${energy}%</span></div>`;
+  }).join("");
+  const meters=[["shield","RESIST.","Resistencia",s.resistance,200],["bolt","VELOC.","Velocidad",s.agility,10],["fist","FUERZA","Fuerza",s.normalDamage,10]].map(([symbol,label,name,value,max])=>
+    `<div class="arcade-stat" title="${name}: ${value}${max===10?'/10':''}"><span class="stat-symbol">${icon(symbol)}</span><span class="stat-body"><span class="stat-label">${label}</span><span class="stat-meter" role="meter" aria-label="${name}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${value}"><i style="width:${value/max*100}%"></i></span></span></div>`).join("");
+  panel.innerHTML=`<div class="arcade-guide-head"><span>PODERES</span><i>★</i></div><div class="skill-medals">${powers}</div><div class="skill-key">${icon("hit")} DAÑO <span>·</span> ${icon("bolt")} ENERGÍA</div><div class="arcade-stats">${meters}</div>`;
 }
 function updatePauseGuide() {
   for (const [id,f,rival] of [["pausePowers1",player,cpu],["pausePowers2",cpu,player]]) {
@@ -413,7 +431,7 @@ function chooseFighter(kind, playSound = true) {
     button.setAttribute("aria-pressed", String(button.dataset.pick === kind));
   });
   document.getElementById("selectionName").textContent = stats[kind].name;
-  document.getElementById("selectionMoves").textContent = stats[kind].description;
+  document.getElementById("selectionMoves").textContent = fighterPowers[kind]?.profile.toUpperCase() || stats[kind].description;
   updateSelectionGuide(kind);
   document.querySelectorAll("[data-portrait]").forEach(portrait => {
     portrait.classList.toggle("selected", portrait.dataset.portrait === kind);

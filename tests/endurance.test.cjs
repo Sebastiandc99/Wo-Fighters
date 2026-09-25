@@ -17,7 +17,7 @@ test('selection cards follow all fighters and separate damage from energy cost',
  const g=game();
  for(const [kind,common,superName,damage] of [['angel','Carga suspendida','Gancho maestro','13,8%'],['primitivo','Descarga express','Lanzamiento de contenedor','13,2%'],['peluche','Hormigonazo','Colado masivo','13,2%']]){
   g.run(`chooseFighter('${kind}',false)`);const card=g.nodes.get('selectionGuide').innerHTML;
-  for(const text of [common,superName,damage,'30%','100%','Resistencia','Velocidad','Fuerza'])assert.ok(card.includes(text),text);
+  for(const text of [common,superName,damage,'30%','100%','Resistencia','Velocidad','Fuerza','role="meter"','skill-art'])assert.ok(card.includes(text),text);
  }
 });
 test('pause shows both selected fighters and matchup damage, with second-player keys only in versus',()=>{

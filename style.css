@@ -1119,3 +1119,31 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
   .pause-powers .power-entry {margin-bottom:.35em;}
   .pause-guide h3 {margin-bottom:.35em;}
 }
+
+/* Compact arcade badges reuse the actual in-game power artwork. */
+.selection-guide {--skill-accent:#7fe8ff;--skill-fill:#27bada;top:42%;padding:.85cqw;background:linear-gradient(135deg,#101e42ed,#040c20f5);border:2px solid #879ebc;box-shadow:3px 3px 0 #020818,inset 0 0 0 2px #172e52;color:#e8f5ff;font-family:Arial,sans-serif;}
+.selection-guide[data-kind="primitivo"] {--skill-accent:#ffbe68;--skill-fill:#ed8142;}
+.selection-guide[data-kind="peluche"] {--skill-accent:#e6ef94;--skill-fill:#92b84e;}
+.arcade-guide-head {display:flex;align-items:center;justify-content:space-between;margin-bottom:.6cqw;color:#fff0aa;font:italic 900 clamp(10px,1.4cqw,19px)/1 Arial,sans-serif;letter-spacing:.1em;}
+.arcade-guide-head i {font-size:.8em;color:var(--skill-accent);text-shadow:0 0 8px var(--skill-accent);}
+.skill-medals {display:grid;grid-template-columns:1fr 1fr;gap:.65cqw;}
+.skill-medal {position:relative;text-align:center;border:1px solid #4b648c;background:linear-gradient(180deg,#1b3555,#091329);overflow:hidden;}
+.super-medal {border-color:#e7bf5c;box-shadow:inset 0 0 12px #ffb32e18;}
+.skill-type {display:block;padding:.25em 0;color:#cae3fa;background:#030b1ea8;font:900 clamp(8px,.8cqw,11px)/1.2 Arial,sans-serif;letter-spacing:.09em;}
+.super-medal .skill-type {color:#ffe394;}
+.skill-art {height:5.5cqw;max-height:76px;min-height:30px;padding:.25cqw;background:radial-gradient(ellipse at center,#7cb9d72b,transparent 70%);}
+.skill-art img {width:100%;height:100%;object-fit:contain;filter:drop-shadow(2px 3px 1px #000b);}
+.skill-damage {display:flex;align-items:center;justify-content:center;gap:.25em;color:#fff2ae;font:900 clamp(10px,1.35cqw,18px)/1.2 Arial,sans-serif;}
+.selection-guide svg {width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+.skill-cost {display:flex;justify-content:center;align-items:center;gap:.2em;padding:.25em 0 .35em;color:var(--skill-accent);font-size:.85em;font-weight:800;}
+.skill-cost svg {fill:currentColor;stroke-width:1;}
+.skill-key {display:flex;align-items:center;justify-content:center;gap:.35em;margin:.65cqw 0;color:#97accb;font:800 clamp(7px,.65cqw,9px)/1 Arial,sans-serif;letter-spacing:.03em;}
+.skill-key span {margin:0 .35em;}
+.arcade-stats {display:grid;gap:.6cqw;border-top:1px solid #8bafd333;padding-top:.7cqw;}
+.arcade-stat {display:flex;align-items:center;gap:.55cqw;}
+.stat-symbol {display:grid;place-items:center;width:2.2cqw;height:2.2cqw;min-width:14px;min-height:14px;background:#1b3351;border:1px solid #527494;color:var(--skill-accent);font-size:1.5cqw;transform:skewX(-5deg);}
+.stat-body {flex:1;min-width:0;}
+.stat-label {display:block;margin-bottom:.25em;font:800 clamp(7px,.7cqw,10px)/1 Arial,sans-serif;letter-spacing:.1em;color:#c0d3e8;}
+.stat-meter {display:block;position:relative;overflow:hidden;height:.65cqw;min-height:5px;background:#243451;box-shadow:inset 0 0 0 1px #526786;transform:skewX(-9deg);}
+.stat-meter i {display:block;height:100%;background:linear-gradient(90deg,var(--skill-fill),var(--skill-accent));box-shadow:0 0 6px var(--skill-fill);}
+.stat-meter::after {content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(10% - 2px),#071226 calc(10% - 2px),#071226 10%);}
