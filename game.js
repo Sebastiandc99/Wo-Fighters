@@ -3177,20 +3177,20 @@ function drawConcreteCoat(f,frame) {
 function drawConcreteCinematic(c) {
   const t=c.elapsed,x=c.impactX-cameraX,impact=c.impactAt;
   ctx.save();ctx.fillStyle='rgba(3,9,27,.42)';ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
-  ctx.textAlign='center';ctx.fillStyle='#eef1df';ctx.shadowColor='#e5eb99';ctx.shadowBlur=15;
-  ctx.font='italic bold 38px Arial';ctx.fillText('COLADO MASIVO',480,92);
-  ctx.font='bold 16px Arial';ctx.fillText(t<.38?'¡PREPARAR EL COLADO!':t<1.35?'DESCARGAR · ATRAPAR':t<impact?'COMPACTAR · ENDURECER':'¡ROTURA TOTAL!',480,122);ctx.shadowBlur=0;
   const arrival=smoothstep(Math.min(1,Math.max(0,(t-.22)/.28)));
   if(t<1.5) {
     drawWorkProp('concreteHose',x-85,205-(1-arrival)*290,205,0,1,Math.min(1,(1.5-t)*5));
     if(t>.45) {
       const bottom=lerp(205,FLOOR,Math.min(1,(t-.45)/.20));
-      // Pulsing irregular pour connects the hose to the accumulating mass.
-      for(let i=0;i<18;i++) {
-        const yy=205+(bottom-205)*i/18,w=34+Math.sin(t*42+i*1.8)*9;
-        ctx.fillStyle=i%3?'#babfb9':'#e1e3d8';ctx.fillRect(x-w/2,yy,w,(bottom-205)/18+3);
-        ctx.fillStyle='#747e7b';ctx.fillRect(x-w/2+5,yy+2,5,6);
-      }
+      // Continuous wet stream, textured with the generated concrete artwork.
+      ctx.save();ctx.beginPath();
+      const streamWidth=yy=>18+Math.sin(t*27+yy*.08)*3+Math.sin(yy*.17-t*18)*2;
+      for(let yy=200;yy<=bottom+12;yy+=12){const px=x-streamWidth(yy);yy===200?ctx.moveTo(px,yy):ctx.lineTo(px,yy);}
+      for(let yy=bottom+12;yy>=200;yy-=12)ctx.lineTo(x+streamWidth(yy),yy);
+      ctx.closePath();ctx.fillStyle='#aeb8b0';ctx.fill();ctx.clip();
+      const flow=(t*240)%42;
+      for(let i=-2;i<9;i++)drawWorkProp('concrete',x-24,200+i*42+flow,100,Math.PI/2,1);
+      ctx.restore();
       for(let i=0;i<18;i++){
         const phase=(t*3+i*.137)%1,spread=Math.sin(i*7)*90*phase;
         ctx.fillStyle=i%2?'#e2e4db':'#939f9a';ctx.fillRect(x+spread,FLOOR-8-75*Math.sin(phase*Math.PI),5+i%5,5+i%3);
@@ -3215,5 +3215,11 @@ function drawConcreteCinematic(c) {
     }
     if(q<.16){ctx.globalAlpha=1;ctx.fillStyle='rgba(245,247,227,'+(.5*(1-q/.16))+')';ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);}
   }
+  ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(3,9,27,.72)';ctx.fillRect(215,58,530,78);
+  ctx.textAlign='center';ctx.fillStyle='#eef1df';ctx.shadowColor='#e5eb99';ctx.shadowBlur=15;
+  ctx.font='italic bold 38px Arial';ctx.fillText('COLADO MASIVO',480,92);
+  ctx.font='bold 16px Arial';ctx.fillText(t<.38?'¡PREPARAR EL COLADO!':t<1.35?'DESCARGAR · ATRAPAR':t<impact?'COMPACTAR · ENDURECER':'¡ROTURA TOTAL!',480,122);ctx.shadowBlur=0;
+
   ctx.restore();
 }
