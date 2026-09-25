@@ -1,5 +1,6 @@
 // Pack the two generated full-body poses by connected component, avoiding grid-edge clipping.
 const sharp=require('sharp');
+const pixel=process.argv.includes('--pixel');
 (async()=>{
  const {data,info}=await sharp(process.argv[2]).ensureAlpha().raw().toBuffer({resolveWithObject:true});
  const w=info.width,h=info.height,labels=new Int32Array(w*h),components=[];
@@ -18,9 +19,9 @@ const sharp=require('sharp');
    const n=(p.t+y)*w+p.l+x;if(labels[n]===p.id)data.copy(raw,(y*p.width+x)*4,n*4,n*4+4);
   }
   const height=208,width=Math.round(p.width*height/p.height);
-  const input=await sharp(raw,{raw:{width:p.width,height:p.height,channels:4}}).resize(width,height).png().toBuffer();
+  const input=await sharp(raw,{raw:{width:p.width,height:p.height,channels:4}}).resize(width,height,{kernel:pixel?'nearest':'lanczos3'}).png().toBuffer();
   tiles.push({input,left:i*270+Math.floor((270-width)/2),top:260-height});
  }
- await sharp({create:{width:540,height:270,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).composite(tiles).webp({quality:94,alphaQuality:100}).toFile(process.argv[3]);
+ await sharp({create:{width:540,height:270,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).composite(tiles).webp({quality:94,alphaQuality:100,lossless:pixel}).toFile(process.argv[3]);
  console.log(poses);
 })().catch(e=>{console.error(e);process.exitCode=1;});

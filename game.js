@@ -57,9 +57,9 @@ const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(st
 
 const assets = {
   angelSignals: loadImage("assets/angel-signals-v1.webp"),
-  tren: loadImage("assets/tren-atlas-v1.webp"),
-  peluche: loadImage("assets/peluche-atlas-v1.webp"),
-  pelucheSpecial: loadImage("assets/peluche-special-v1.webp"),
+  tren: loadImage("assets/tren-atlas-v2.webp"),
+  peluche: loadImage("assets/peluche-atlas-v2.webp"),
+  pelucheSpecial: loadImage("assets/peluche-special-v2.webp"),
   concrete: loadImage("assets/concrete-v1.webp"),
   concreteSplash: loadImage("assets/concrete-splash-v1.webp"),
   concreteHose: loadImage("assets/concrete-hose-v1.webp"),
