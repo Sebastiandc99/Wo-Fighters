@@ -12,15 +12,15 @@ test('Peluche selection, attributes and complete three-opponent tournament',()=>
  assert.ok(g.run('stats.peluche.speed>stats.primitivo.speed && stats.peluche.speed<stats.angel.speed'));
  g.run("state='playing';match.playerWins=1;finishRound(player,'TIEMPO');nextOpponent();state='playing';match.playerWins=1;finishRound(player,'TIEMPO');nextOpponent();state='playing';match.playerWins=1;finishRound(player,'TIEMPO')");assert.equal(g.run('campaign.completed'),true);assert.equal(g.run('campaign.wins'),3);
 });
-test('Hormigonazo costs 30, arcs, hits once for base 22 and coats all rival sizes in both directions',()=>{
+test('Hormigonazo costs 30, arcs, hits once for base 2 and coats all rival sizes in both directions',()=>{
  for(const rival of ['angel','primitivo','peluche'])for(const dir of [-1,1]){
   const g=setup(rival,dir);assert.equal(g.run("attack(player,'special')"),true);assert.equal(g.run('player.power'),70);
   assert.equal(g.run('player.moveSpec.recovery'),.64);frames(g,.22);
-  assert.equal(g.run('projectiles[0].style'),'concrete');assert.equal(g.run('projectiles[0].damage'),22);
+  assert.equal(g.run('projectiles[0].style'),'concrete');assert.equal(g.run('projectiles[0].damage'),2);
   assert.ok(g.run('projectiles[0].vy<0'));assert.equal(g.run('player.attackSound'),null);
   frames(g,.65);assert.ok(g.run('cpu.concreteCoat')>0);
-  const hp=g.run('cpu.health');assert.ok(Math.abs(hp-(100-22*.6*100/g.run('stats[cpu.kind].resistance')))<.002);
-  frames(g,1.5);assert.equal(g.run('cpu.health'),hp);assert.equal(g.run('projectiles.length'),0);assert.equal(g.run('cpu.concreteCoat'),0);
+  const hp=g.run('cpu.health');assert.ok(Math.abs(hp-(100-2*.7*100/g.run('stats[cpu.kind].resistance')))<.002);
+  frames(g,3.5);assert.equal(g.run('cpu.health'),hp);assert.equal(g.run('projectiles.length'),0);assert.equal(g.run('cpu.concreteCoat'),0);
  }
 });
 test('Hormigonazo expires at medium range and respects guard and evasion',()=>{
@@ -36,7 +36,7 @@ test('Colado Masivo needs 100 and range 8/10, locks both players, hits once at t
   g.run(`cpu.x=player.x+${dir}*260`);assert.equal(g.run("attack(player,'special')"),true);assert.equal(g.run('player.power'),0);
   assert.equal(g.run('poseFor(player)'),17);g.key('KeyW');g.key('Digit7');assert.equal(g.run('player.grounded'),true);assert.equal(g.run('cpu.queuedAction'),null);
   frames(g,1.85);assert.equal(g.run('cpu.health'),100);frames(g,.1);
-  const hp=g.run('cpu.health');assert.ok(Math.abs(hp-(100-34*.6*100/110))<.002);
+  const hp=g.run('cpu.health');assert.ok(Math.abs(hp-(100-34*.7*100/110))<.002);
   frames(g,1.2);assert.equal(g.run('workCinematic'),null);assert.equal(g.run('cpu.health'),hp);
   g.key('KeyS','keyup');g.key('KeyW');g.key('Digit8');assert.equal(g.run('player.grounded'),false);assert.equal(g.run('cpu.action'),'kick');
   frames(g,1.2);const event={pointerId:1,preventDefault(){}};g.taps[0].listeners.pointerdown(event);g.taps2[0].listeners.pointerdown(event);

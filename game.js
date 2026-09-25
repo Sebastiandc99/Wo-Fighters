@@ -56,6 +56,7 @@ const stageRoster = Object.keys(stages);
 const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(stages[key].src)]));
 
 const assets = {
+  angelSignals: loadImage("assets/angel-signals-v1.webp"),
   tren: loadImage("assets/tren-atlas-v1.webp"),
   peluche: loadImage("assets/peluche-atlas-v1.webp"),
   pelucheSpecial: loadImage("assets/peluche-special-v1.webp"),
@@ -109,7 +110,7 @@ const POSES = {
 
 const stats = {
   tren: {name:"TREN VALENCIA", normalDamage:8, resistance:88, powerDamage:24, superDamage:34, agility:8, speed:286, jump:620, defaultFace:1, size:254, height:200, width:25, recovery:.52, meleeReach:6, powerRange:608, superRange:684, description:"ARCO VOLTAICO (30%) · ↓ + PODER: TORMENTA ELÉCTRICA (100%)", ability:null},
-  peluche: {name:"PELUCHE", normalDamage:9, resistance:110, powerDamage:22, superDamage:34, agility:5, speed:250, jump:605, defaultFace:1, size:204, height:154, width:26, recovery:.64, meleeReach:4, powerRange:532, superRange:608, description:"HORMIGONAZO (30%) · ↓ + PODER: COLADO MASIVO (100%)", ability:null},
+  peluche: {name:"PELUCHE", normalDamage:9, resistance:110, powerDamage:2, superDamage:34, agility:5, speed:250, jump:605, defaultFace:1, size:204, height:154, width:26, recovery:.64, meleeReach:4, powerRange:532, superRange:608, description:"HORMIGONAZO (30%) · ↓ + PODER: COLADO MASIVO (100%)", ability:null},
   angel: { name:"ÁNGEL", normalDamage:9, resistance:98, powerDamage:23, agility:7, speed:274, jump:615, defaultFace:1, size:220, height:166, width:23, description:"CARGA SUSPENDIDA (30%) · ↓ + PODER: GANCHO MAESTRO (100%)", ability:null },
   primitivo: { name:"PRIMITIVO", normalDamage:10, resistance:110, powerDamage:22, agility:4, speed:238, jump:595, defaultFace:1, size:282, height:214, width:40, bodyWidth:1.10, description:"DESCARGA EXPRESS (30%) · ↓ + PODER: LANZAMIENTO DE CONTENEDOR (100%)", ability:null },
   jairo: { name: "JAIRO", normalDamage: 8, resistance: 98, powerDamage: 26, agility: 7, speed: 274, jump: 615, defaultFace: 1, size: 226, height: 198, width: 25, description: "PODER: LÍNEA ROJA · ↓ + PODER: BARRAS", ability: null },
@@ -127,7 +128,7 @@ const stats = {
 // Reference strong hit 10 maps to the existing 5-point uppercut; bars stay normalized.
 const powerDamage = f => ["angel","primitivo","peluche","tren"].includes(f.kind) ? stats[f.kind].powerDamage : stats[f.kind].powerDamage * .5;
 const mobilityTempo = f => .82 + stats[f.kind].agility * .035;
-const DAMAGE_SCALE = .60;
+const DAMAGE_SCALE = .70;
 const ROUND_SECONDS = 90;
 const ENERGY_GAIN_SCALE = .75;
 const damageTaken = (f, damage) => Math.round(damage * DAMAGE_SCALE * 100000 / stats[f.kind].resistance) / 1000;
@@ -135,14 +136,14 @@ const fighterPowers = {
   tren: {common:"Arco Voltaico", super:"Tormenta Eléctrica", superDamage:34, profile:"Eléctrico · rápido y técnico"},
   angel: {common:"Carga suspendida", super:"Gancho maestro", superDamage:34, profile:"Ágil · control aéreo"},
   primitivo: {common:"Descarga express", super:"Lanzamiento de contenedor", superDamage:35, profile:"Robusto · golpes pesados"},
-  peluche: {common:"Hormigonazo", super:"Colado masivo", superDamage:34, profile:"Técnico · control de distancia"}
+  peluche: {common:"Hormigonazo", super:"Colado masivo", superDamage:34, profile:"Técnico · inmoviliza con hormigón"}
 };
 function powerGuide(kind, rivalKind) {
   const s=stats[kind], p=fighterPowers[kind];
   if (!p) return "";
   const resistance=rivalKind ? stats[rivalKind].resistance : 100;
   const percent=damage=>(damage*DAMAGE_SCALE*100/resistance).toLocaleString("es-AR",{maximumFractionDigits:1})+"%";
-  return `<div class="power-entry"><strong>${p.common}</strong><span>Daño <b>${percent(s.powerDamage)}</b> · Energía <b>30%</b></span></div>`
+  return `<div class="power-entry"><strong>${p.common}</strong><span>Daño <b>${percent(s.powerDamage)}</b> · Energía <b>30%</b></span>${kind==="peluche"?'<span class="hold-note">Inmoviliza 3 s · permite golpear al rival</span>':''}</div>`
     + `<div class="power-entry"><strong>${p.super}</strong><span>Daño <b>${percent(p.superDamage)}</b> · Energía <b>100%</b></span></div>`;
 }
 function updateSelectionGuide(kind) {
@@ -160,8 +161,8 @@ function updateSelectionGuide(kind) {
   const powers=[p.common,p.super].map((name,i)=>{
     const damage=((i?p.superDamage:s.powerDamage)*DAMAGE_SCALE).toLocaleString("es-AR",{maximumFractionDigits:1});
     const energy=i?100:30;
-    const details=`${name}: daño ${damage}% contra resistencia 100; energía ${energy}%`;
-    return `<div class="skill-medal ${i?"super-medal":""}" role="img" aria-label="${details}" title="${details}"><span class="skill-type">${i?"SÚPER":"COMÚN"}</span><div class="skill-art"><img src="assets/${art[i]}" alt="" draggable="false"></div><span class="skill-damage">${icon("hit")}<b>${damage}%</b></span><span class="skill-cost">${icon("bolt")}${energy}%</span></div>`;
+    const details=`${name}: daño ${damage}% contra resistencia 100; energía ${energy}%${kind==="peluche"&&!i?"; inmoviliza 3 segundos":""}`;
+    return `<div class="skill-medal ${i?"super-medal":""}" role="img" aria-label="${details}" title="${details}"><span class="skill-type">${i?"SÚPER":"COMÚN"}</span><div class="skill-art"><img src="assets/${art[i]}" alt="" draggable="false"></div><span class="skill-damage">${icon("hit")}<b>${damage}%</b></span><span class="skill-cost">${icon("bolt")}${energy}%</span>${kind==="peluche"&&!i?'<span class="skill-effect">INMÓVIL · 3 s</span>':''}</div>`;
   }).join("");
   const meters=[["shield","RESIST.","Resistencia",s.resistance,200],["bolt","VELOC.","Velocidad",s.agility,10],["fist","FUERZA","Fuerza",s.normalDamage,10]].map(([symbol,label,name,value,max])=>
     `<div class="arcade-stat" title="${name}: ${value}${max===10?'/10':''}"><span class="stat-symbol">${icon(symbol)}</span><span class="stat-body"><span class="stat-label">${label}</span><span class="stat-meter" role="meter" aria-label="${name}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${value}"><i style="width:${value/max*100}%"></i></span></span></div>`).join("");
@@ -403,7 +404,7 @@ function makeFighter(kind, x, isPlayer) {
     crouching: false, guarding: false, guardTime: 0, crouchTime: 0,
     aiEscapeCooldown: 0, teleportDone: false, teleportSmokeStarted: false, teleportTarget: x,
     slamLaunched: false, slamDiving: false, slamLanded: false, slamFromAir: false,
-    landingSquash: 0, concreteCoat:0, electricCoat:0, knockdown:null,
+    landingSquash: 0, concreteCoat:0, concreteHold:0, concretePose:3, electricCoat:0, knockdown:null,
     attackLanded: false, invuln: 0, specialCooldown: 0,
     projectileToggle: 0, facing: x < 480 ? 1 : -1, flash: 0,
     moveSpec: null, lowAttack: false, airAttack: false, kickStyle: null, moveIntent: 0, attackSound: null,
@@ -688,6 +689,7 @@ function update(dt) {
     }
     if (!f.queueTime) f.queuedAction = null;
     if (!f.comboTime) f.combo = 0;
+    tickConcreteHold(f,dt);
     f.animClock += dt;
     f.power = Math.min(100, f.power + dt * 3.2 * ENERGY_GAIN_SCALE);
     // Freeze attack direction through active/recovery frames.
@@ -723,7 +725,7 @@ function update(dt) {
 }
 
 function setStance(f, down, guard) {
-  const available = f.grounded && (f.action === "idle" || f.action === "block");
+  const available = !f.concreteHold && f.grounded && (f.action === "idle" || f.action === "block");
   f.crouching = available && down;
   f.guarding = available && guard;
 }
@@ -734,6 +736,7 @@ function updatePlayer() {
 }
 
 function updateHuman(f, input) {
+  if(f.concreteHold>0){f.moveIntent=0;f.crouching=f.guarding=false;return;}
   setStance(f, input.down, input.guard);
   f.moveIntent = Number(input.right) - Number(input.left);
 }
@@ -878,6 +881,12 @@ function updateKnockdown(f, dt) {
 }
 
 function updateFighter(f, dt) {
+  if(f.concreteHold>0){
+    f.vx=0;f.moveIntent=0;f.knockdown=null;f.action="hit";f.actionTime=f.concreteHold;
+    f.queuedAction=null;f.queueTime=0;f.crouching=f.guarding=false;
+    if(!f.grounded){f.vy=Math.max(0,f.vy);integrateBody(f,dt);}
+    return;
+  }
   if (f.knockdown) { updateKnockdown(f, dt); return; }
   const other = f === player ? cpu : player;
   if (f.action === "idle") {
@@ -1049,6 +1058,7 @@ function queueAction(f, type) {
 }
 
 function jump(f) {
+  if(f?.concreteHold>0)return false;
   if (workCinematic) return false;
   if (state !== "playing" || !f) return false;
   if (!f.grounded || isLocked(f)) {
@@ -1071,6 +1081,7 @@ function evade(f) {
   return attack(f,["blotta","galante"].includes(f.kind)?"teleport":"roll");
 }
 function attack(f, type) {
+  if(f?.concreteHold>0)return false;
   if (workCinematic) return false;
   if (state !== "playing" || !f || !["punch", "kick", "special", "teleport", "slam", "roll"].includes(type)) return false;
   if (type === "teleport" && !["blotta","galante"].includes(f.kind)) return false;
@@ -1256,7 +1267,9 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
     target.grounded = knockY === 0 && target.y >= FLOOR;
     target.crouching = target.guarding = target.lowAttack = false;
     target.queuedAction = null;
-    if (contact.knockdown && !contact.projectile) beginKnockdown(target, knockX);
+    if(target.concreteHold>0 && target.health>0){
+      target.vx=target.vy=0;target.knockdown=null;target.actionTime=target.concreteHold;
+    } else if (contact.knockdown && !contact.projectile) beginKnockdown(target, knockX);
     target.flash = .13;
     screenShake = damage > 11 ? 4 : 2.5;
     hitStop = damage > 11 ? .055 : .035;
@@ -1273,6 +1286,7 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
 
 function finishRound(winner, reason) {
   if (state !== "playing") return;
+  fighters.forEach(f=>{f.concreteHold=0;f.concreteCoat=0;});
   if (winner === player) match.playerWins++;
   else if (winner === cpu) match.cpuWins++;
   match.repeat = !winner;
@@ -1428,7 +1442,7 @@ async function showRanking(highlight = null) {
 }
 
 function isLocked(f) {
-  return f.action !== "idle" && f.actionTime > 0;
+  return f.concreteHold>0 || (f.action !== "idle" && f.actionTime > 0);
 }
 
 function actionProgress(f) {
@@ -1610,6 +1624,8 @@ function draw() {
 }
 
 function poseFor(f) {
+  if(f.concreteHold>0)return f.concretePose;
+  if(workCinematic?.owner===f && f.kind==="angel")return workCinematic.elapsed<.38 || workCinematic.elapsed>=.78 ? 16 : 17;
   if (workCinematic?.owner === f) return ["peluche","tren"].includes(f.kind) ? 17 : POSES[f.kind].power;
   if(f.kind==="peluche" && f.action==="roll")return 18;
   if(["peluche","tren"].includes(f.kind) && f.action==="special") return f.specialSpawned ? 16 : 4;
@@ -1815,6 +1831,7 @@ function updateAnimation(f, dt) {
 
 function renderedFighter(f) {
   const animation = f.animation;
+  if(f.concreteHold>0)return {kind:f.kind,x:lerp(f.prevX,f.x,renderAlpha),y:lerp(f.prevY,f.y,renderAlpha),facing:f.facing,pose:f.concretePose,fromPose:f.concretePose,mix:1,concrete:true,motion:{dx:0,dy:0,scaleX:1,scaleY:1,rotation:0}};
   const motion = {};
   for (const key of Object.keys(animation.motion)) {
     motion[key] = lerp(animation.prevMotion[key], animation.motion[key], renderAlpha);
@@ -2119,7 +2136,7 @@ function updateBoomerang(p,dt) {
 }
 
 function drawSpriteFrame(frame, alpha = 1, ghost = false) {
-  const sprite = blendedSprite(frame);
+  const sprite = frame.concrete ? concreteSprite(frame) : blendedSprite(frame);
   if (!sprite) return;
   const cell = 270;
   const size = stats[frame.kind].size * FIGHTER_SCALE;
@@ -2884,9 +2901,9 @@ requestAnimationFrame(loop);
 function atlasSpriteFrame(frame) {
   const key=frame.kind+':'+frame.pose;
   if(spriteFrames.has(key)) return spriteFrames.get(key);
-  const special=frame.kind==="peluche" && [16,17].includes(frame.pose);
-  const image=special?assets.pelucheSpecial:assets[frame.kind];
-  const pose=frame.kind==="tren" ? [0,1,2,3,4,5,6,7,8,9,10,8,12,11,13,3,14,15,8][frame.pose] : frame.kind==="peluche" ? special ? frame.pose-16 : [0,1,2,3,4,5,6,7,8,12,14,8,9,10,11,15,0,0,13][frame.pose] : frame.pose;
+  const special=["peluche","angel"].includes(frame.kind) && [16,17].includes(frame.pose);
+  const image=special?(frame.kind==="angel"?assets.angelSignals:assets.pelucheSpecial):assets[frame.kind];
+  const pose=frame.kind==="angel" && special ? frame.pose-16 : frame.kind==="tren" ? [0,1,2,3,4,5,6,7,8,9,10,8,12,11,13,3,14,15,8][frame.pose] : frame.kind==="peluche" ? special ? frame.pose-16 : [0,1,2,3,4,5,6,7,8,12,14,8,9,10,11,15,0,0,13][frame.pose] : frame.pose;
   if(!image.complete || !image.naturalWidth) return null;
   const surface=document.createElement('canvas');surface.width=surface.height=270;
   const paint=surface.getContext('2d');paint.imageSmoothingEnabled=false;
@@ -3162,7 +3179,7 @@ function startWorkCinematic(owner) {
   owner.action="special";owner.actionTime=owner.actionDuration=duration;
   owner.specialSpawned=true;owner.specialCooldown=.7;
   target.action="hit";target.actionTime=target.actionDuration=duration;
-  target.knockdown=null;
+  target.knockdown=null;target.concreteHold=0;target.concreteCoat=0;
   target.vx=target.vy=0;target.guarding=false;target.crouching=false;
   for(const f of [owner,target]){f.queuedAction=null;f.queueTime=0;f.moveIntent=0;}
   screenShake=4;
@@ -3328,7 +3345,7 @@ function spawnConcrete(owner) {
   const direction=owner.facing,x=owner.x+direction*58,y=owner.y-122;
   const sound=owner.attackSound||startCombatSound('concrete');owner.attackSound=null;
   projectiles.push({owner,style:'concrete',sound,direction,x,y,prevX:x,prevY:y,originX:owner.x,
-    vx:direction*640,vy:-90,age:0,life:1.4,radius:27,damage:22,contactDone:false,impactAge:0});
+    vx:direction*640,vy:-90,age:0,life:1.4,radius:27,damage:powerDamage(owner),contactDone:false,impactAge:0});
 }
 
 // Electrical projectiles sweep their traveled segment: fast bolts cannot tunnel through a rival.
@@ -3415,6 +3432,45 @@ function drawStormCinematic(c) {
 function removeConcrete(p) {
   stopCombatSound(p.sound);const i=projectiles.indexOf(p);if(i>=0)projectiles.splice(i,1);
 }
+function applyConcreteHold(f) {
+  stopFighterSound(f);
+  f.concreteHold=3;f.concreteCoat=3;f.concretePose=POSES[f.kind].hit;
+  f.knockdown=null;f.action="hit";f.actionTime=f.actionDuration=3;f.moveSpec=null;
+  f.vx=0;f.vy=Math.max(0,f.vy);f.moveIntent=0;f.crouching=f.guarding=false;
+  f.queuedAction=null;f.queueTime=0;f.kickStyle=null;f.airAttack=false;
+  f.specialSpawned=true;f.lowAttack=false;
+}
+function tickConcreteHold(f,dt) {
+  if(f.concreteHold<=0)return;
+  f.concreteHold=Math.max(0,f.concreteHold-dt);
+  if(f.concreteHold<.000001)f.concreteHold=0;
+  f.concreteCoat=f.concreteHold;
+  if(f.concreteHold===0){
+    f.action="idle";f.actionTime=f.actionDuration=0;f.moveSpec=null;
+    f.queuedAction=null;f.queueTime=0;
+    burst(f.x,f.y-80,"#babfbb",16);
+  }
+}
+// Coat the actual fighter silhouette, preserving face/limb detail under gray mix.
+const concreteSprites=new Map();
+function concreteSprite(frame) {
+  const key=frame.kind+":"+frame.pose;
+  if(concreteSprites.has(key))return concreteSprites.get(key);
+  const original=spriteFrame(frame);if(!original)return null;
+  const surface=document.createElement("canvas");surface.width=surface.height=270;
+  const paint=surface.getContext("2d");
+  paint.filter="grayscale(1) contrast(.72) brightness(1.35)";
+  paint.drawImage(original,0,0);paint.filter="none";
+  paint.globalCompositeOperation="source-atop";
+  paint.fillStyle="rgba(170,176,172,.65)";paint.fillRect(0,0,270,270);
+  for(let i=0;i<95;i++){
+    paint.fillStyle=i%3?"rgba(76,85,80,.22)":"rgba(245,247,238,.36)";
+    paint.fillRect((i*73)%268,(i*47)%268,2+i%4,2+i%3);
+  }
+  paint.strokeStyle="rgba(76,84,80,.45)";paint.lineWidth=1.4;
+  for(let i=0;i<8;i++){const x=72+(i*37)%132,y=60+i*25;paint.beginPath();paint.moveTo(x,y);paint.lineTo(x+9,y+8);paint.lineTo(x+3,y+16);paint.stroke();}
+  concreteSprites.set(key,surface);return surface;
+}
 function updateConcrete(p,dt) {
   p.age+=dt;p.life-=dt;p.prevX=p.x;p.prevY=p.y;
   if(p.contactDone) {p.impactAge+=dt;if(p.impactAge>.34)removeConcrete(p);return;}
@@ -3427,9 +3483,8 @@ function updateConcrete(p,dt) {
   if((target.invuln<=0 && overlaps(box,hurtBox(target))) || p.y+p.radius>=FLOOR) {
     p.contactDone=true;p.vx=p.vy=0;stopCombatSound(p.sound);
     if(overlaps(box,hurtBox(target)) && target.invuln<=0) {
-      const hp=target.health;
-      hit(target,p.damage,p.direction*220,-65,p.owner,{sourceX:p.x,direction:p.direction,projectile:true,x:p.x,y:p.y});
-      if(target.health<hp)target.concreteCoat=.85;
+      const landed=hit(target,p.damage,0,0,p.owner,{sourceX:p.owner.x,direction:p.direction,projectile:true,x:p.x,y:p.y});
+      if(landed && target.action==="hit" && target.health>0 && state==="playing")applyConcreteHold(target);
     }
     if(state==='playing')startCombatSound('concreteImpact');
     burst(p.x,p.y,'#c6cbc8',22);burst(p.x,p.y,'#f0f0e8',8);
@@ -3456,6 +3511,7 @@ function drawConcreteCoat(f,frame) {
   ctx.save();ctx.globalAlpha=Math.min(.85,f.concreteCoat);
   drawWorkProp('concreteSplash',frame.x+f.facing*5,frame.y-45,62,0,f.facing);
   drawWorkProp('concreteSplash',frame.x+f.facing*10,frame.y-111,25,.2,f.facing);
+  if(f.concreteHold>0){ctx.globalAlpha=1;ctx.textAlign="center";ctx.font="bold 12px Arial";ctx.fillStyle="#f1f2e7";ctx.strokeStyle="#29312e";ctx.lineWidth=3;const label=Math.ceil(f.concreteHold)+" s";ctx.strokeText(label,frame.x,frame.y-stats[f.kind].height*FIGHTER_SCALE-10);ctx.fillText(label,frame.x,frame.y-stats[f.kind].height*FIGHTER_SCALE-10);}
   ctx.restore();
 }
 function drawConcreteCinematic(c) {

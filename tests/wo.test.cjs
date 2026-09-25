@@ -26,7 +26,7 @@ test('full bar and down trigger a cinematic that locks controls and lands one hi
   assert.equal(g.run('workCinematic.owner.kind'),kind);
   assert.equal(g.run("attack(cpu,'punch')"),false);
   g.tick(1.2);
-  assert.equal(g.run('cpu.health'),Math.round((100-expected*.6*100/g.run('stats[cpu.kind].resistance'))*1000)/1000);
+  assert.equal(g.run('cpu.health'),Math.round((100-expected*.7*100/g.run('stats[cpu.kind].resistance'))*1000)/1000);
   g.tick(.8);assert.equal(g.run('workCinematic'),null);
  }
 });

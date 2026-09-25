@@ -10,7 +10,7 @@ Descomprime el ZIP, abre una terminal dentro de la carpeta `Wo-Fighters` y ejecu
 
 - Ángel: **Carga Suspendida** (L / botón Poder, 30% de barra, daño base 23) y **Gancho Maestro** (abajo + L / abajo + Poder, 100%, daño base 34).
 - Primitivo: **Descarga Express** (L / Poder, 30%, daño base 22) y **Lanzamiento de Contenedor** (abajo + L / abajo + Poder, 100%, daño base 35).
-- Peluche: **Hormigonazo** (L / Poder, 30%, daño base 22) y **Colado Masivo** (abajo + L / abajo + Poder, 100%, daño base 34).
+- Peluche: **Hormigonazo** (L / Poder, 30%, daño base 2, inmoviliza 3 s) y **Colado Masivo** (abajo + L / abajo + Poder, 100%, daño base 34).
 - Tren Valencia: **Arco Voltaico** (L / Poder, 30%, daño base 24) y **Tormenta Eléctrica** (abajo + L / abajo + Poder, 100%, daño base 34).
 - El especial reproduce una secuencia cinematográfica, detiene los controles de ambos personajes y aplica el impacto al final.
 - Torneo individual, dos jugadores locales, tres escenarios, controles de teclado y pantalla táctil, cámara, música, voces de rounds y KO.
@@ -21,7 +21,7 @@ Descomprime el ZIP, abre una terminal dentro de la carpeta `Wo-Fighters` y ejecu
 
 ## Verificación
 
-`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs tests/melee.test.cjs tests/endurance.test.cjs tests/super-show.test.cjs tests/tren.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
+`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs tests/melee.test.cjs tests/endurance.test.cjs tests/super-show.test.cjs tests/tren.test.cjs tests/concrete-hold.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
 
 GitHub Pages: https://sebastiandc99.github.io/Wo-Fighters/
 
@@ -41,16 +41,16 @@ Primitivo es más alto y robusto, pelado debajo del casco y completamente afeita
 | Velocidad | 5/10; 250 unidades/s |
 | Alcance físico | 4/10; 82% del alcance base de cada golpe |
 | Recuperación tras ataques | 0,64 s |
-| Hormigonazo | 22 de daño base; costo 30%; alcance 7/10 (532 unidades) |
+| Hormigonazo | 2 de daño base; inmovilización 3 s; costo 30%; alcance 7/10 (532 unidades) |
 | Colado Masivo | 34 de daño base; costo 100%; alcance 8/10 (608 unidades) |
 
 Las barras de vida permanecen normalizadas al 100%; resistencia 110 reduce el daño recibido con el mismo cálculo del motor. El daño normal conserva la escala proporcional de los golpes de KP. El daño de los poderes es el valor base antes de resistencia y defensa.
 
-Hormigonazo lleva arco suave, gotas, impacto único, retroceso moderado y restos de mezcla visibles. Colado Masivo dura 2,65 segundos: señal, manga, descarga, atrapamiento, endurecimiento y rotura a los 1,90 segundos. No consume barra si el rival está fuera del alcance del súper. Ambos jugadores recuperan el control al terminar.
+Hormigonazo mantiene su arco suave y alcance; hace daño mínimo y cubre de gris al rival, inmovilizándolo 3 s sin impedir que reciba golpes. Cubrirse, rodar con invulnerabilidad o saltar a tiempo evita el efecto. Colado Masivo dura 2,65 segundos: señal, manga, descarga, atrapamiento, endurecimiento y rotura a los 1,90 segundos. No consume barra si el rival está fuera del alcance del súper. Ambos jugadores recuperan el control al terminar.
 
 Ángel y Primitivo también tienen sonidos propios en sus dos poderes: cable/izaje y metal para Ángel, motor/montacargas y golpe de contenedor para Primitivo. Los sonidos se pausan y reanudan junto con las animaciones, y se limpian al salir o cambiar de ronda.
 
-43 pruebas automatizadas cubren los cuatro personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md) y [ART-TREN.md](ART-TREN.md).
+50 pruebas automatizadas cubren los cuatro personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md) y [ART-TREN.md](ART-TREN.md).
 
 ## Golpes y derribo
 
@@ -62,7 +62,7 @@ Un gancho sin bloquear lanza al rival hacia atrás, lo rota hasta caer de espald
 
 ## Resistencia y guías de juego
 
-Todos los daños (puños, patadas, ganchos, poderes, súper y daño residual al cubrirse) se multiplican por 0,60, una sola vez antes de la resistencia. Se conserva la barra al 100% y el balance relativo: se necesita aproximadamente un 67% más de daño bruto para vencer. Las rondas duran 90 segundos. Los costos de energía siguen en 30% y 100%.
+Todos los daños (puños, patadas, ganchos, poderes, súper y daño residual al cubrirse) se multiplican por 0,70, una sola vez antes de la resistencia. Se conserva la barra al 100% y el balance relativo: se necesita aproximadamente un 43% más de daño bruto para vencer. Las rondas duran 90 segundos. Los costos de energía siguen en 30% y 100%.
 
 La selección muestra una ficha lateral con ambos poderes, daño porcentual contra resistencia 100, energía, resistencia, velocidad y fuerza. La pausa incluye controles de teclado y táctiles, ganchos/barridas, poderes y el daño real contra el rival elegido. Los datos se calculan desde los mismos atributos del combate.
 
@@ -80,7 +80,7 @@ La ficha lateral usa dos insignias con el arte real de cada poder, cifras de da�
 
 ## Tren Valencia
 
-Cuarto luchador seleccionable y rival de torneo. Altura visual de referencia 1,75 m: Peluche < Ángel < Tren < Primitivo; contextura normal, uniforme amarillo, anteojos y sombrero cónico elevado. Daño normal 8, resistencia 88, velocidad 8/10, alcance físico 6/10 y recuperación 0,52 s. La barra de vida sigue normalizada y los daños conservan el ajuste general ×0,60 para peleas más largas.
+Cuarto luchador seleccionable y rival de torneo. Altura visual de referencia 1,75 m: Peluche < Ángel < Tren < Primitivo; contextura normal, uniforme amarillo, anteojos y sombrero cónico elevado. Daño normal 8, resistencia 88, velocidad 8/10, alcance físico 6/10 y recuperación 0,52 s. La barra de vida sigue normalizada y los daños conservan el ajuste general ×0,70 para peleas más largas.
 
 Arco Voltaico carga durante 0,19 s y dispara a 1700 unidades/s, con alcance 608 (8/10). La colisión recorre el tramo completo entre fotogramas; se puede saltar, bloquear o evadir. La descarga provoca un retroceso corto, sacudida y chispas.
 
@@ -91,3 +91,9 @@ Tormenta Eléctrica dura 2,80 s, requiere distancia máxima 684 (9/10) y barra c
 Peluche y Tren tienen retratos frontales propios para la selección y sus miniaturas: Peluche con brazos cruzados y Tren saludando con el sombrero. El combate sigue usando sus poses laterales. Tren aumenta ligeramente su escala (254) y altura de colisión (200), conservando contextura normal y atributos.
 
 La música sube aproximadamente 2 dB: 0,46 en pelea, 0,52 en selección y 0,22 durante la introducción. Puño y patada usan impactos v2 procesados desde la grabación de contacto ya incluida en el juego: golpe seco para el puño y cuerpo más grave para la patada. Solo suenan al acertar. Se regeneran con `python3 scripts/build-contact-audio.py`. Prompts y archivos: [ART-PRESENTATIONS-V2.md](ART-PRESENTATIONS-V2.md).
+
+## Hormigón, duración de pelea y señas de izaje
+
+El daño general pasa de 0,60 a 0,70: se necesita aproximadamente un 14% menos de golpes equivalentes para terminar una pelea, conservando las resistencias y las rondas de 90 s. Hormigonazo cambia de 22 a 2 puntos base, mantiene costo 30% y alcance 532, y bloquea movimiento, saltos, defensa y ataques durante 3 s. Los golpes posteriores hacen daño sin cancelar ni reiniciar ese plazo. El rival se ve cubierto de hormigón gris y un pequeño contador muestra el tiempo restante; pausa, K.O. y nueva ronda manejan el efecto correctamente.
+
+Gancho Maestro usa dos poses propias de señalero: bajar mientras entra el gancho, subir durante el izaje y bajar para el remate. Los retratos existentes de Peluche y Tren ocupan más espacio en la selección, sin cambiar la altura de combate. Arte de las señas: [ART-ANGEL-SIGNALS.md](ART-ANGEL-SIGNALS.md).

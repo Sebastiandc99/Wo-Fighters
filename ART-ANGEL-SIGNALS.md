@@ -1,0 +1,9 @@
+# Ángel — señas de Gancho Maestro
+
+Arte generado con ImageGen integrado usando el retrato existente de Ángel como identidad y el diagrama adjunto únicamente como referencia de gestos. Archivo final: `assets/angel-signals-v1.webp` (dos celdas de 270 px: bajar / subir). Empaquetado con `scripts/pack-peluche-special.cjs`, que admite dos figuras genéricas. Se mantiene el rostro y la ropa del personaje.
+
+La secuencia usa bajar hasta 0,38 s, subir entre 0,38 y 0,78 s y bajar para el impacto a 1,12 s; conserva el daño, duración y sonidos del súper.
+
+## Prompt
+
+Use case: identity-preserve. Production transparent 2-frame sprite strip for Angel in Wo Fighters. Image 1 is the character identity and wardrobe reference: same short strong man, tan skin, short black hair, neatly trimmed dark beard, neon lime yellow reflective safety vest over navy short-sleeved shirt, dark work trousers and black safety boots. Image 2 is ONLY the EXACT hand-signal reference: 'lower load slowly' and 'raise load slowly', not wardrobe. Create TWO isolated full-body figures side by side on transparent background, same body scale, same boots baseline, ample margins, no overlap. Left figure: lowering load slowly, one forearm angled DOWN with index finger clearly pointing DOWN, other arm bent horizontally with open flat hand as in right example of reference diagram. Right figure: raising load slowly, one forearm upright in front of chest with index finger clearly pointing UP, other forearm horizontal with flat hand as in left example of diagram. Face and torso three-quarter facing screen RIGHT toward opponent while hands clearly readable. Both signals performed calmly with both hands, not punching. Same crisp 16-bit arcade pixel-art style as current game, full body, normal sized head matching Angel. No helmet, no crane, no hook, no load, no electrical effects, no arrows, no labels, no floor, no scenery. Preserve face identity across both poses and existing reference.

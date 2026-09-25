@@ -1081,12 +1081,12 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
 .portrait-angel img { transform: scale(.78); transform-origin: center bottom; }
 .portrait-primitivo img { transform: scale(1.02); transform-origin: center bottom; }
 
-/* Three fighters, with Peluche's short stature preserved in the portrait. */
+/* Four fighters with full-size selection presentations; combat scale stays separate. */
 .choice-row { grid-template-columns:repeat(4,minmax(0,1fr));max-width:420px;width:90%; }
 .portrait-peluche {left:7%;border:0;background:transparent;box-shadow:none;}
-.portrait-peluche img {object-fit:contain;object-position:center bottom;transform:scale(.73);transform-origin:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
+.portrait-peluche img {object-fit:contain;object-position:center bottom;transform:scale(1);transform-origin:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
 .portrait-tren {left:7%;border:0;background:transparent;box-shadow:none;}
-.portrait-tren img {object-fit:contain;object-position:center bottom;transform:scale(.91);transform-origin:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
+.portrait-tren img {object-fit:contain;object-position:center bottom;transform:scale(1);transform-origin:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
 .portrait-peluche img,.portrait-tren img {height:88%;}
 .choice-tile[data-pick="tren"] img {object-fit:contain;object-position:center;background:#142341;}
 .choice-tile[data-pick="tren"] strong {font-size:clamp(6px,.85cqw,12px);}
@@ -1143,6 +1143,8 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
 .selection-guide svg {width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
 .skill-cost {display:flex;justify-content:center;align-items:center;gap:.2em;padding:.25em 0 .35em;color:var(--skill-accent);font-size:.85em;font-weight:800;}
 .skill-cost svg {fill:currentColor;stroke-width:1;}
+.skill-effect {display:block;padding:.22em 0;background:#cbd3c2;color:#25332e;font:900 clamp(7px,.72cqw,10px)/1.2 Arial,sans-serif;letter-spacing:.04em;}
+.hold-note {color:#d9e5bc!important;font-weight:700;}
 .skill-key {display:flex;align-items:center;justify-content:center;gap:.35em;margin:.65cqw 0;color:#97accb;font:800 clamp(7px,.65cqw,9px)/1 Arial,sans-serif;letter-spacing:.03em;}
 .skill-key span {margin:0 .35em;}
 .arcade-stats {display:grid;gap:.6cqw;border-top:1px solid #8bafd333;padding-top:.7cqw;}
