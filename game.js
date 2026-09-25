@@ -124,7 +124,34 @@ const stats = {
 // Reference strong hit 10 maps to the existing 5-point uppercut; bars stay normalized.
 const powerDamage = f => ["angel","primitivo","peluche"].includes(f.kind) ? stats[f.kind].powerDamage : stats[f.kind].powerDamage * .5;
 const mobilityTempo = f => .82 + stats[f.kind].agility * .035;
-const damageTaken = (f, damage) => Math.round(damage * 100000 / stats[f.kind].resistance) / 1000;
+const DAMAGE_SCALE = .60;
+const ROUND_SECONDS = 90;
+const damageTaken = (f, damage) => Math.round(damage * DAMAGE_SCALE * 100000 / stats[f.kind].resistance) / 1000;
+const fighterPowers = {
+  angel: {common:"Carga suspendida", super:"Gancho maestro", superDamage:34, profile:"Ágil · control aéreo"},
+  primitivo: {common:"Descarga express", super:"Lanzamiento de contenedor", superDamage:35, profile:"Robusto · golpes pesados"},
+  peluche: {common:"Hormigonazo", super:"Colado masivo", superDamage:34, profile:"Técnico · control de distancia"}
+};
+function powerGuide(kind, rivalKind) {
+  const s=stats[kind], p=fighterPowers[kind];
+  if (!p) return "";
+  const resistance=rivalKind ? stats[rivalKind].resistance : 100;
+  const percent=damage=>(damage*DAMAGE_SCALE*100/resistance).toLocaleString("es-AR",{maximumFractionDigits:1})+"%";
+  return `<div class="power-entry"><strong>${p.common}</strong><span>Daño <b>${percent(s.powerDamage)}</b> · Energía <b>30%</b></span></div>`
+    + `<div class="power-entry"><strong>${p.super}</strong><span>Daño <b>${percent(p.superDamage)}</b> · Energía <b>100%</b></span></div>`;
+}
+function updateSelectionGuide(kind) {
+  const s=stats[kind],p=fighterPowers[kind];
+  document.getElementById("selectionGuide").innerHTML=p ? `<h4>PODERES Y ATRIBUTOS</h4>${powerGuide(kind)}<div class="fighter-attributes"><span>Resistencia <b>${s.resistance}</b></span><span>Velocidad <b>${s.agility}/10</b></span><span>Fuerza <b>${s.normalDamage}/10</b></span></div><p class="guide-note">${p.profile}</p><p class="guide-note">Daño sobre vida total, contra resistencia 100.</p>` : "";
+}
+function updatePauseGuide() {
+  for (const [id,f,rival] of [["pausePowers1",player,cpu],["pausePowers2",cpu,player]]) {
+    if (!f || !rival) continue;
+    document.getElementById(id).innerHTML=`<h3>${f===player?"1P":gameMode==="versus"?"2P":"CPU"} · ${stats[f.kind].name}</h3>${powerGuide(f.kind,rival.kind)}<p class="guide-note">Daño contra ${stats[rival.kind].name}, sin cubrirse.</p>`;
+  }
+  document.getElementById("pauseControls2").hidden=gameMode!=="versus";
+  document.getElementById("pauseControls2Title").hidden=gameMode!=="versus";
+}
 function timedMove(f, spec, evasion=false) {
   const tempo=mobilityTempo(f);
   return {...spec, reach: f.kind==="peluche" && spec.reach ? spec.reach*.82 : spec.reach, startup:spec.startup/(evasion?tempo:1), active:spec.active/(evasion?tempo:1), recovery:f.kind==="peluche" && !evasion ? stats.peluche.recovery : spec.recovery/tempo};
@@ -210,7 +237,7 @@ let afterimages = [];
 let effects = [];
 let held = { left: false, right: false, down: false, guard: false };
 const held2 = { left: false, right: false, down: false, guard: false };
-let roundTime = 60;
+let roundTime = ROUND_SECONDS;
 let lastTime = performance.now();
 let aiClock = 0;
 let screenShake = 0;
@@ -385,6 +412,7 @@ function chooseFighter(kind, playSound = true) {
   });
   document.getElementById("selectionName").textContent = stats[kind].name;
   document.getElementById("selectionMoves").textContent = stats[kind].description;
+  updateSelectionGuide(kind);
   document.querySelectorAll("[data-portrait]").forEach(portrait => {
     portrait.classList.toggle("selected", portrait.dataset.portrait === kind);
   });
@@ -479,7 +507,7 @@ function startRound() {
   afterimages = [];
   effects = [];
   clearHeld();
-  roundTime = 60;
+  roundTime = ROUND_SECONDS;
   aiClock = 0;
   cameraX = 0;
   screenShake = 0;
@@ -2299,6 +2327,7 @@ function updateHud() {
 }
 
 function setPauseUI(paused) {
+  if (paused) updatePauseGuide();
   ui.pauseBtn.textContent = paused ? "SEGUIR" : "PAUSA";
   ui.pauseBtn.classList.toggle("resume", paused);
   ui.pauseBtn.setAttribute("aria-label", paused ? "Reanudar juego" : "Pausar juego");
@@ -3115,7 +3144,7 @@ function updateWorkCinematic(dt) {
     c.impact=true;
     const t=c.target,o=c.owner;
     t.action="idle";t.actionTime=0;t.invuln=0;t.guarding=false;
-    hit(t,o.kind==="peluche"?34:o.kind==="angel"?34:35,o.facing*240,-140,o,
+    hit(t,fighterPowers[o.kind].superDamage,o.facing*240,-140,o,
       {sourceX:t.x,direction:o.facing,projectile:true,overhead:true,x:t.x,y:t.y-95});
     burst(t.x,t.y-95,"#ffdc62",36);dustBurst(t.x,FLOOR,24);
     if(o.kind==="peluche")t.concreteCoat=1.1;

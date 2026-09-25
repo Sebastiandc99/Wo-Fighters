@@ -4,6 +4,8 @@ function trace(kind, source, reference=false) {
   const a=reference?'jairo':kind,b=reference?'sergio':opponent;
   const profiles={angel:{speed:274,jump:615,agility:7,width:23,height:166,normalDamage:9,resistance:98},primitivo:{speed:238,jump:595,agility:4,width:40,height:214,normalDamage:10,resistance:110}};
   g.run(`Object.assign(stats.${a},${JSON.stringify(profiles[kind])});Object.assign(stats.${b},${JSON.stringify(profiles[opponent])});startGame('${a}','${b}');state='playing';gameMode='versus';player.x=220;cpu.x=750;`);
+  // Neutralize the intentional damage rebalance here; this fixture checks motion/reaction parity.
+  if(!reference)g.run('stats[player.kind].resistance*=DAMAGE_SCALE;stats[cpu.kind].resistance*=DAMAGE_SCALE');
   const frames=[];
   function advance(seconds){for(let i=0;i<Math.round(seconds*120);i++){
     g.tick(1/120);

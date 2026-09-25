@@ -26,7 +26,7 @@ test('full bar and down trigger a cinematic that locks controls and lands one hi
   assert.equal(g.run('workCinematic.owner.kind'),kind);
   assert.equal(g.run("attack(cpu,'punch')"),false);
   g.tick(1.2);
-  assert.equal(g.run('cpu.health'),Math.round((100-expected*100/g.run('stats[cpu.kind].resistance'))*1000)/1000);
+  assert.equal(g.run('cpu.health'),Math.round((100-expected*.6*100/g.run('stats[cpu.kind].resistance'))*1000)/1000);
   g.tick(.8);assert.equal(g.run('workCinematic'),null);
  }
 });
@@ -61,7 +61,7 @@ test('CPU construction powers render every frame and leave keyboard controls wor
   const before=g.run('player.x');g.key('KeyD');frames(g,.3);g.key('KeyD','keyup');
   assert.ok(g.run('player.x')>before+20);
   g.key('KeyJ');assert.equal(g.run('player.action'),'punch');
-  assert.ok(g.run('roundTime')<57);
+  assert.ok(g.run('roundTime')<87);
   assert.ok(g.run('fighters.every(f=>Number.isFinite(f.x)&&Number.isFinite(f.animation.motion.rotation))'));
  }
 });
