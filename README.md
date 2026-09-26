@@ -50,7 +50,7 @@ Hormigonazo mantiene su arco suave y alcance; hace daño mínimo y cubre de gris
 
 Ángel y Primitivo también tienen sonidos propios en sus dos poderes: cable/izaje y metal para Ángel, motor/montacargas y golpe de contenedor para Primitivo. Los sonidos se pausan y reanudan junto con las animaciones, y se limpian al salir o cambiar de ronda.
 
-55 pruebas automatizadas cubren los cuatro personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, resolución móvil, carga de imágenes, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md) y [ART-TREN.md](ART-TREN.md).
+58 pruebas automatizadas cubren los cuatro personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, resolución móvil, carga de imágenes, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md) y [ART-TREN.md](ART-TREN.md).
 
 ## Golpes y derribo
 
@@ -102,4 +102,4 @@ Gancho Maestro usa dos poses propias de señalero: bajar mientras entra el ganch
 
 Cada jugador tiene una palanca virtual en lugar de cuatro flechas táctiles. Arrastrarla a los lados camina, arriba salta una vez por gesto, abajo agacha; las diagonales permiten saltar avanzando o agacharse caminando. Se puede mantener abajo mientras se toca Golpe, Patada o Poder para gancho, barrida o súper. El botón de guardia funciona a la vez. El movimiento vuelve al centro al levantar el dedo, cancelar un toque, pausar o abandonar la pelea. En celulares girados, los ejes siguen la orientación del juego. El teclado conserva sus teclas.
 
-En celular, el lienzo limita su resolución interna a 1,25 veces la del juego, evita desenfocar el escenario detrás de los botones y actualiza el marcador a una frecuencia menor que los fotogramas. Las imágenes de personajes fuera del plantel actual se cargan solo cuando se necesitan. La simulación de combate mantiene sus 120 pasos por segundo.
+En celular, el lienzo dibuja a la resolución base de 960 × 540, evita desenfocar el escenario detrás de los botones y actualiza el marcador a una frecuencia menor que los fotogramas. La simulación usa 60 pasos por segundo en celular y 120 en PC, con tiempos, movimientos y colisiones verificados. Los sonidos de la pelea se preparan durante la introducción, sin cargar sonidos de personajes antiguos desde el menú. Las imágenes de personajes fuera del plantel actual se cargan solo cuando se necesitan.

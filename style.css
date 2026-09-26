@@ -1179,3 +1179,8 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
 .two-touch .p2-controls [data-tap="punch"] { grid-column: 1; grid-row: 2; }
 .two-touch .p2-controls [data-tap="kick"] { grid-column: 2; grid-row: 2; }
 .two-touch .p2-controls [data-tap="special"] { grid-column: 3; grid-row: 2; }
+
+/* Mobile GPUs composite the live fight behind these layers every frame. */
+.touch-device .scanlines { mix-blend-mode: normal; opacity: .10; }
+.touch-device .hud { filter: none; }
+.touch-device .fight-screen::before { box-shadow: none; }

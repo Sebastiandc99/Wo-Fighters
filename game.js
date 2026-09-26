@@ -305,7 +305,7 @@ function syncViewport() {
   document.body.classList.toggle("phone-portrait", sideways);
   document.body.classList.toggle("two-touch", gameMode === "versus" && (mobileRendering || window.innerWidth <= 820));
   // Fewer canvas pixels leave mobile GPUs time for input, animation and sound.
-  const density = Math.min(mobileRendering ? 1.25 : 2,
+  const density = Math.min(mobileRendering ? 1 : 2,
     Math.max(1, (canvas.clientWidth || VIEW_WIDTH) * (window.devicePixelRatio || 1) / VIEW_WIDTH));
   const width = Math.round(VIEW_WIDTH * density);
   const height = Math.round(VIEW_HEIGHT * density);
@@ -2160,9 +2160,9 @@ function drawSpriteFrame(frame, alpha = 1, ghost = false) {
   ctx.scale((needsFlip ? -1 : 1) * motion.scaleX * (stats[frame.kind].bodyWidth || 1), motion.scaleY);
   ctx.globalAlpha = alpha;
   ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = mobileRendering ? "medium" : "high";
+  ctx.imageSmoothingQuality = mobileRendering ? "low" : "high";
   if (ghost) ctx.globalCompositeOperation = "screen";
-  else {
+  else if (!mobileRendering) {
     ctx.shadowColor = "rgba(4,10,22,.65)";
     ctx.shadowBlur = 1.5 * drawingScale;
     ctx.shadowOffsetY = drawingScale;
@@ -2433,9 +2433,11 @@ function advanceGameClock(now) {
   const dt = Math.max(0, Math.min(.1, (now - lastTime) / 1000));
   lastTime = now;
   accumulator += dt;
-  while (accumulator >= STEP) {
-    update(STEP);
-    accumulator -= STEP;
+  // Physics uses seconds everywhere; 60 steps save half the CPU work on phones.
+  const step = mobileRendering ? STEP * 2 : STEP;
+  while (accumulator >= step) {
+    update(step);
+    accumulator -= step;
   }
 }
 
@@ -2443,7 +2445,7 @@ let lastHudUpdate = -Infinity;
 let lastHudState = null;
 function loop(now) {
   advanceGameClock(now);
-  renderAlpha = online?.guest ? Math.min(1, (performance.now()-online.lastFrame)/online.renderInterval) : state === "paused" ? 1 : accumulator / STEP;
+  renderAlpha = online?.guest ? Math.min(1, (performance.now()-online.lastFrame)/online.renderInterval) : state === "paused" ? 1 : accumulator / (mobileRendering ? STEP * 2 : STEP);
   if (["intro", "playing", "paused", "roundOver", "finished"].includes(state)) {
     if (state !== "paused") draw();
     // The bars and clock need a few updates per second, not a DOM rewrite every frame.
@@ -2456,15 +2458,25 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
+let rosterAudioPreloaded = false;
 function ensureAudio() {
   const Audio = window.AudioContext || window.webkitAudioContext;
   if (!Audio) return;
   if (!audioCtx) audioCtx = new Audio();
   if (audioCtx.state === "suspended") audioCtx.resume().then(() => { syncKOAudio(); syncMusic(); }).catch(() => {});
-  loadKOAudio();
-  [1, 2, 3].forEach(loadRoundVoice);
-  Object.keys(COMBAT_AUDIO).forEach(loadCombatAudio);
-  loadMusic(EXTRA_AUDIO.selection);
+  if (["intro", "playing", "roundOver", "finished"].includes(state)) {
+    loadKOAudio();
+    loadRoundVoice(match.round);
+    if (!rosterAudioPreloaded) {
+      // Decode current roster cues during the round intro instead of every menu tap.
+      for (const name of ["punchHit", "kickHit", "uppercutHit", "bodyFall", "meleeSwing",
+        "voltaic", "voltaicImpact", "stormSuper", "beam", "beamImpact",
+        "forklift", "forkliftImpact", "concrete", "concreteImpact",
+        "hookSuper", "containerSuper", "concreteSuper"]) loadCombatAudio(name);
+      rosterAudioPreloaded = true;
+    }
+  }
+  if (["title", "mode", "select", "stage"].includes(state)) loadMusic(EXTRA_AUDIO.selection);
   if (musicTrack) loadMusic(musicTrack);
 }
 
@@ -2509,6 +2521,7 @@ function startCombatSound(name) {
   online?.audio("combat", name, voice.netId);
   combatSounds.add(voice);
   ensureAudio();
+  loadCombatAudio(name);
   syncCombatSounds();
   return voice;
 }
