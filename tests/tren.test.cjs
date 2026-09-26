@@ -3,6 +3,25 @@ const assert=require('node:assert/strict');
 const {game}=require('./engine-harness.cjs');
 function setup(rival='angel',direction=1){const g=game();g.run(`gameMode='versus';startGame('tren','${rival}');state='playing';player.x=480;cpu.x=480+${direction}*260;player.facing=${direction};cpu.facing=${-direction};player.power=100;`);return g;}
 function frames(g,t){g.run(`for(let i=0;i<${Math.round(t*120)};i++){update(STEP);draw();updateHud()}`);}
+test('Valencia attacks at normal speed and evades across the same distance with an electric vanish',()=>{
+ const g=setup();
+ for(const type of ['punch','kick']){
+  g.run(`attack(player,'${type}')`);
+  assert.ok(g.run(`player.moveSpec.recovery < .3`),type);
+  g.run('player.action="idle";player.actionTime=0;player.grounded=true;player.y=FLOOR');
+ }
+ g.run("attack(player,'special')");assert.equal(g.run('player.moveSpec.recovery'),.52);
+ g.run('player.action="idle";player.actionTime=0;player.grounded=true;player.y=FLOOR;player.x=480;cpu.x=880');
+ assert.equal(g.run('evade(player)'),true);
+ assert.equal(g.nodes.get('evadeLabel1').textContent,'RAYOS');
+ assert.equal(g.run('poseFor(player)'),g.run('POSES.tren.idle'));
+ assert.equal(g.run('fighterMotion(player).rotation'),0);
+ frames(g,.16);assert.equal(g.run('isVanished(player)'),true);
+ assert.ok(Math.abs(g.run('player.x-player.rollStartX')-580*g.run('mobilityTempo(player)')*.16)<5);
+ frames(g,.21);assert.equal(g.run('isVanished(player)'),false);
+ assert.ok(g.run('player.trenEvadeArrived'));
+ assert.ok(Math.abs(g.run('player.x-player.rollStartX')-580*.36)<12);
+});
 test('Tren has requested attributes, taller proportions, clickable selection and arcade guide',()=>{
  const g=setup();assert.deepEqual(Array.from(g.run('[stats.tren.normalDamage,stats.tren.resistance,stats.tren.agility,stats.tren.meleeReach,stats.tren.recovery,stats.tren.powerDamage,stats.tren.superDamage]')),[8,88,8,6,.52,24,34]);
  assert.ok(g.run('stats.peluche.size<stats.angel.size && stats.angel.size<stats.tren.size && stats.tren.size<stats.primitivo.size'));

@@ -177,9 +177,10 @@ function updatePauseGuide() {
   document.getElementById("pauseControls2").hidden=gameMode!=="versus";
   document.getElementById("pauseControls2Title").hidden=gameMode!=="versus";
 }
-function timedMove(f, spec, evasion=false) {
+function timedMove(f, spec, evasion=false, action=null) {
   const tempo=mobilityTempo(f);
-  return {...spec, reach: f.kind==="peluche" && spec.reach ? spec.reach*.82 : spec.reach, startup:spec.startup/(evasion?tempo:1), active:spec.active/(evasion?tempo:1), recovery:["peluche","tren"].includes(f.kind) && !evasion ? stats[f.kind].recovery : spec.recovery/tempo};
+  const fixedRecovery = f.kind==="peluche" || f.kind==="tren" && action==="special";
+  return {...spec, reach: f.kind==="peluche" && spec.reach ? spec.reach*.82 : spec.reach, startup:spec.startup/(evasion?tempo:1), active:spec.active/(evasion?tempo:1), recovery:fixedRecovery && !evasion ? stats[f.kind].recovery : spec.recovery/tempo};
 }
 
 const roster = ["angel", "primitivo", "peluche", "tren"];
@@ -217,6 +218,8 @@ const COMBAT_AUDIO = {
   ...Object.fromEntries(["beam","forklift","concrete","beamImpact","forkliftImpact","concreteImpact","hookSuper","containerSuper","concreteSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:.82,start:0,loop:false}])),
   ...Object.fromEntries(["hookSuper","containerSuper","concreteSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v2.mp3",volume:.92,start:0,loop:false}])),
   ...Object.fromEntries(["punchHit","kickHit"].map(name=>[name,{src:"assets/wo-"+name+"-v2.mp3",volume:1.0,start:0,loop:false}])),
+  uppercutHit: {src:"assets/wo-uppercutPunch-v1.wav",volume:1,start:0,loop:false},
+  bodyFall: {src:"assets/wo-bodyThud-v1.wav",volume:.94,start:0,loop:false},
   critical: {src: "assets/jairo-critical-v1.mp3", volume: .8, start: 0, end: .95, loop: false},
   crash: {src: "assets/jairo-crash-v1.mp3", volume: .8, start: 0, end: 1.8, loop: false},
   water: {src: "assets/paula-water-v2.mp3", volume: .85, start: 0, end: 2.5, loop: false},
@@ -572,8 +575,9 @@ function startRound() {
   document.getElementById("winnerForm").hidden = true;
   document.getElementById("cpuResultNote").hidden = true;
   for(const [slot,f] of [[1,player],[2,cpu]]){
-    document.getElementById("evadeLabel"+slot).textContent=["blotta","galante"].includes(f.kind)?"HUMO":"RODAR";
-    document.getElementById("evadeBtn"+slot).setAttribute("aria-label",(["blotta","galante"].includes(f.kind)?"Humo":"Rodar")+" sin gastar energía, Jugador "+slot);
+    const evadeName=["blotta","galante"].includes(f.kind)?"HUMO":f.kind==="tren"?"RAYOS":"RODAR";
+    document.getElementById("evadeLabel"+slot).textContent=evadeName;
+    document.getElementById("evadeBtn"+slot).setAttribute("aria-label",(f.kind==="tren"?"Desaparecer con rayos y avanzar":evadeName==="HUMO"?"Humo":"Rodar")+" sin gastar energía, Jugador "+slot);
   }
   const ability = stats[player.kind].ability;
   ui.abilityBtn.hidden = ability !== "slam";
@@ -912,7 +916,7 @@ function updateFighter(f, dt) {
     const elapsed=f.actionDuration-f.actionTime;
     f.vx=elapsed < .36 / mobilityTempo(f) ? f.rollDirection*580*mobilityTempo(f) : 0;
     if(elapsed < .34 / mobilityTempo(f)) f.invuln=Math.max(f.invuln,.02);
-    if(Math.floor(elapsed*30)!==Math.floor((elapsed+dt)*30))dustBurst(f.x,FLOOR,2);
+    if(f.kind!=="tren" && Math.floor(elapsed*30)!==Math.floor((elapsed+dt)*30))dustBurst(f.x,FLOOR,2);
   }
   if (f.action === "teleport") f.vx = f.vy = 0;
   if (f.action === "slam" && !f.slamLanded) {
@@ -941,6 +945,12 @@ function updateFighter(f, dt) {
   if (f.actionTime > 0) {
     f.actionTime = Math.max(0, f.actionTime - dt);
     const elapsed = f.actionDuration - f.actionTime;
+    if (f.kind === "tren" && f.action === "roll" && !f.trenEvadeArrived && elapsed >= .36 / mobilityTempo(f)) {
+      f.trenEvadeArrived = true;
+      burst(f.x, f.y - 105, "#b1f3ff", 13);
+      addEffect("ring", f.x, f.y - 105, "#d8fbff", 42, .22);
+      sfx("electricEvadeLand");
+    }
     if (f.action === "special" && elapsed >= f.moveSpec.startup && !f.specialSpawned) {
       f.specialSpawned = true;
       spawnProjectile(f, f.specialStyle);
@@ -1008,6 +1018,10 @@ function overlaps(a, b) {
 }
 
 function isVanished(f) {
+  if (f.kind === "tren" && f.action === "roll") {
+    const elapsed = f.actionDuration - f.actionTime;
+    return elapsed >= .08 / mobilityTempo(f) && elapsed < .34 / mobilityTempo(f);
+  }
   if (f.action !== "teleport") return false;
   const elapsed = f.actionDuration - f.actionTime;
   return elapsed >= .16 / mobilityTempo(f) && elapsed < .45 / mobilityTempo(f);
@@ -1118,7 +1132,7 @@ function attack(f, type) {
   const directionInput=humanFighter(f) ? Number(fighterInput(f).right)-Number(fighterInput(f).left) : f.moveIntent;
   f.kickStyle=type!=="kick" || low ? null : !f.grounded ? "airKick" : directionInput*f.facing<0 ? "volley" : null;
   f.moveSpec = f.kind === "jairo" && type === "special" ? {...MOVES.special, startup:crash?.32:.22, active:.05, recovery:crash?.62:.42} : f.kind === "paula" && type === "special" ? {...MOVES.special, startup:.24, active:.06, recovery:.70} : MOVES[f.kickStyle || (low && type === "kick" ? "lowKick" : type)];
-  f.moveSpec = timedMove(f, f.moveSpec, ["roll","teleport"].includes(type));
+  f.moveSpec = timedMove(f, f.moveSpec, ["roll","teleport"].includes(type), type);
   if(f.kind === "padrino" && type === "special") f.moveSpec.startup = .28;
   f.action = type;
   f.actionDuration = f.moveSpec.startup + f.moveSpec.active + f.moveSpec.recovery;
@@ -1143,6 +1157,13 @@ function attack(f, type) {
     const input=humanFighter(f)?Number(fighterInput(f).right)-Number(fighterInput(f).left):0;
     f.rollDirection=f.x<FIGHTER_LEFT+88?1:f.x>FIGHTER_RIGHT-88?-1:input || Math.sign(other.x-f.x) || f.facing;
     f.invuln=Math.max(f.invuln,.34/mobilityTempo(f));f.vx=f.rollDirection*580*mobilityTempo(f);
+    if (f.kind === "tren") {
+      f.rollStartX = f.x;
+      f.trenEvadeArrived = false;
+      burst(f.x, f.y - 105, "#89e9ff", 12);
+      addEffect("ring", f.x, f.y - 105, "#9feeff", 38, .22);
+      sfx("electricEvade");
+    }
   } else if (type === "slam") {
     f.slamLaunched = f.slamDiving = f.slamLanded = false;
     f.slamFromAir = !f.grounded;
@@ -1169,7 +1190,7 @@ function attack(f, type) {
   }
   if (["punch", "uppercut", "kick"].includes(type)) {
     f.attackSound = startCombatSound(roster.includes(f.kind) ? "meleeSwing" : f.kind === "sergio" && type === "punch" ? "belly" : "general");
-  } else if (type !== "special" || !COMBAT_AUDIO[f.specialStyle]) sfx(type);
+  } else if ((type !== "special" || !COMBAT_AUDIO[f.specialStyle]) && !(f.kind === "tren" && type === "roll")) sfx(type);
   return true;
 }
 
@@ -1639,6 +1660,7 @@ function poseFor(f) {
   if(workCinematic?.owner===f && f.kind==="angel")return workCinematic.elapsed<.38 || workCinematic.elapsed>=.78 ? 16 : 17;
   if (workCinematic?.owner === f) return ["peluche","tren"].includes(f.kind) ? 17 : POSES[f.kind].power;
   if(f.kind==="peluche" && f.action==="roll")return 18;
+  if(f.kind==="tren" && f.action==="roll")return POSES.tren.idle;
   if(["peluche","tren"].includes(f.kind) && f.action==="special") return f.specialSpawned ? 16 : 4;
   if(f.kind === "galante" && state === "intro" && introElapsed < ROUND_AUDIO[match.round].timing.fight) return 15;
   if(f.action==="roll")return 8;
@@ -1728,6 +1750,7 @@ function fighterMotion(f) {
   }
   const progress = actionProgress(f);
   if(f.action==="roll"){
+    if(f.kind==="tren")return motion;
     const angle=progress*Math.PI*2*f.rollDirection,radius=stats[f.kind].size*FIGHTER_SCALE*.16;
     motion.rotation=angle;motion.dx=-radius*Math.sin(angle);motion.dy=radius*(Math.cos(angle)-1);
     motion.scaleX=motion.scaleY=.8;return motion;
@@ -2185,6 +2208,17 @@ function drawFighter(f) {
   if (f.action === "teleport") {
     const elapsed = (f.actionDuration - f.actionTime) * mobilityTempo(f);
     opacity *= elapsed < .16 ? 1 - elapsed / .16 : elapsed < .45 ? 0 : Math.min(1, (elapsed - .45) / .18);
+  }
+  if(f.kind==="tren" && f.action==="roll"){
+    const elapsed=(f.actionDuration-f.actionTime)*mobilityTempo(f);
+    opacity*=elapsed<.08?1-elapsed/.08:elapsed<.34?0:Math.min(1,(elapsed-.34)/.07);
+    if(elapsed>.025 && elapsed<.4){
+      const centerY=y-100;
+      const origin=f.rollStartX ?? x;
+      const trailX=elapsed<.34?x:origin+(x-origin)*.65;
+      drawElectricArc(origin,centerY-12,trailX,centerY+7,elapsed,1.45,1);
+      drawElectricArc(x-11,centerY-25,x+14,centerY+24,elapsed,1.2,2);
+    }
   }
   drawSpriteFrame(frame, opacity);
   if(f.kind === "galante") drawGalanteProps(f, frame, opacity);
@@ -2745,6 +2779,8 @@ function sfx(name) {
     special: () => { tone(220, .23, "sawtooth", .085, 380); later(() => tone(540, .12, "square", .06, -100), 80); },
     lightning: () => { tone(960, .16, "sawtooth", .038, -720); tone(140, .2, "square", .026, 510); },
     roll: () => { tone(170, .12, "triangle", .045, -90); },
+    electricEvade: () => { tone(1030,.12,"sawtooth",.035,-800);tone(410,.14,"triangle",.03,340); },
+    electricEvadeLand: () => { tone(790,.09,"sawtooth",.028,-550);tone(165,.11,"triangle",.025,-80); },
     teleport: () => { tone(400, .23, "sine", .08, -330); tone(95, .36, "triangle", .06, 620); },
     slam: () => { tone(88, .22, "triangle", .075, -60); tone(48, .14, "sawtooth", .045, -20); },
     block: () => tone(720, .07, "triangle", .025, -370),

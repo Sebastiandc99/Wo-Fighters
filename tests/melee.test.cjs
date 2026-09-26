@@ -1,10 +1,23 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {game}=require('./engine-harness.cjs');
+const {statSync,readFileSync}=require('node:fs');
+const {join}=require('node:path');
 function setup(a='peluche',b='angel',dir=1){
  const g=game();g.run(`gameMode='versus';startGame('${a}','${b}');state='playing';player.x=600;cpu.x=600+${dir}*58;player.facing=${dir};cpu.facing=${-dir};`);return g;
 }
 function uppercut(g){g.key('KeyS');g.key('KeyJ');g.key('KeyJ','keyup');g.key('KeyS','keyup');g.tick(.22);}
+test('uppercut punch and landing each have a separate, audible dry impact recording',()=>{
+ const g=setup();
+ for(const cue of ['uppercutHit','bodyFall']){
+  const filename=g.run(`COMBAT_AUDIO.${cue}.src`);
+  assert.match(filename,/\.wav$/);
+  const sound=join(__dirname,'..',filename);
+  assert.ok(statSync(sound).size>7000);
+  assert.equal(readFileSync(sound).toString('ascii',0,4),'RIFF');
+ }
+ assert.notEqual(g.run('COMBAT_AUDIO.uppercutHit.src'),g.run('COMBAT_AUDIO.bodyFall.src'));
+});
 test('Peluche is shorter than Ángel in sprite size and collision height',()=>{
  const g=setup();assert.ok(g.run('stats.peluche.size < stats.angel.size && stats.peluche.height < stats.angel.height'));
 });
