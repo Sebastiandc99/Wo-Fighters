@@ -18,6 +18,17 @@ test('ordinary power costs 30 and sends the matching construction attack',()=>{
   g.tick(.4);assert.equal(g.run('projectiles[0].style'),style);
  }
 });
+test('Ángel points down and circles his finger during the common power, keeping the super signals',()=>{
+ const g=setup('angel');
+ assert.equal(g.run("held.down=false;attack(player,'special')"),true);
+ assert.equal(g.run('poseFor(player)'),18);
+ assert.ok(g.requestedImages.includes('assets/angel-lowerload-v1.webp'));
+ assert.doesNotThrow(()=>g.run('draw()'));
+ g.tick(.1);assert.equal(g.run('poseFor(player)'),19);
+ g.tick(.24);assert.equal(g.run('projectiles[0].style'),'beam');
+ const superMove=setup('angel');superMove.run("held.down=true;attack(player,'special')");
+ assert.equal(superMove.run('poseFor(player)'),16);
+});
 test('full bar and down trigger a cinematic that locks controls and lands one hit',()=>{
  for(const [kind,expected] of [['angel',34],['primitivo',35]]){
   const g=setup(kind);

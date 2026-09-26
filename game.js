@@ -58,6 +58,7 @@ const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(st
 
 const assets = {
   angelSignals: loadImage("assets/angel-signals-v1.webp"),
+  angelLowerLoad: loadImage("assets/angel-lowerload-v1.webp"),
   tren: loadImage("assets/tren-atlas-v2.webp"),
   peluche: loadImage("assets/peluche-atlas-v2.webp"),
   pelucheSpecial: loadImage("assets/peluche-special-v2.webp"),
@@ -676,8 +677,7 @@ function update(dt) {
     if (state === "finished" && resultElapsed >= .8) ui.resultPanel.hidden = false;
     if (state === "finished" && match.nextOpponent && resultElapsed >= 2.65) { nextOpponent(); return; }
     if (state === "finished" && !match.nextOpponent && resultElapsed >= 2.2 && !match.endShown) showGameOver();
-    // El ranking de KP Fighter pertenece a otra aplicación.
-    // No enviamos resultados de Wo Fighters a ese servidor.
+    if (state === "finished" && resultElapsed >= 3.8 && match.winner === 1 && gameMode === "solo" && !match.campaignRun) showRanking();
     if (state === "roundOver" && resultElapsed >= .8) document.getElementById("roundNotice").hidden = false;
     if (state === "roundOver" && resultElapsed >= 2.65) {
       match.round = match.playerWins + match.cpuWins + 1;
@@ -1378,9 +1378,9 @@ function showGameOver() {
   ui.resultKicker.textContent = "GAME OVER";
   if (online?.active) document.getElementById("onlineEndActions").hidden = false;
   const humanWinner = online?.active ? match.winner === (online.guest ? 1 : 0) : match.campaignRun || match.winner === 0 || gameMode === "versus";
-  document.getElementById("winnerForm").hidden = true;
-  document.getElementById("cpuResultNote").hidden = true;
-  if (false && humanWinner) {
+  document.getElementById("winnerForm").hidden = !humanWinner;
+  document.getElementById("cpuResultNote").hidden = humanWinner || !!online?.active;
+  if (humanWinner) {
     const input = document.getElementById("winnerName");
     input.value = "";
     document.getElementById("saveError").textContent = "";
@@ -1396,7 +1396,7 @@ function rankingPosition(position) {
   return position + suffix;
 }
 
-const RANKING_API = "https://kp-fighter-ranking.sebastiandc99.chatgpt.site/api/ranking";
+const RANKING_API = "https://kp-fighter-ranking.sebastiandc99.chatgpt.site/api/wo-ranking";
 let rankingRequest = 0;
 
 async function rankingFetch(url, options = {}) {
@@ -1689,6 +1689,7 @@ function poseFor(f) {
   if(f.concreteHold>0)return f.concretePose;
   if(workCinematic?.owner===f && f.kind==="angel")return workCinematic.elapsed<.38 || workCinematic.elapsed>=.78 ? 16 : 17;
   if (workCinematic?.owner === f) return ["peluche","tren"].includes(f.kind) ? 17 : POSES[f.kind].power;
+  if(f.kind==="angel" && f.action==="special")return 18+Math.floor((f.actionDuration-f.actionTime)*12)%2;
   if(f.kind==="peluche" && f.action==="roll")return 18;
   if(f.kind==="tren" && f.action==="roll")return POSES.tren.idle;
   if(["peluche","tren"].includes(f.kind) && f.action==="special") return f.specialSpawned ? 16 : 4;
@@ -2228,6 +2229,20 @@ function drawAfterimage(ghost) {
   drawSpriteFrame(ghost, (ghost.life / ghost.maxLife) * .16, true);
 }
 
+function drawLowerLoadCue(f,frame) {
+  const elapsed=f.actionDuration-f.actionTime;
+  const x=frame.x-f.facing*43*FIGHTER_SCALE;
+  const y=frame.y-67*FIGHTER_SCALE;
+  ctx.save();
+  ctx.strokeStyle="#ffe57c";
+  ctx.lineWidth=2;
+  ctx.globalAlpha=.7;
+  ctx.beginPath();
+  ctx.ellipse(x,y,15*FIGHTER_SCALE,5*FIGHTER_SCALE,0,elapsed*18,elapsed*18+Math.PI*1.4);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawFighter(f) {
   const frame = renderedFighter(f);
   if (workCinematic?.target === f && workCinematic.owner.kind === "angel") frame.y -= workHookLift(workCinematic.elapsed);
@@ -2251,6 +2266,7 @@ function drawFighter(f) {
     }
   }
   drawSpriteFrame(frame, opacity);
+  if(f.kind==="angel" && f.action==="special" && !workCinematic) drawLowerLoadCue(f,frame);
   if(f.kind === "galante") drawGalanteProps(f, frame, opacity);
   if(f.kind === "paula") drawWaterCharge(f);
   if(f.kind === "peluche") drawConcreteCharge(f);
@@ -3058,9 +3074,10 @@ requestAnimationFrame(loop);
 function atlasSpriteFrame(frame) {
   const key=frame.kind+':'+frame.pose;
   if(spriteFrames.has(key)) return spriteFrames.get(key);
+  const angelLower=frame.kind==="angel" && [18,19].includes(frame.pose);
   const special=["peluche","angel"].includes(frame.kind) && [16,17].includes(frame.pose);
-  const image=special?(frame.kind==="angel"?assets.angelSignals:assets.pelucheSpecial):assets[frame.kind];
-  const pose=frame.kind==="angel" && special ? frame.pose-16 : frame.kind==="tren" ? [0,1,2,3,4,5,6,7,8,9,10,8,12,11,13,3,14,15,8][frame.pose] : frame.kind==="peluche" ? special ? frame.pose-16 : [0,1,2,3,4,5,6,7,8,12,14,8,9,10,11,15,0,0,13][frame.pose] : frame.pose;
+  const image=angelLower?assets.angelLowerLoad:special?(frame.kind==="angel"?assets.angelSignals:assets.pelucheSpecial):assets[frame.kind];
+  const pose=angelLower?frame.pose-18:frame.kind==="angel" && special ? frame.pose-16 : frame.kind==="tren" ? [0,1,2,3,4,5,6,7,8,9,10,8,12,11,13,3,14,15,8][frame.pose] : frame.kind==="peluche" ? special ? frame.pose-16 : [0,1,2,3,4,5,6,7,8,12,14,8,9,10,11,15,0,0,13][frame.pose] : frame.pose;
   if(!image.complete || !image.naturalWidth) return null;
   const surface=document.createElement('canvas');surface.width=surface.height=270;
   const paint=surface.getContext('2d');paint.imageSmoothingEnabled=false;
