@@ -19,7 +19,8 @@ function game(sourcePath = path.join(__dirname, "..", "game.js")) {
           toggle: (key, on) => { if (on) classes.add(key); else classes.delete(key); }
         },
         listeners: {}, addEventListener(name, fn) { this.listeners[name] = fn; },
-        setAttribute() {}, getContext: () => context2d, setPointerCapture() {}
+        setAttribute() {}, getContext: () => context2d, setPointerCapture() {},
+        getBoundingClientRect() { return {left:0,top:0,width:120,height:120}; }, offsetWidth:120
       });
     }
     return nodes.get(id);
@@ -33,6 +34,7 @@ function game(sourcePath = path.join(__dirname, "..", "game.js")) {
   const taps = ["jump", "punch", "kick", "special", "ability", "evade"].map(tap => node("tap-" + tap, { tap }));
   const holds2 = ["left", "right", "down", "guard"].map(hold => node("p2-hold-" + hold, { hold, player: "2" }));
   const taps2 = ["jump", "punch", "kick", "special", "ability", "evade"].map(tap => node("p2-tap-" + tap, { tap, player: "2" }));
+  const joysticks = [1,2].map(slot => node('stick-' + slot, {player:String(slot)}));
   const modes = ["solo", "versus"].map(mode => node(mode + "Btn", {mode}));
   const win = node("window");
   const doc = node("document");
@@ -43,6 +45,7 @@ function game(sourcePath = path.join(__dirname, "..", "game.js")) {
     querySelector: selector => selector === '[data-tap="special"]' ? taps[3] : node(selector),
     querySelectorAll: selector => ({
       "[data-pick]": picks, "[data-portrait]": portraits, "[data-hold]": [...holds,...holds2], "[data-tap]": [...taps,...taps2], "[data-mode]": modes,
+      ".joystick": joysticks,
       "[data-stage]": stages, "#leftRounds i": leftRounds, "#rightRounds i": rightRounds,
       "[data-hold].active": [...holds,...holds2].filter(n => n.classList.contains("active"))
     }[selector] || [])
@@ -61,7 +64,7 @@ function game(sourcePath = path.join(__dirname, "..", "game.js")) {
     win.listeners[type]({ code, key: code, repeat, preventDefault() { prevented = true; } });
     return prevented;
   };
-  return { run, tick, key, nodes, holds, taps, holds2, taps2, sandbox };
+  return { run, tick, key, nodes, holds, taps, holds2, taps2, joysticks, sandbox };
 }
 
 module.exports={game};

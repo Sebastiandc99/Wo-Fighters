@@ -285,6 +285,7 @@ let pauseFrom = "playing";
 let aiEnabled = true;
 const keyHolds = new Set();
 const touchHolds = new Map();
+const joystickDirections = new Map();
 
 function loadImage(src) {
   const img = new Image();
@@ -326,6 +327,12 @@ async function requestMobileLandscape() {
 function clearHeld() {
   keyHolds.clear();
   touchHolds.clear();
+  joystickDirections.clear();
+  document.querySelectorAll('.joystick').forEach(stick => {
+    stick.activePointer = null;
+    stick.classList.remove('active');
+    document.getElementById('joystickKnob' + stick.dataset.player).style.transform = 'translate(-50%, -50%)';
+  });
   Object.keys(held).forEach(key => { held[key] = false; });
   Object.keys(held2).forEach(key => { held2[key] = false; });
   document.querySelectorAll("[data-hold].active").forEach(button => button.classList.remove("active"));
@@ -2770,7 +2777,8 @@ function refreshHeld() {
     if (index === 1 && online?.active) return;
     Object.keys(input).forEach(action => {
       input[action] = [...keyHolds].some(code => { const b = keyBinding(code); return b.slot === index + 1 && b.hold === action; })
-        || [...touchHolds.values()].some(value => (value.slot || 1) === index + 1 && (value.action || value) === action);
+        || [...touchHolds.values()].some(value => (value.slot || 1) === index + 1 && (value.action || value) === action)
+        || [...joystickDirections.values()].some(value => value.slot === index + 1 && value[action]);
     });
   });
 }
@@ -2850,6 +2858,57 @@ function pauseOnLeave() {
 }
 window.addEventListener("blur", pauseOnLeave);
 document.addEventListener("visibilitychange", () => { if (document.hidden) pauseOnLeave(); });
+// A captured pointer controls each stick. Holding down also works with action buttons.
+function moveJoystick(stick, event) {
+  const rect = stick.getBoundingClientRect();
+  const radius = stick.offsetWidth * .34;
+  const screenX = event.clientX - (rect.left + rect.width / 2);
+  const screenY = event.clientY - (rect.top + rect.height / 2);
+  // Portrait phones rotate the entire cabinet clockwise; undo that for controls.
+  const portrait = document.body.classList.contains('phone-portrait');
+  const x = portrait ? screenY : screenX;
+  const y = portrait ? -screenX : screenY;
+  const distance = Math.hypot(x, y);
+  const scale = distance > radius ? radius / distance : 1;
+  const dx = x * scale, dy = y * scale;
+  const slot = Number(stick.dataset.player);
+  const previous = joystickDirections.get(event.pointerId);
+  const next = {slot, left:dx < -radius * .35, right:dx > radius * .35,
+    down:dy > radius * .35, up:dy < -radius * .35};
+  joystickDirections.set(event.pointerId, next);
+  document.getElementById('joystickKnob' + slot).style.transform =
+    `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  refreshHeld(); refreshHumans();
+  if (next.up && !previous?.up) performAction('jump', slot);
+}
+document.querySelectorAll('.joystick').forEach(stick => {
+  const slot = Number(stick.dataset.player);
+  stick.addEventListener('pointerdown', event => {
+    event.preventDefault();
+    if (state !== 'playing' || (slot === 2 && gameMode !== 'versus') || stick.activePointer != null) return;
+    if (event.pointerType === 'touch') document.body.classList.add('touch-device');
+    stick.activePointer = event.pointerId;
+    stick.setPointerCapture(event.pointerId);
+    stick.classList.add('active');
+    moveJoystick(stick, event);
+  });
+  stick.addEventListener('pointermove', event => {
+    if (stick.activePointer !== event.pointerId || state !== 'playing') return;
+    event.preventDefault();
+    moveJoystick(stick, event);
+  });
+  const release = event => {
+    if (stick.activePointer !== event.pointerId) return;
+    stick.activePointer = null;
+    joystickDirections.delete(event.pointerId);
+    stick.classList.remove('active');
+    document.getElementById('joystickKnob' + slot).style.transform = 'translate(-50%, -50%)';
+    refreshHeld();
+    if (online?.active) online.input(held);
+    if (state === 'playing') refreshHumans();
+  };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(name => stick.addEventListener(name, release));
+});
 document.querySelectorAll("[data-hold]").forEach(btn => {
   const slot = Number(btn.dataset.player || 1);
   btn.addEventListener("pointerdown", event => {

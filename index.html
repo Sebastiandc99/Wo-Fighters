@@ -8,7 +8,7 @@
   <title>WO FIGHTERS</title>
   <link rel="preload" href="assets/fonts/Bangers-Regular.woff" as="font" type="font/woff" crossorigin>
   <link rel="preload" href="assets/fonts/VT323-Regular.woff" as="font" type="font/woff" crossorigin>
-  <link rel="stylesheet" href="style.css?v=20260925approved11">
+  <link rel="stylesheet" href="style.css?v=20260926stick12">
 </head>
 <body>
   <main id="arcade" class="arcade" aria-label="Wo Fighters">
@@ -148,7 +148,7 @@
                 <div><h4>1P</h4><p>A / D</p><p>W / S</p><p>J / K</p><p>S + J / S + K</p><p>I / O</p><p>L</p><p>S + L</p></div>
                 <div id="pauseControls2"><h4 id="pauseControls2Title">2P</h4><p>← / →</p><p>↑ / ↓</p><p>7 / 8</p><p>↓ + 7 / ↓ + 8</p><p>0 / 5</p><p>9</p><p>↓ + 9</p></div>
               </div>
-              <p class="touch-guide">CELULAR: flechas para moverte; GOLPE, PATADA, PODER, CUBRIR y RODAR. Mantené ↓ + GOLPE para el gancho, ↓ + PATADA para la barrida y ↓ + PODER para el súper.</p>
+              <p class="touch-guide">CELULAR: deslizá la palanca para moverte, saltar o agacharte; también acepta diagonales. Mantenela abajo mientras tocás GOLPE para el gancho, PATADA para la barrida o PODER para el súper.</p>
             </section>
             <section class="pause-powers" aria-label="Poderes de los luchadores"><div id="pausePowers1"></div><div id="pausePowers2"></div></section>
           </div>
@@ -178,10 +178,7 @@
 
       <div id="touchControls" class="touch-controls player-controls p1-controls" aria-label="Controles del Jugador 1">
         <span class="control-owner">1P</span><div class="move-controls">
-          <button class="touch-btn direction" data-player="1" data-hold="left" type="button" aria-label="Mover a la izquierda">◀</button>
-          <button class="touch-btn direction jump" data-player="1" data-tap="jump" type="button" aria-label="Saltar">▲</button>
-          <button class="touch-btn direction" data-player="1" data-hold="right" type="button" aria-label="Mover a la derecha">▶</button>
-          <button class="touch-btn direction crouch" data-player="1" data-hold="down" type="button" aria-label="Agacharse">▼</button>
+          <div class="joystick" data-player="1" role="group" aria-label="Palanca de movimiento del jugador 1: arriba salta, abajo agacha, izquierda y derecha mueven; permite diagonales"><span id="joystickKnob1" class="joystick-knob" aria-hidden="true"></span></div>
         </div>
         <div class="attack-controls">
           <button class="touch-btn attack punch" data-player="1" data-tap="punch" type="button" aria-label="Golpe; agachado, gancho"><span>A</span><small>GOLPE</small></button>
@@ -195,10 +192,7 @@
 
       <div id="touchControls2" hidden class="touch-controls player-controls p2-controls" aria-label="Controles del Jugador 2">
         <span class="control-owner">2P</span><div class="move-controls">
-          <button class="touch-btn direction" data-player="2" data-hold="left" type="button" aria-label="Mover a la izquierda">◀</button>
-          <button class="touch-btn direction jump" data-player="2" data-tap="jump" type="button" aria-label="Saltar">▲</button>
-          <button class="touch-btn direction" data-player="2" data-hold="right" type="button" aria-label="Mover a la derecha">▶</button>
-          <button class="touch-btn direction crouch" data-player="2" data-hold="down" type="button" aria-label="Agacharse">▼</button>
+          <div class="joystick" data-player="2" role="group" aria-label="Palanca de movimiento del jugador 2: arriba salta, abajo agacha, izquierda y derecha mueven; permite diagonales"><span id="joystickKnob2" class="joystick-knob" aria-hidden="true"></span></div>
         </div>
         <div class="attack-controls">
           <button class="touch-btn attack punch" data-player="2" data-tap="punch" type="button" aria-label="Golpe; agachado, gancho"><span>A</span><small>GOLPE</small></button>
@@ -235,6 +229,6 @@
     <div class="scanlines" aria-hidden="true"></div>
   </main>
 
-  <script src="game.js?v=20260925approved11"></script>
+  <script src="game.js?v=20260926stick12"></script>
 </body>
 </html>

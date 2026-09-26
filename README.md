@@ -21,7 +21,7 @@ Descomprime el ZIP, abre una terminal dentro de la carpeta `Wo-Fighters` y ejecu
 
 ## Verificación
 
-`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs tests/melee.test.cjs tests/endurance.test.cjs tests/super-show.test.cjs tests/tren.test.cjs tests/concrete-hold.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
+`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs tests/melee.test.cjs tests/endurance.test.cjs tests/super-show.test.cjs tests/tren.test.cjs tests/concrete-hold.test.cjs tests/joystick.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
 
 GitHub Pages: https://sebastiandc99.github.io/Wo-Fighters/
 
@@ -50,7 +50,7 @@ Hormigonazo mantiene su arco suave y alcance; hace daño mínimo y cubre de gris
 
 Ángel y Primitivo también tienen sonidos propios en sus dos poderes: cable/izaje y metal para Ángel, motor/montacargas y golpe de contenedor para Primitivo. Los sonidos se pausan y reanudan junto con las animaciones, y se limpian al salir o cambiar de ronda.
 
-50 pruebas automatizadas cubren los cuatro personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md) y [ART-TREN.md](ART-TREN.md).
+53 pruebas automatizadas cubren los cuatro personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md) y [ART-TREN.md](ART-TREN.md).
 
 ## Golpes y derribo
 
@@ -97,3 +97,7 @@ La música sube aproximadamente 2 dB: 0,46 en pelea, 0,52 en selección y 0,22 d
 El daño general pasa de 0,60 a 0,70: se necesita aproximadamente un 14% menos de golpes equivalentes para terminar una pelea, conservando las resistencias y las rondas de 90 s. Hormigonazo cambia de 22 a 2 puntos base, mantiene costo 30% y alcance 532, y bloquea movimiento, saltos, defensa y ataques durante 3 s. Los golpes posteriores hacen daño sin cancelar ni reiniciar ese plazo. El rival se ve cubierto de hormigón gris y un pequeño contador muestra el tiempo restante; pausa, K.O. y nueva ronda manejan el efecto correctamente.
 
 Gancho Maestro usa dos poses propias de señalero: bajar mientras entra el gancho, subir durante el izaje y bajar para el remate. Los retratos existentes de Peluche y Tren ocupan más espacio en la selección, sin cambiar la altura de combate. Arte de las señas: [ART-ANGEL-SIGNALS.md](ART-ANGEL-SIGNALS.md).
+
+## Palanca virtual en celular
+
+Cada jugador tiene una palanca virtual en lugar de cuatro flechas táctiles. Arrastrarla a los lados camina, arriba salta una vez por gesto, abajo agacha; las diagonales permiten saltar avanzando o agacharse caminando. Se puede mantener abajo mientras se toca Golpe, Patada o Poder para gancho, barrida o súper. El botón de guardia funciona a la vez. El movimiento vuelve al centro al levantar el dedo, cancelar un toque, pausar o abandonar la pelea. En celulares girados, los ejes siguen la orientación del juego. El teclado conserva sus teclas.
