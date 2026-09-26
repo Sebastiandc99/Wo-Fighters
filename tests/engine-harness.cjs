@@ -2,6 +2,7 @@ const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
 // Test the real engine and real input handlers without a browser or third-party dependencies.
 function game(sourcePath = path.join(__dirname, "..", "game.js")) {
   const nodes = new Map();
+  const requestedImages = [];
   const context2d = new Proxy({}, {
     get: (_, name) => name.startsWith("create") ? () => ({ addColorStop(offset, color) {
       if (typeof color !== 'string' || !/^(#|rgba?\(|transparent)/.test(color)) throw new TypeError('Invalid canvas gradient color: '+color);
@@ -52,7 +53,10 @@ function game(sourcePath = path.join(__dirname, "..", "game.js")) {
   });
   const sandbox = vm.createContext({
     document: doc, window: win, navigator: { vibrate() {} },
-    Image: class { constructor() { this.complete = true; this.naturalWidth = 810; } },
+    Image: class { constructor() { this.complete = true; this.naturalWidth = 810; }
+      set src(value) { this._src = value; requestedImages.push(value); }
+      get src() { return this._src; }
+    },
     performance: { now: () => 0 }, requestAnimationFrame() {}, setTimeout() {}, console
   });
   vm.runInContext(fs.readFileSync(sourcePath, "utf8"), sandbox);
@@ -64,7 +68,7 @@ function game(sourcePath = path.join(__dirname, "..", "game.js")) {
     win.listeners[type]({ code, key: code, repeat, preventDefault() { prevented = true; } });
     return prevented;
   };
-  return { run, tick, key, nodes, holds, taps, holds2, taps2, joysticks, sandbox };
+  return { run, tick, key, nodes, holds, taps, holds2, taps2, joysticks, sandbox, requestedImages };
 }
 
 module.exports={game};

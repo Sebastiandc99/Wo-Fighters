@@ -15,6 +15,7 @@ const FIGHTER_SCALE = .9;
 const spriteFrames = new Map();
 const poseBlendSurfaces = new Map();
 let drawingScale = 1;
+let mobileRendering = false;
 
 let online = null;
 let onlineSoundId = 0;
@@ -69,27 +70,27 @@ const assets = {
   hook: loadImage("assets/hook-v4.webp"),
   load: loadImage("assets/load-v4.webp"),
   angel: loadImage("assets/angel-atlas-v3.webp"),
-  primitivo: loadImage("assets/primitivo-atlas-v4.webp"),
-  jairo: loadImage("assets/jairo-atlas-v1.webp"),
-  paula: loadImage("assets/paula-atlas-v1.webp"),
-  padrino: loadImage("assets/padrino-atlas-v2.webp"),
-  dachshund: loadImage("assets/padrino-dog-v1.webp"),
-  galante: loadImage("assets/galante-atlas-v3.webp"),
-  kicksA: loadImage("assets/kicks-classic-a-v1.png"),
-  kicksB: loadImage("assets/kicks-classic-b-v1.png"),
-  flor: loadImage("assets/flor-atlas-v1.png"),
-  facu: loadImage("assets/facu-atlas-v1.png"),
-  uppercuts: loadImage("assets/uppercuts-v1.png"),
-  arena: loadImage("assets/arena.jpg"),
-  sergio: loadImage("assets/sergio-attack-v4.png"),
-  blotta: loadImage("assets/blotta-atlas-v2-clean.png"),
-  tunki: loadImage("assets/tunki-attack-v1.png"),
-  marechal: loadImage("assets/marechal-attack-v1.png"),
-  sergioMotion: loadImage("assets/sergio-motion-v4.png"),
-  blottaMotion: loadImage("assets/blotta-motion-v3.png"),
-  tunkiMotion: loadImage("assets/tunki-motion-v1.png"),
-  marechalMotion: loadImage("assets/marechal-motion-v1.png")
+  primitivo: loadImage("assets/primitivo-atlas-v4.webp")
 };
+// Keep artwork for legacy matches, but load it only when a legacy fighter uses it.
+for (const [key, src] of Object.entries({
+  jairo: "assets/jairo-atlas-v1.webp", paula: "assets/paula-atlas-v1.webp",
+  padrino: "assets/padrino-atlas-v2.webp", dachshund: "assets/padrino-dog-v1.webp",
+  galante: "assets/galante-atlas-v3.webp", kicksA: "assets/kicks-classic-a-v1.png",
+  kicksB: "assets/kicks-classic-b-v1.png", flor: "assets/flor-atlas-v1.png",
+  facu: "assets/facu-atlas-v1.png", uppercuts: "assets/uppercuts-v1.png",
+  arena: "assets/arena.jpg", sergio: "assets/sergio-attack-v4.png",
+  blotta: "assets/blotta-atlas-v2-clean.png", tunki: "assets/tunki-attack-v1.png",
+  marechal: "assets/marechal-attack-v1.png", sergioMotion: "assets/sergio-motion-v4.png",
+  blottaMotion: "assets/blotta-motion-v3.png", tunkiMotion: "assets/tunki-motion-v1.png",
+  marechalMotion: "assets/marechal-motion-v1.png"
+})) {
+  Object.defineProperty(assets, key, { configurable: true, get() {
+    const image = loadImage(src);
+    Object.defineProperty(assets, key, { value: image, enumerable: true });
+    return image;
+  }});
+}
 
 const POSES = {
   tren: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
@@ -299,10 +300,13 @@ function mobileInput() {
 }
 
 function syncViewport() {
-  const sideways = mobileInput() && window.innerHeight > window.innerWidth;
+  mobileRendering = mobileInput();
+  const sideways = mobileRendering && window.innerHeight > window.innerWidth;
   document.body.classList.toggle("phone-portrait", sideways);
-  document.body.classList.toggle("two-touch", gameMode === "versus" && (mobileInput() || window.innerWidth <= 820));
-  const density = Math.min(2, Math.max(1, (canvas.clientWidth || VIEW_WIDTH) * (window.devicePixelRatio || 1) / VIEW_WIDTH));
+  document.body.classList.toggle("two-touch", gameMode === "versus" && (mobileRendering || window.innerWidth <= 820));
+  // Fewer canvas pixels leave mobile GPUs time for input, animation and sound.
+  const density = Math.min(mobileRendering ? 1.25 : 2,
+    Math.max(1, (canvas.clientWidth || VIEW_WIDTH) * (window.devicePixelRatio || 1) / VIEW_WIDTH));
   const width = Math.round(VIEW_WIDTH * density);
   const height = Math.round(VIEW_HEIGHT * density);
   if (canvas.width !== width || canvas.height !== height) {
@@ -2156,7 +2160,7 @@ function drawSpriteFrame(frame, alpha = 1, ghost = false) {
   ctx.scale((needsFlip ? -1 : 1) * motion.scaleX * (stats[frame.kind].bodyWidth || 1), motion.scaleY);
   ctx.globalAlpha = alpha;
   ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
+  ctx.imageSmoothingQuality = mobileRendering ? "medium" : "high";
   if (ghost) ctx.globalCompositeOperation = "screen";
   else {
     ctx.shadowColor = "rgba(4,10,22,.65)";
@@ -2435,13 +2439,20 @@ function advanceGameClock(now) {
   }
 }
 
+let lastHudUpdate = -Infinity;
+let lastHudState = null;
 function loop(now) {
   advanceGameClock(now);
   renderAlpha = online?.guest ? Math.min(1, (performance.now()-online.lastFrame)/online.renderInterval) : state === "paused" ? 1 : accumulator / STEP;
   if (["intro", "playing", "paused", "roundOver", "finished"].includes(state)) {
     if (state !== "paused") draw();
-    updateHud();
+    // The bars and clock need a few updates per second, not a DOM rewrite every frame.
+    if (state !== "paused" && (now - lastHudUpdate >= 80 || lastHudState !== state)) {
+      updateHud();
+      lastHudUpdate = now;
+    }
   }
+  lastHudState = state;
   requestAnimationFrame(loop);
 }
 
@@ -2878,7 +2889,10 @@ function moveJoystick(stick, event) {
   joystickDirections.set(event.pointerId, next);
   document.getElementById('joystickKnob' + slot).style.transform =
     `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-  refreshHeld(); refreshHumans();
+  if (!previous || next.left !== previous.left || next.right !== previous.right
+    || next.up !== previous.up || next.down !== previous.down) {
+    refreshHeld(); refreshHumans();
+  }
   if (next.up && !previous?.up) performAction('jump', slot);
 }
 document.querySelectorAll('.joystick').forEach(stick => {

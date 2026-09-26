@@ -21,7 +21,7 @@ Descomprime el ZIP, abre una terminal dentro de la carpeta `Wo-Fighters` y ejecu
 
 ## Verificación
 
-`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs tests/melee.test.cjs tests/endurance.test.cjs tests/super-show.test.cjs tests/tren.test.cjs tests/concrete-hold.test.cjs tests/joystick.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
+`node --test tests/wo.test.cjs tests/peluche.test.cjs tests/physics-parity.test.cjs tests/melee.test.cjs tests/endurance.test.cjs tests/super-show.test.cjs tests/tren.test.cjs tests/concrete-hold.test.cjs tests/joystick.test.cjs tests/mobile-performance.test.cjs` prueba poderes con dibujo por fotograma, controles de teclado y táctiles para ambos jugadores, rendimiento móvil, cinemáticas de la CPU, cambio de ronda y selección. Las pruebas heredadas de KP Fighter incluyen personajes y ranking que no forman parte de este juego.
 
 GitHub Pages: https://sebastiandc99.github.io/Wo-Fighters/
 
@@ -50,7 +50,7 @@ Hormigonazo mantiene su arco suave y alcance; hace daño mínimo y cubre de gris
 
 Ángel y Primitivo también tienen sonidos propios en sus dos poderes: cable/izaje y metal para Ángel, motor/montacargas y golpe de contenedor para Primitivo. Los sonidos se pausan y reanudan junto con las animaciones, y se limpian al salir o cambiar de ronda.
 
-53 pruebas automatizadas cubren los cuatro personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md) y [ART-TREN.md](ART-TREN.md).
+55 pruebas automatizadas cubren los cuatro personajes, ambos sentidos, defensa/evasión, daño único, alcance, torneo, teclado/táctil, resolución móvil, carga de imágenes, reloj del sonido y paridad de física de Ángel y Primitivo con KP. Prompts y archivos gráficos: [ART-PELUCHE.md](ART-PELUCHE.md) y [ART-TREN.md](ART-TREN.md).
 
 ## Golpes y derribo
 
@@ -101,3 +101,5 @@ Gancho Maestro usa dos poses propias de señalero: bajar mientras entra el ganch
 ## Palanca virtual en celular
 
 Cada jugador tiene una palanca virtual en lugar de cuatro flechas táctiles. Arrastrarla a los lados camina, arriba salta una vez por gesto, abajo agacha; las diagonales permiten saltar avanzando o agacharse caminando. Se puede mantener abajo mientras se toca Golpe, Patada o Poder para gancho, barrida o súper. El botón de guardia funciona a la vez. El movimiento vuelve al centro al levantar el dedo, cancelar un toque, pausar o abandonar la pelea. En celulares girados, los ejes siguen la orientación del juego. El teclado conserva sus teclas.
+
+En celular, el lienzo limita su resolución interna a 1,25 veces la del juego, evita desenfocar el escenario detrás de los botones y actualiza el marcador a una frecuencia menor que los fotogramas. Las imágenes de personajes fuera del plantel actual se cargan solo cuando se necesitan. La simulación de combate mantiene sus 120 pasos por segundo.

@@ -635,7 +635,7 @@ kbd { display: inline-grid; min-width: 1.5em; place-items: center; margin: 0 .12
     box-shadow: 0 .25em .7em rgba(0,0,0,.55);
     font-size: clamp(.65rem, 2.2vw, 1.35rem);
     -webkit-tap-highlight-color: transparent;
-    backdrop-filter: blur(2px);
+    /* Blurring the live canvas under every touch button costs mobile GPU time. */
     touch-action: none;
   }
 
