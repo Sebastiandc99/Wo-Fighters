@@ -33,6 +33,27 @@ test('uppercuts launch every fighter backwards, land on the back once, then rest
   g.tick(.9);g.taps2[0].listeners.pointerdown({pointerId:1,preventDefault(){}});assert.equal(g.run('cpu.grounded'),false);
  }
 });
+test('landing after an uppercut plays once and kicks up debris in normal rounds and K.O.',()=>{
+ for(const result of ['playing','roundOver','finished']){
+  const g=setup('angel','primitivo');
+  if(result!=='playing')g.run('cpu.health=1');
+  if(result==='finished')g.run('match.playerWins=1');
+  uppercut(g);
+  assert.equal(g.run('state'),result);
+  g.run(`let landingPlays=0;
+    COMBAT_AUDIO.bodyFall.buffer={duration:.52};muted=false;
+    audioCtx={state:'running',currentTime:0,destination:{},
+      createBufferSource(){return {buffer:null,connect(next){return next},start(){if(this.buffer===COMBAT_AUDIO.bodyFall.buffer)landingPlays++},stop(){},disconnect(){}}},
+      createGain(){return {gain:{value:0},connect(next){return next},disconnect(){}}}};`);
+  g.tick(.9);
+  assert.equal(g.run('landingPlays'),1,result);
+  assert.equal(g.run('cpu.knockdown?.phase'),'down');
+  assert.ok(g.run('particles.some(p=>p.debris)'));
+  assert.ok(g.run('effects.some(e=>e.type==="crack")'));
+  g.tick(.3);
+  assert.equal(g.run('landingPlays'),1);
+ }
+});
 test('blocking an uppercut prevents knockdown and impact cue',()=>{
  const g=setup();g.key('Digit0');uppercut(g);assert.equal(g.run('cpu.knockdown'),null);assert.equal(g.run('cpu.health'),100);
  assert.equal(g.run('[...combatSounds].some(v=>v.name==="uppercutHit")'),false);

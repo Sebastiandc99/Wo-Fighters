@@ -219,7 +219,7 @@ const COMBAT_AUDIO = {
   ...Object.fromEntries(["hookSuper","containerSuper","concreteSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v2.mp3",volume:.92,start:0,loop:false}])),
   ...Object.fromEntries(["punchHit","kickHit"].map(name=>[name,{src:"assets/wo-"+name+"-v2.mp3",volume:1.0,start:0,loop:false}])),
   uppercutHit: {src:"assets/wo-uppercutPunch-v1.wav",volume:1,start:0,loop:false},
-  bodyFall: {src:"assets/wo-bodyThud-v1.wav",volume:.94,start:0,loop:false},
+  bodyFall: {src:"assets/wo-bodyThud-v2.wav",volume:1.15,start:0,loop:false},
   critical: {src: "assets/jairo-critical-v1.mp3", volume: .8, start: 0, end: .95, loop: false},
   crash: {src: "assets/jairo-crash-v1.mp3", volume: .8, start: 0, end: 1.8, loop: false},
   water: {src: "assets/paula-water-v2.mp3", volume: .85, start: 0, end: 2.5, loop: false},
@@ -651,6 +651,7 @@ function update(dt) {
     return;
   }
   if (state === "finished" || state === "roundOver") {
+    advanceCombatSounds(dt);
     resultElapsed += dt;
     if(koVoice){
       // Allow a short decode/resume delay without consuming the spoken announcement.
@@ -844,7 +845,10 @@ function integrateBody(f, dt) {
         f.knockdown.phase = "down"; f.knockdown.phaseTime = 0;
         f.vx = 0; screenShake = Math.max(screenShake, 5);
         dustBurst(f.x, FLOOR, 18);
-        if (state === "playing") startCombatSound("bodyFall");
+        debrisBurst(f.x, FLOOR, 12);
+        addEffect("crack", f.x, FLOOR + 1, "#342a20", 78, .55);
+        addEffect("ground", f.x, FLOOR + 2, "#dfbe87", 85, .38);
+        if (["playing", "roundOver", "finished"].includes(state)) startCombatSound("bodyFall");
       }
       if(f.action==="kick" && f.kickStyle==="airKick"){
         stopFighterSound(f);f.action="idle";f.actionTime=f.actionDuration=0;f.moveSpec=null;f.kickStyle=null;f.airAttack=false;
@@ -1339,6 +1343,7 @@ function finishRound(winner, reason) {
     stopMusic();
   }
   state = match.complete ? "finished" : "roundOver";
+  hitStop = 0;
   resultElapsed = 0;
   stopRoundVoice();
   stopAllCombatSounds();
@@ -1511,6 +1516,18 @@ function dustBurst(x, y, count) {
   }
 }
 
+function debrisBurst(x, y, count) {
+  const colors=["#c6aa78", "#766c5f", "#ab8e62", "#544e47"];
+  for (let i=0;i<count;i++) {
+    const size=3+Math.random()*5;
+    const life=.38+Math.random()*.26;
+    const offset=(Math.random()-.5)*60;
+    particles.push({x:x+offset,y:y-size,prevX:x+offset,prevY:y-size,
+      vx:(Math.random()-.5)*290,vy:-115-Math.random()*165,gravity:720,
+      life,maxLife:life,color:colors[i%colors.length],size,debris:true});
+  }
+}
+
 function smokeBurst(x, y, count) {
   for (let i = 0; i < count; i++) {
     const life = .4 + Math.random() * .38;
@@ -1551,6 +1568,7 @@ function updateParticles(dt) {
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     p.vy += (p.gravity ?? 620) * dt;
+    if(p.debris && p.vy>0 && p.y >= FLOOR-p.size){p.y=FLOOR-p.size;p.vy=p.vy>40?-p.vy*.24:0;p.vx*=.8;}
     if (p.life <= 0) particles.splice(i, 1);
   }
 }
@@ -1584,6 +1602,18 @@ function drawEffect(effect) {
     ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.stroke();
     ctx.globalAlpha *= .4;
     ctx.beginPath(); ctx.arc(0, 0, radius * .7, 0, Math.PI * 2); ctx.stroke();
+  } else if (effect.type === "crack") {
+    ctx.lineWidth = 2.5 * (1 - age) + 1;
+    for (const direction of [-1,1]) {
+      ctx.beginPath();ctx.moveTo(0,0);
+      ctx.lineTo(direction*radius*.25,-2);
+      ctx.lineTo(direction*radius*.49,2);
+      ctx.lineTo(direction*radius*.76,-1);
+      ctx.lineTo(direction*radius,1);
+      ctx.stroke();
+      ctx.beginPath();ctx.moveTo(direction*radius*.49,2);
+      ctx.lineTo(direction*radius*.66,7);ctx.stroke();
+    }
   } else {
     ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.stroke();
     if (effect.type === "impact") {
@@ -2390,6 +2420,10 @@ function drawParticle(p) {
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.arc(x + radius * .6, y + radius * .2, radius * .68, 0, Math.PI * 2);
     ctx.fill();
+  } else if (p.debris) {
+    ctx.fillRect(x,y,p.size,p.size);
+    ctx.fillStyle="#f1deb0";
+    ctx.fillRect(x,y,Math.max(1,p.size*.4),Math.max(1,p.size*.3));
   } else if (p.spark) {
     ctx.strokeStyle = p.color;
     ctx.lineWidth = Math.max(1, p.size * .6);
@@ -2617,8 +2651,9 @@ function suspendCombatSounds(includeTails = true) {
 }
 
 function syncCombatSounds() {
-  if (state !== "playing" || hitStop > 0 || muted || !audioCtx || audioCtx.state !== "running") return;
+  if (hitStop > 0 || muted || !audioCtx || audioCtx.state !== "running") return;
   for (const voice of combatSounds) {
+    if(state !== "playing" && !(voice.name === "bodyFall" && ["roundOver", "finished"].includes(state)))continue;
     const cue = COMBAT_AUDIO[voice.name];
     if (voice.source || !cue.buffer) continue;
     if (cue.loop === false && voice.elapsed >= Math.min(cue.end ?? cue.buffer.duration,cue.buffer.duration)-cue.start) continue;

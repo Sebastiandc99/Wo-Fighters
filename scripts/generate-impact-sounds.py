@@ -24,8 +24,8 @@ def envelope(t, attack, decay):
     return (1 - np.exp(-t / attack)) * np.exp(-t / decay)
 
 
-def write(name, samples):
-    samples = np.tanh(samples * 1.2)
+def write(name, samples, drive=1.2):
+    samples = np.tanh(samples * drive)
     samples *= .89 / max(np.max(np.abs(samples)), 1e-8)
     with wave.open(str(ROOT / 'assets' / name), 'wb') as audio:
         audio.setnchannels(1)
@@ -52,10 +52,12 @@ low = np.sin(2 * np.pi * (86 * t - 36 * t*t)) * envelope(t, .002, .074)
 air = filtered_noise(length, 480, 1650) * envelope(t, .001, .042)
 write('wo-uppercutPunch-v1.wav', .68 * punch + .39 * body + .33 * low + .23 * air)
 
-# A character hitting the ground: short low thump with a broad, damped scrape.
-length = int(.47 * RATE)
+# A character hitting the ground: a dry midrange slap remains audible on phone
+# speakers, followed by a short earth-and-cloth scatter and a low weighty thump.
+length = int(.52 * RATE)
 t = np.arange(length) / RATE
-low = np.sin(2 * np.pi * (73*t - 24*t*t)) * envelope(t, .003, .105)
-mid = filtered_noise(length, 55, 390) * envelope(t, .004, .10)
-scuff = filtered_noise(length, 270, 1500) * envelope(np.maximum(0,t-.025), .005, .095) * (t >= .025)
-write('wo-bodyThud-v1.wav', .82*low + .5*mid + .23*scuff)
+low = np.sin(2 * np.pi * (93*t - 35*t*t)) * envelope(t, .002, .125)
+mid = filtered_noise(length, 140, 850) * envelope(t, .002, .11)
+slap = filtered_noise(length, 350, 1950) * envelope(t, .001, .045)
+scuff = filtered_noise(length, 480, 2100) * envelope(np.maximum(0,t-.055), .004, .10) * (t >= .055)
+write('wo-bodyThud-v2.wav', .54*low + .76*mid + .48*slap + .27*scuff, drive=2.5)
