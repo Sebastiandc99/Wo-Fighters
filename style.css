@@ -1184,3 +1184,9 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
 .touch-device .scanlines { mix-blend-mode: normal; opacity: .10; }
 .touch-device .hud { filter: none; }
 .touch-device .fight-screen::before { box-shadow: none; }
+
+/* Five playable fighters, including J. Linares. */
+.choice-row {grid-template-columns:repeat(5,minmax(0,1fr));max-width:500px;width:96%;}
+.portrait-linares {left:7%;border:0;background:transparent;box-shadow:none;}
+.portrait-linares img {height:88%;object-fit:contain;object-position:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
+.choice-tile[data-pick="linares"] img {object-fit:contain;object-position:center;background:#142341;}
