@@ -219,8 +219,10 @@ const KO_AUDIO_BASE64 = "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
 let koVoice = null;
 
 const COMBAT_AUDIO = {
-  ...Object.fromEntries(["cable","cableImpact","transformerSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:.9,start:0,loop:false}])),
-  ...Object.fromEntries(["voltaic","voltaicImpact","stormSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:name==="stormSuper"?.92:.82,start:0,loop:false}])),
+  // Common electric attacks use the exact Marechal lightning clip and playback settings.
+  ...Object.fromEntries(["cable","voltaic"].map(name=>[name,{src:"assets/poder-rayo.mp3",volume:1.35,start:.035,end:1.69}])),
+  transformerSuper: {src:"assets/wo-transformerSuper-v1.mp3",volume:.9,start:0,loop:false},
+  stormSuper: {src:"assets/wo-stormSuper-v1.mp3",volume:.92,start:0,loop:false},
   ...Object.fromEntries(["punchHit","kickHit","uppercutHit","bodyFall","meleeSwing"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:name==="meleeSwing"?.28:.9,start:0,loop:false}])),
   ...Object.fromEntries(["beam","forklift","concrete","beamImpact","forkliftImpact","concreteImpact","hookSuper","containerSuper","concreteSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v1.mp3",volume:.82,start:0,loop:false}])),
   ...Object.fromEntries(["hookSuper","containerSuper","concreteSuper"].map(name=>[name,{src:"assets/wo-"+name+"-v2.mp3",volume:.92,start:0,loop:false}])),
@@ -2565,7 +2567,7 @@ function ensureAudio() {
     if (!rosterAudioPreloaded) {
       // Decode current roster cues during the round intro instead of every menu tap.
       for (const name of ["punchHit", "kickHit", "uppercutHit", "bodyFall", "meleeSwing",
-        "cable", "cableImpact", "transformerSuper", "voltaic", "voltaicImpact", "stormSuper", "beam", "beamImpact",
+        "cable", "transformerSuper", "voltaic", "stormSuper", "beam", "beamImpact",
         "forklift", "forkliftImpact", "concrete", "concreteImpact",
         "hookSuper", "containerSuper", "concreteSuper"]) loadCombatAudio(name);
       rosterAudioPreloaded = true;
@@ -2635,7 +2637,7 @@ function stopCombatSound(voice, immediate = false) {
   if (!voice) return;
   online?.audio("stop", voice.name, voice.netId);
   combatSounds.delete(voice);
-  const minAudible = ["critical", "crash"].includes(voice.name) ? .4 : voice.name === "water" ? .4 : voice.name === "dog" ? .5 : ["lightning", "meat", "flowers", "boomerang", "hockey", "whip"].includes(voice.name) ? .08 : 0;
+  const minAudible = ["critical", "crash"].includes(voice.name) ? .4 : voice.name === "water" ? .4 : voice.name === "dog" ? .5 : ["lightning", "voltaic", "cable", "meat", "flowers", "boomerang", "hockey", "whip"].includes(voice.name) ? .08 : 0;
   const heard = voice.audibleAt === null ? 0 : Math.max(0, (audioCtx?.currentTime ?? voice.elapsed) - voice.audibleAt);
   if (voice.name === "water" && !immediate && voice.source && !muted && state === "playing") {
     const now=audioCtx.currentTime ?? 0,fadeStart=now+Math.max(0,.4-heard),end=fadeStart+.18;
@@ -3553,7 +3555,6 @@ function updateVoltaic(p,dt) {
     p.contactDone=true;p.x=target.x;p.vx=0;stopCombatSound(p.sound);
     hit(target,p.damage,p.direction*185,0,p.owner,{sourceX:p.owner.x,direction:p.direction,projectile:true,x:p.x,y:p.y});
     if(target.action==='hit')target.electricCoat=.6;
-    if(state==='playing')startCombatSound('voltaicImpact');
     burst(p.x,p.y,'#8cefff',20);addEffect('ring',p.x,p.y,'#d5fbff',44,.22);
   } else if(p.x<STAGE_LEFT || p.x>STAGE_RIGHT) removeConcrete(p);
 }
@@ -3773,7 +3774,7 @@ function updateCable(p,dt) {
     p.contactDone=true;
     hit(target,p.damage,p.direction*210,0,p.owner,{sourceX:p.originX,direction:p.direction,projectile:true,x:target.x,y:p.y});
     if(target.action==='hit')target.electricCoat=.65;
-    if(state==='playing')startCombatSound('cableImpact');
+    stopCombatSound(p.sound);
     burst(target.x,p.y,'#95edff',20);addEffect('ring',target.x,p.y,'#d5fbff',40,.22);
   }
 }
