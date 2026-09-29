@@ -7,10 +7,10 @@ test('Peluche selection, attributes and complete four-opponent tournament',()=>{
  const g=setup();g.run("openModeSelection();gameMode='solo';openSelection();chooseFighter('angel')");
  const tile=g.nodes.get('pick-peluche');tile.listeners.pointerenter?.();assert.notEqual(g.run('playerChoice'),'peluche');
  tile.listeners.click();assert.equal(g.run('playerChoice'),'peluche');g.run("beginGame()");
- assert.deepEqual(Array.from(g.run('campaign.opponents')).sort(),['angel','linares','primitivo','tren']);
+ assert.deepEqual(Array.from(g.run('campaign.opponents')).sort(),['angel','gabriel','linares','primitivo','tren']);
  assert.deepEqual(Array.from(g.run('[stats.peluche.normalDamage,stats.peluche.resistance,stats.peluche.agility,stats.peluche.meleeReach,stats.peluche.recovery]')),[9,110,5,4,.64]);
  assert.ok(g.run('stats.peluche.speed>stats.primitivo.speed && stats.peluche.speed<stats.angel.speed'));
- g.run("state='playing';match.playerWins=1;finishRound(player,'TIEMPO');nextOpponent();state='playing';match.playerWins=1;finishRound(player,'TIEMPO');nextOpponent();state='playing';match.playerWins=1;finishRound(player,'TIEMPO');nextOpponent();state='playing';match.playerWins=1;finishRound(player,'TIEMPO')");assert.equal(g.run('campaign.completed'),true);assert.equal(g.run('campaign.wins'),4);
+ g.run("state='playing';match.playerWins=1;finishRound(player,'TIEMPO');nextOpponent();state='playing';match.playerWins=1;finishRound(player,'TIEMPO');nextOpponent();state='playing';match.playerWins=1;finishRound(player,'TIEMPO');nextOpponent();state='playing';match.playerWins=1;finishRound(player,'TIEMPO');nextOpponent();state='playing';match.playerWins=1;finishRound(player,'TIEMPO')");assert.equal(g.run('campaign.completed'),true);assert.equal(g.run('campaign.wins'),5);
 });
 test('Hormigonazo costs 30, arcs, hits once for base 2 and coats all rival sizes in both directions',()=>{
  for(const rival of ['angel','primitivo','peluche'])for(const dir of [-1,1]){

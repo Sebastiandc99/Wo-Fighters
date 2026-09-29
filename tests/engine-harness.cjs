@@ -26,8 +26,8 @@ function game(sourcePath = path.join(__dirname, "..", "game.js")) {
     }
     return nodes.get(id);
   }
-  const picks = ["angel", "primitivo", "peluche", "tren", "linares"].map(kind => node("pick-" + kind, { pick: kind }));
-  const portraits = ["angel", "primitivo", "peluche", "tren", "linares"].map(kind => node("portrait-" + kind, { portrait: kind }));
+  const picks = ["angel", "primitivo", "peluche", "tren", "linares", "gabriel"].map(kind => node("pick-" + kind, { pick: kind }));
+  const portraits = ["angel", "primitivo", "peluche", "tren", "linares", "gabriel"].map(kind => node("portrait-" + kind, { portrait: kind }));
   const stages = ["generadores", "planta", "salinas"].map(stage => node("stage-" + stage, { stage }));
   const leftRounds = [0, 1].map(i => node("left-round-" + i));
   const rightRounds = [0, 1].map(i => node("right-round-" + i));

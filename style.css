@@ -1190,3 +1190,10 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
 .portrait-linares {left:7%;border:0;background:transparent;box-shadow:none;}
 .portrait-linares img {height:88%;object-fit:contain;object-position:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
 .choice-tile[data-pick="linares"] img {object-fit:contain;object-position:center;background:#142341;}
+
+/* Six fighters in two readable rows beside the power guide. */
+.choice-row {grid-template-columns:repeat(3,minmax(0,1fr));}
+.portrait-gabriel {left:7%;border:0;background:transparent;box-shadow:none;}
+.portrait-gabriel img {height:86%;object-fit:contain;object-position:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
+.choice-tile[data-pick="gabriel"] img {object-fit:contain;object-position:center;background:#142341;}
+.selection-guide[data-kind="gabriel"] {--skill-accent:#ff7791;--skill-fill:#f33158;}
