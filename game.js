@@ -185,7 +185,7 @@ function updatePauseGuide() {
 }
 function timedMove(f, spec, evasion=false, action=null) {
   const tempo=mobilityTempo(f);
-  const fixedRecovery = f.kind==="linares" || f.kind==="peluche" || f.kind==="tren" && action==="special";
+  const fixedRecovery = f.kind==="peluche" || ["tren","linares"].includes(f.kind) && action==="special";
   return {...spec, reach: f.kind==="peluche" && spec.reach ? spec.reach*.82 : spec.reach, startup:spec.startup/(evasion?tempo:1), active:spec.active/(evasion?tempo:1), recovery:fixedRecovery && !evasion ? stats[f.kind].recovery : spec.recovery/tempo};
 }
 
