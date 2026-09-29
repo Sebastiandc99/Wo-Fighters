@@ -24,9 +24,17 @@ Incendio de Obra cuesta100%, alcance608 (8/10), duración2,85 s. Enciende una ta
 
 ## Audio original
 
-`scripts/build-fernando-audio.py` genera los3 audios originales (ruido de combustión filtrado, crepitar irregular de brasas, aire/llamas y explosión). `assets/wo-cigarettes-v1.mp3` dura1,15 s; `assets/wo-emberImpact-v1.mp3`,0,46 s; `assets/wo-fireSuper-v1.mp3`,2,85 s, con explosión en 1,85 s. El volumen de fuego del súper es1,05 y el del común/brasas1,0. Las voces usan el reloj de simulación, pausa y limpieza existentes.
+La versión actual usa `scripts/build-fernando-audio-v2.py`: tres lanzamientos de fuego distinguibles, crepitar irregular y turbulencia grave, con menos siseo agudo constante. `assets/wo-cigarettes-v2.mp3` dura0,95 s; `assets/wo-emberImpact-v2.mp3`,0,42 s; `assets/wo-fireSuper-v2.mp3`,2,85 s, con explosión en1,85 s. Volumen1,0 en común e impactos y0,82 en súper; pico de síntesis0,90. El gain del súper deja margen para los picos de decodificación MP3. Las voces usan el reloj de simulación, pausa y limpieza existentes. A corta distancia el sonido del común conserva al menos0,65 s para no cortar los tres lanzamientos.
+
+## Corrección de daño y efectos v2
+
+`assets/fernando-hit-v2.webp` reemplaza únicamente la pose3: Fernando retrocede manteniendo cabeza y cigarrillo hacia el rival. Generado con la herramienta integrada de imágenes, con el atlas original como referencia; empaquetado en celda270×270, altura200 y línea de suelo260 mediante `scripts/pack-fernando-hit.cjs`. El motor aplica el espejo habitual al luchar hacia la izquierda.
+
+El común muestra cigarrillos mayores, punta incandescente con llama, humo de hasta20 muestras y chispas. Cada impacto retiene una llama breve durante0,24 s; los proyectiles consumidos no vuelven a colisionar. Daño, coste, velocidad de vuelo, intervalo y alcance conservados.
+
+### Prompt de la pose corregida
+Use case: precise-object-edit. Asset type: single 16-bit arcade fighting-game hit-reaction sprite on truly transparent background. Input image: identity, costume, pixel style reference of Fernando. Generate ONLY ONE full-body Fernando sprite, facing screen RIGHT, reacting to a punch coming from screen RIGHT. Correct the head direction of the hit pose in the atlas: head stays upright and looking RIGHT towards opponent, chin level or slightly down, visible nose and cigarette pointing RIGHT. Torso recoils slightly backwards towards LEFT, knees bend, feet firmly planted, arms recoiling protectively. Do not throw head upward or look left. Same fair-skinned short brown hair, brown trimmed beard, dark sunglasses, slight belly, yellow/navy work shirt silver waist stripe, navy cargo trousers silver leg stripes, brown safety boots, red-white cigarette packs at belt, cigarette in mouth. Preserve compact realistic arcade pixel proportions and thick dark outline of reference. Single isolated sprite centered with generous empty transparent margin, full boots visible. No text, no effects, no ground, no sheet.
 
 ## Validación
 
 Pruebas específicas de Fernando: atributos, selección y torneo de6 rivales; coste, alcance y daño total; impactos individuales en todos los personajes y ambas direcciones; bloqueo/salto; súper y recuperación de controles; pausa; guardias; 2P táctil; CPU; dibujo determinista; KO y limpieza de audio. Regresión de Wo, Gabriel, Linares, Valencia, Peluche, supers, controles y rendimiento móvil. Renders reales de Canvas inspeccionados: reposo, cigarrillos, propagación del fuego, explosión y guardia.
-

@@ -58,6 +58,7 @@ const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(st
 
 const assets = {
   fernando: loadImage("assets/fernando-atlas-v1.webp"),
+  fernandoHit: loadImage("assets/fernando-hit-v2.webp"),
   workerGuards: loadImage("assets/worker-guards-v1.webp"),
   gabriel: loadImage("assets/gabriel-atlas-v1.webp"),
   linares: loadImage("assets/linares-atlas-v1.webp"),
@@ -228,9 +229,9 @@ const KO_AUDIO_BASE64 = "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
 let koVoice = null;
 
 const COMBAT_AUDIO = {
-  cigarettes: {src:"assets/wo-cigarettes-v1.mp3",volume:1.0,start:0,loop:false},
-  emberImpact: {src:"assets/wo-emberImpact-v1.mp3",volume:1.0,start:0,loop:false},
-  fireSuper: {src:"assets/wo-fireSuper-v1.mp3",volume:1.05,start:0,loop:false},
+  cigarettes: {src:"assets/wo-cigarettes-v2.mp3",volume:1.0,start:0,loop:false},
+  emberImpact: {src:"assets/wo-emberImpact-v2.mp3",volume:1.0,start:0,loop:false},
+  fireSuper: {src:"assets/wo-fireSuper-v2.mp3",volume:.82,start:0,loop:false},
   // Common electric attacks use the exact Marechal lightning clip and playback settings.
   ...Object.fromEntries(["cable","voltaic"].map(name=>[name,{src:"assets/poder-rayo.mp3",volume:1.35,start:.035,end:1.69}])),
   transformerSuper: {src:"assets/wo-transformerSuper-v1.mp3",volume:.9,start:0,loop:false},
@@ -2654,7 +2655,7 @@ function stopCombatSound(voice, immediate = false) {
   if (!voice) return;
   online?.audio("stop", voice.name, voice.netId);
   combatSounds.delete(voice);
-  const minAudible = ["critical", "crash"].includes(voice.name) ? .4 : voice.name === "water" ? .4 : voice.name === "dog" ? .5 : ["lightning", "voltaic", "cable", "meat", "flowers", "boomerang", "hockey", "whip"].includes(voice.name) ? .08 : 0;
+  const minAudible = voice.name === "cigarettes" ? .65 : ["critical", "crash"].includes(voice.name) ? .4 : voice.name === "water" ? .4 : voice.name === "dog" ? .5 : ["lightning", "voltaic", "cable", "meat", "flowers", "boomerang", "hockey", "whip"].includes(voice.name) ? .08 : 0;
   const heard = voice.audibleAt === null ? 0 : Math.max(0, (audioCtx?.currentTime ?? voice.elapsed) - voice.audibleAt);
   if (voice.name === "water" && !immediate && voice.source && !muted && state === "playing") {
     const now=audioCtx.currentTime ?? 0,fadeStart=now+Math.max(0,.4-heard),end=fadeStart+.18;
@@ -3105,15 +3106,16 @@ function atlasSpriteFrame(frame) {
   const key=frame.kind+':'+frame.pose;
   if(spriteFrames.has(key)) return spriteFrames.get(key);
   const workerGuard=["linares","gabriel"].includes(frame.kind) && [9,19].includes(frame.pose);
+  const fernandoHit=frame.kind==="fernando" && frame.pose===3;
   const angelLower=frame.kind==="angel" && [18,19].includes(frame.pose);
   const special=["peluche","angel"].includes(frame.kind) && [16,17].includes(frame.pose);
-  const image=workerGuard?assets.workerGuards:angelLower?assets.angelLowerLoad:special?(frame.kind==="angel"?assets.angelSignals:assets.pelucheSpecial):assets[frame.kind];
+  const image=fernandoHit?assets.fernandoHit:workerGuard?assets.workerGuards:angelLower?assets.angelLowerLoad:special?(frame.kind==="angel"?assets.angelSignals:assets.pelucheSpecial):assets[frame.kind];
   const pose=angelLower?frame.pose-18:frame.kind==="angel" && special ? frame.pose-16 : ["linares","gabriel"].includes(frame.kind) ? [0,1,2,3,4,5,6,7,8,0,9,8,11,10,12,13,14,15,8][frame.pose] : frame.kind==="tren" ? [0,1,2,3,4,5,6,7,8,9,10,8,12,11,13,3,14,15,8][frame.pose] : frame.kind==="peluche" ? special ? frame.pose-16 : [0,1,2,3,4,5,6,7,8,12,14,8,9,10,11,15,0,0,13][frame.pose] : frame.pose;
   if(!image.complete || !image.naturalWidth) return null;
   const surface=document.createElement('canvas');surface.width=surface.height=270;
   const paint=surface.getContext('2d');paint.imageSmoothingEnabled=false;
-  const column=workerGuard?(frame.pose===19?1:0):pose%4;
-  const row=workerGuard?(frame.kind==="gabriel"?1:0):Math.floor(pose/4);
+  const column=fernandoHit?0:workerGuard?(frame.pose===19?1:0):pose%4;
+  const row=fernandoHit?0:workerGuard?(frame.kind==="gabriel"?1:0):Math.floor(pose/4);
   paint.drawImage(image,column*270,row*270,270,270,0,0,270,270);
   spriteFrames.set(key,surface);return surface;
 }
@@ -3892,7 +3894,7 @@ function spawnCigarettes(owner) {
   const sound=owner.attackSound||startCombatSound('cigarettes');owner.attackSound=null;
   projectiles.push({owner,style:'cigarettes',sound,x,y,prevX:x,prevY:y,prevSpin:0,spin:0,
     originX:owner.x,direction:owner.facing,age:0,life:1.08,trail:[],
-    cigarettes:[-8,0,8].map((offset,i)=>({delay:i*.13,x,prevX:x,y:y+offset,done:false,trail:[]}))});
+    cigarettes:[-8,0,8].map((offset,i)=>({delay:i*.13,x,prevX:x,y:y+offset,done:false,doneAt:0,impact:false,trail:[]}))});
 }
 function updateCigarettes(p,dt) {
   p.age+=dt;p.life-=dt;
@@ -3902,18 +3904,19 @@ function updateCigarettes(p,dt) {
     c.prevX=c.x;
     const travel=Math.min(reach-45,Math.max(0,p.age-c.delay)*1050);
     c.x=p.originX+p.direction*(45+travel);
-    c.trail.unshift({x:c.x,y:c.y});if(c.trail.length>10)c.trail.pop();
+    c.trail.unshift({x:c.x,y:c.y});if(c.trail.length>20)c.trail.pop();
     const box={left:Math.min(c.prevX,c.x)-8,right:Math.max(c.prevX,c.x)+8,top:c.y-9,bottom:c.y+9};
     if(target.invuln<=0 && !isVanished(target) && overlaps(box,hurtBox(target))) {
-      c.done=true;
+      c.done=true;c.doneAt=p.age;c.impact=true;c.impactX=target.x;
       hit(target,powerDamage(p.owner)/3,p.direction*65,0,p.owner,
         {sourceX:p.originX,direction:p.direction,projectile:true,x:target.x,y:c.y});
       burst(target.x,c.y,'#ff7632',12);addEffect('ring',target.x,c.y,'#ffb34e',28,.18);
       if(state!=='playing')return;
       startCombatSound('emberImpact');
-    }else if(travel>=reach-45 || c.x<STAGE_LEFT || c.x>STAGE_RIGHT)c.done=true;
+    }else if(travel>=reach-45 || c.x<STAGE_LEFT || c.x>STAGE_RIGHT){c.done=true;c.doneAt=p.age;}
   }
-  if(p.life<=0 || p.cigarettes.every(c=>c.done))removeConcrete(p);
+  // Keep the visual ember burst briefly after contact; spent cigarettes cannot collide again.
+  if(p.life<=0 || p.cigarettes.every(c=>c.done && p.age-c.doneAt>=.24))removeConcrete(p);
 }
 function drawLitCigarette(x,y,direction,angle=0,scale=1) {
   ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(direction*scale,scale);
@@ -3925,14 +3928,34 @@ function drawLitCigarette(x,y,direction,angle=0,scale=1) {
 }
 function drawCigarettes(p) {
   ctx.save();
-  for(const c of p.cigarettes) {
-    if(c.done || p.age<c.delay)continue;
+  for(const [index,c] of p.cigarettes.entries()) {
+    if(p.age<c.delay)continue;
+    const tailFade=c.done?Math.max(0,1-(p.age-c.doneAt)/.24):1;
     c.trail.forEach((point,i)=>{
-      ctx.globalAlpha=(1-i/10)*.25;ctx.fillStyle='#aaa99e';
-      ctx.fillRect(point.x-5,point.y-3-i*1.5,5+i*.5,5+i*.5);
-      if(i%3===0){ctx.globalAlpha=.65;ctx.fillStyle='#ff8b35';ctx.fillRect(point.x,point.y+Math.sin(p.age*30+i)*6,3,2);}
+      const fade=(1-i/20)*tailFade,size=5+i*.55;
+      ctx.globalAlpha=fade*.54;ctx.fillStyle=i<5?'#f0d7b9':'#c8c6c0';
+      ctx.fillRect(point.x-size/2,point.y-size/2-i*.7,size,size);
+      if(i<9){ctx.globalAlpha=fade*.85;ctx.fillStyle=i<3?'#ffe796':'#ee6b26';ctx.fillRect(point.x-p.direction*5,point.y-1,7,3);}
+      if(i%3===0){ctx.globalAlpha=fade;ctx.fillStyle='#ffc45b';ctx.fillRect(point.x,point.y+Math.sin(p.age*24+i+index)*9,3,3);}
     });
-    ctx.globalAlpha=1;drawLitCigarette(lerp(c.prevX,c.x,renderAlpha),c.y,p.direction,Math.sin(p.age*14)*.12,.82);
+    ctx.globalAlpha=1;
+    if(!c.done){
+      const x=lerp(c.prevX,c.x,renderAlpha);
+      ctx.save();ctx.translate(x+p.direction*9,c.y);ctx.scale(p.direction,1);
+      ctx.shadowColor='#ff721f';ctx.shadowBlur=18;ctx.fillStyle='#f36b22';
+      ctx.beginPath();ctx.moveTo(4,-6);ctx.lineTo(-16,-4);ctx.lineTo(-28-Math.sin(p.age*42+index)*4,0);ctx.lineTo(-14,5);ctx.lineTo(4,6);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#ffd45b';ctx.fillRect(-9,-4,13,8);ctx.fillStyle='#fff2b5';ctx.fillRect(0,-3,5,6);ctx.restore();
+      drawLitCigarette(x,c.y,p.direction,Math.sin(p.age*14+index)*.08,1.12);
+    }else if(c.impact && tailFade>0){
+      const q=(p.age-c.doneAt)/.24;
+      ctx.globalAlpha=tailFade;
+      drawSiteFlame(c.impactX,c.y+14,48*(1-q*.6),38,p.age,index);
+      ctx.fillStyle='#fff1ae';ctx.fillRect(c.impactX-4,c.y-5,8*tailFade,10*tailFade);
+      for(let j=0;j<7;j++){
+        const a=j*Math.PI*2/7,r=10+q*38;
+        ctx.fillStyle=j%2?'#ffd96b':'#ff7230';ctx.fillRect(c.impactX+Math.cos(a)*r,c.y+Math.sin(a)*r,3,4);
+      }
+    }
   }
   ctx.restore();
 }

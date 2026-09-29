@@ -1,6 +1,25 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const {game}=require('./engine-harness.cjs');
 function setup(rival='angel',d=1){const g=game();g.run(`gameMode='versus';startGame('fernando','${rival}');state='playing';player.x=480;cpu.x=480+${d}*260;player.facing=${d};cpu.facing=${-d};player.power=100`);return g;}
 function frames(g,t){g.run(`for(let i=0;i<${Math.round(t*120)};i++){update(STEP);draw();updateHud()}`);}
+test('Fernando keeps facing his opponent during frontal hit reactions on both sides',()=>{
+ for(const d of [-1,1]){
+  const g=setup('linares',d);
+  g.run(`hit(player,8,${-d}*65,0,cpu,{sourceX:cpu.x,direction:cpu.facing,x:player.x,y:player.y-100})`);
+  frames(g,.10);
+  assert.equal(g.run('player.action'),'hit');assert.equal(g.run('player.facing'),d);
+  assert.equal(g.run('poseFor(player)'),3);
+  assert.equal(g.run('assets.fernandoHit.src'),'assets/fernando-hit-v2.webp');
+ }
+});
+test('common flame impacts persist briefly without repeated damage and clear on menu exit',()=>{
+ const g=setup();g.run("attack(player,'special')");frames(g,.54);
+ assert.ok(g.run('projectiles.some(p=>p.cigarettes.some(c=>c.done && c.impact && p.age-c.doneAt<.24))'));
+ const hp=g.run('cpu.health');g.run('draw();draw()');assert.equal(g.run('cpu.health'),hp);
+ frames(g,.7);assert.equal(g.run('cpu.health'),g.run('Math.round((100-damageTaken(cpu,21))*1000)/1000'));
+ assert.equal(g.run('projectiles.length'),0);
+ g.run("player.power=100;attack(player,'special')");frames(g,.19);g.run('mainMenu()');
+ assert.equal(g.run('projectiles.length'),0);assert.equal(g.run('combatSounds.size'),0);
+});
 test('Fernando stats, stature, selection and six-rival tournament',()=>{
  const g=setup();assert.deepEqual(Array.from(g.run('[stats.fernando.normalDamage,stats.fernando.resistance,stats.fernando.agility,stats.fernando.meleeReach,stats.fernando.recovery,stats.fernando.powerDamage,stats.fernando.superDamage]')),[9,98,6,5,.60,21,33]);assert.equal(g.run('stats.fernando.height'),g.run('stats.linares.height'));
  g.run("openModeSelection();gameMode='solo';openSelection()");g.nodes.get('pick-fernando').listeners.click();assert.equal(g.run('playerChoice'),'fernando');assert.match(g.nodes.get('selectionGuide').innerHTML,/Lluvia de Cigarrillos/);assert.match(g.nodes.get('selectionGuide').innerHTML,/Incendio de Obra/);
