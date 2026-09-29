@@ -57,6 +57,7 @@ const stageRoster = Object.keys(stages);
 const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(stages[key].src)]));
 
 const assets = {
+  primitivoIntro: loadImage("assets/primitivo-intro-v1.webp"),
   fernando: loadImage("assets/fernando-atlas-v1.webp"),
   fernandoHit: loadImage("assets/fernando-hit-v2.webp"),
   workerGuards: loadImage("assets/worker-guards-v1.webp"),
@@ -1708,11 +1709,14 @@ function draw() {
   projectiles.forEach(p => { drawProjectileTrail(p); drawProjectile(p); });
   particles.forEach(drawParticle);
   effects.forEach(drawEffect);
+  fighters.forEach(drawPrimitivoIntroSpeech);
   ctx.restore();
   if (workCinematic) drawWorkCinematic();
 }
 
 function poseFor(f) {
+  const introduction=primitivoIntroPose(f);
+  if(introduction!==null)return introduction;
   if(f.concreteHold>0)return f.concretePose;
   if(workCinematic?.owner===f && f.kind==="angel")return workCinematic.elapsed<.38 || workCinematic.elapsed>=.78 ? 16 : 17;
   if (workCinematic?.owner === f && ["linares","gabriel","fernando"].includes(f.kind)) return 17;
@@ -1799,6 +1803,7 @@ function drawShadow(f) {
 
 function fighterMotion(f) {
   const motion = { dx: 0, dy: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+  if(primitivoIntroPose(f)!==null){motion.dy=-Math.sin(introElapsed*3.7)*.65;return motion;}
   if (f.knockdown) {
     const fall = f.knockdown;
     const tilt = fall.phase === "air" ? smoothstep(fall.age / .32)
@@ -1915,7 +1920,7 @@ function updateAnimation(f, dt) {
     animation.pose = pose;
     animation.mix = animation.prevMix = 0;
     // Brief transitions retain crisp strikes while easing steps and stance changes.
-    animation.duration = f.action === "hit" ? .018 : f.action === "idle" ? .065 : .035;
+    animation.duration = primitivoIntroPose(f)!==null ? .12 : f.action === "hit" ? .018 : f.action === "idle" ? .065 : .035;
   }
   animation.mix = Math.min(1, animation.mix + dt / animation.duration);
   const target = fighterMotion(f);
@@ -3108,17 +3113,47 @@ function atlasSpriteFrame(frame) {
   if(spriteFrames.has(key)) return spriteFrames.get(key);
   const workerGuard=["linares","gabriel"].includes(frame.kind) && [9,19].includes(frame.pose);
   const fernandoHit=frame.kind==="fernando" && frame.pose===3;
+  const primitivoIntro=frame.kind==="primitivo" && [20,21].includes(frame.pose);
+  if(primitivoIntro && (!assets.primitivoIntro.complete || !assets.primitivoIntro.naturalWidth))return atlasSpriteFrame({...frame,pose:POSES.primitivo.idle});
   const angelLower=frame.kind==="angel" && [18,19].includes(frame.pose);
   const special=["peluche","angel"].includes(frame.kind) && [16,17].includes(frame.pose);
-  const image=fernandoHit?assets.fernandoHit:workerGuard?assets.workerGuards:angelLower?assets.angelLowerLoad:special?(frame.kind==="angel"?assets.angelSignals:assets.pelucheSpecial):assets[frame.kind];
+  const image=primitivoIntro?assets.primitivoIntro:fernandoHit?assets.fernandoHit:workerGuard?assets.workerGuards:angelLower?assets.angelLowerLoad:special?(frame.kind==="angel"?assets.angelSignals:assets.pelucheSpecial):assets[frame.kind];
   const pose=angelLower?frame.pose-18:frame.kind==="angel" && special ? frame.pose-16 : ["linares","gabriel"].includes(frame.kind) ? [0,1,2,3,4,5,6,7,8,0,9,8,11,10,12,13,14,15,8][frame.pose] : frame.kind==="tren" ? [0,1,2,3,4,5,6,7,8,9,10,8,12,11,13,3,14,15,8][frame.pose] : frame.kind==="peluche" ? special ? frame.pose-16 : [0,1,2,3,4,5,6,7,8,12,14,8,9,10,11,15,0,0,13][frame.pose] : frame.pose;
   if(!image.complete || !image.naturalWidth) return null;
   const surface=document.createElement('canvas');surface.width=surface.height=270;
   const paint=surface.getContext('2d');paint.imageSmoothingEnabled=false;
-  const column=fernandoHit?0:workerGuard?(frame.pose===19?1:0):pose%4;
-  const row=fernandoHit?0:workerGuard?(frame.kind==="gabriel"?1:0):Math.floor(pose/4);
+  const column=primitivoIntro?frame.pose-20:fernandoHit?0:workerGuard?(frame.pose===19?1:0):pose%4;
+  const row=primitivoIntro||fernandoHit?0:workerGuard?(frame.kind==="gabriel"?1:0):Math.floor(pose/4);
   paint.drawImage(image,column*270,row*270,270,270,0,0,270,270);
   spriteFrames.set(key,surface);return surface;
+}
+
+// Two visual-only poses share the existing round-announcement clock, including pause/online.
+function primitivoIntroPose(f) {
+  if(f.kind!=="primitivo" || !(state==="intro" || state==="paused" && pauseFrom==="intro"))return null;
+  const timing=ROUND_AUDIO[match.round].timing;
+  if(introElapsed>=timing.fight-.10)return null;
+  return introElapsed<timing.voice || introElapsed>=timing.fight-.36 ? 20 : 21;
+}
+function primitivoIntroSpeaking(f) {
+  return primitivoIntroPose(f)===21 && introElapsed>=ROUND_AUDIO[match.round].timing.voice+.12;
+}
+function drawPrimitivoIntroSpeech(f) {
+  if(!primitivoIntroSpeaking(f))return;
+  const frame=renderedFighter(f),width=244,height=64;
+  const mouthX=frame.x+f.facing*25;
+  const x=Math.max(cameraX+12,Math.min(cameraX+VIEW_WIDTH-width-12,mouthX-width/2));
+  const y=frame.y-stats[f.kind].height*FIGHTER_SCALE-122;
+  const tipX=Math.max(x+20,Math.min(x+width-20,mouthX));
+  ctx.save();ctx.lineJoin='round';ctx.lineWidth=3;ctx.strokeStyle='#211b14';ctx.fillStyle='#fff9e7';
+  ctx.shadowColor='rgba(0,0,0,.36)';ctx.shadowBlur=0;ctx.shadowOffsetX=3;ctx.shadowOffsetY=4;
+  ctx.beginPath();ctx.roundRect(x,y,width,height,10);ctx.fill();ctx.stroke();
+  ctx.shadowOffsetX=ctx.shadowOffsetY=0;
+  ctx.beginPath();ctx.moveTo(tipX-10,y+height-1);ctx.lineTo(tipX,y+height+18);ctx.lineTo(tipX+10,y+height-1);ctx.fill();ctx.stroke();
+  ctx.strokeStyle='#fff9e7';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(tipX-9,y+height-1);ctx.lineTo(tipX+9,y+height-1);ctx.stroke();
+  ctx.fillStyle='#211b14';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 21px Arial, sans-serif';
+  ctx.fillText('Qué se haga agua',x+width/2,y+22);ctx.fillText('el helado',x+width/2,y+46);
+  ctx.restore();
 }
 
 // Schedule attacks use the same world clock, collision rules and audio lifecycle as projectiles.
