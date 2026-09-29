@@ -195,7 +195,8 @@ function updatePauseGuide() {
 }
 function timedMove(f, spec, evasion=false, action=null) {
   const tempo=mobilityTempo(f);
-  const fixedRecovery = f.kind==="peluche" || ["tren","linares","gabriel","fernando"].includes(f.kind) && action==="special";
+  // Character recovery attributes belong to powers; melee follows each move's normal tempo.
+  const fixedRecovery = action==="special" && Number.isFinite(stats[f.kind].recovery);
   return {...spec, reach: f.kind==="peluche" && spec.reach ? spec.reach*.82 : ["gabriel","fernando"].includes(f.kind) && spec.reach ? spec.reach*5/6 : spec.reach, startup:spec.startup/(evasion?tempo:1), active:spec.active/(evasion?tempo:1), recovery:fixedRecovery && !evasion ? stats[f.kind].recovery : spec.recovery/tempo};
 }
 
