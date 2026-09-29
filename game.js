@@ -1305,7 +1305,8 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
     && ["idle", "block"].includes(target.action);
   if (blocking) {
     addScore(target, 25);
-    target.health = Math.max(0, Math.round((target.health - (contact.projectile ? damageTaken(target,1) : 0)) * 1000) / 1000);
+    const chipDamage = contact.super ? damage * .30 : contact.projectile ? damageTaken(target,1) : 0;
+    target.health = Math.max(0, Math.round((target.health - chipDamage) * 1000) / 1000);
     target.power = Math.min(100, target.power + 4 * ENERGY_GAIN_SCALE);
     target.action = "block";
     target.actionDuration = .15;
@@ -2282,7 +2283,7 @@ function drawLowerLoadCue(f,frame) {
 
 function drawFighter(f) {
   const frame = renderedFighter(f);
-  if (workCinematic?.target === f && workCinematic.owner.kind === "angel") frame.y -= workHookLift(workCinematic.elapsed);
+  if (workCinematic?.target === f && workCinematic.owner.kind === "angel" && !f.guarding && !workCinematic.blocked) frame.y -= workHookLift(workCinematic.elapsed);
   const { motion, x, y } = frame;
   drawMotionLines({ ...f, x, y }, motion);
   const flashing = f.flash > 0 && Math.floor(f.flash * 40) % 2 === 0;
@@ -3431,17 +3432,41 @@ function startWorkCinematic(owner) {
   const target=owner===player?cpu:player;
   const duration=owner.kind==="fernando"?2.85:owner.kind==="gabriel"?2.85:owner.kind==="linares"?3.1:owner.kind==="tren"?2.8:owner.kind==="peluche"?2.65:1.85;
   const impactAt=owner.kind==="fernando"?1.85:owner.kind==="gabriel"?2.05:owner.kind==="linares"?2.05:owner.kind==="tren"?1.95:owner.kind==="peluche"?1.90:1.12;
-  workCinematic={owner,target,elapsed:0,duration,impactAt,impact:false,originX:owner.x,impactX:target.x,direction:owner.facing,sound:owner.kind==="gabriel"?null:startCombatSound(owner.specialStyle)};
+  workCinematic={owner,target,elapsed:0,duration,impactAt,impact:false,originX:owner.x,impactX:target.x,direction:owner.facing,
+    guardEligible:target.grounded && !target.concreteHold && ["idle","block"].includes(target.action),initialGuard:target.guarding,
+    sound:owner.kind==="gabriel"?null:startCombatSound(owner.specialStyle)};
   owner.action="special";owner.actionTime=owner.actionDuration=duration;
   owner.specialSpawned=true;owner.specialCooldown=.7;
   target.action="hit";target.actionTime=target.actionDuration=duration;
   target.knockdown=null;target.concreteHold=0;target.concreteCoat=0;
   target.vx=target.vy=0;target.guarding=false;target.crouching=false;
   for(const f of [owner,target]){f.queuedAction=null;f.queueTime=0;f.moveIntent=0;}
+  updateWorkGuard(workCinematic);
   screenShake=4;
+}
+function updateWorkGuard(c) {
+  if(!c.guardEligible || c.defenseBroken || c.impact)return;
+  const t=c.target,human=t===player || gameMode==="versus" || online?.active;
+  if(!human && aiEnabled && !c.aiGuardDecided && c.elapsed>=difficulty().reaction) {
+    c.aiGuardDecided=true;c.aiGuard=Math.random()<difficulty().guard;
+  }
+  const input=t===player?held:held2;
+  t.guarding=human?input.guard:!!(c.initialGuard || c.aiGuard);
+  t.crouching=t.guarding && (human?input.down:false);
+  t.action=t.guarding?"block":"idle";t.actionTime=t.actionDuration=c.duration-c.elapsed;
+}
+function hitWorkCinematic(c,damage,knock,lift) {
+  const t=c.target;
+  updateWorkGuard(c);
+  t.action=t.guarding?"block":"idle";t.actionTime=0;t.invuln=0;
+  hit(t,damage,c.direction*knock,lift,c.owner,
+    {sourceX:c.originX,direction:c.direction,projectile:true,super:true,x:t.x,y:t.y-95});
+  c.blocked=t.action==="block";
+  if(!c.blocked)c.defenseBroken=true;
 }
 function updateWorkCinematic(dt) {
   const c=workCinematic;c.elapsed+=dt;advanceCombatSounds(dt);
+  updateWorkGuard(c);
   updateParticles(dt);updateEffects(dt);screenShake=Math.max(0,screenShake-dt*24);
   c.owner.animClock+=dt;c.target.animClock+=dt;
   // Sustained pressure builds before the impact; the simulation/audio clocks stay together.
@@ -3451,20 +3476,18 @@ function updateWorkCinematic(dt) {
   }
   if(c.owner.kind==="gabriel") updateGanttCinematic(c);
   if(c.owner.kind!=="gabriel" && !c.impact && c.elapsed>=c.impactAt) {
-    c.impact=true;
     const t=c.target,o=c.owner;
-    t.action="idle";t.actionTime=0;t.invuln=0;t.guarding=false;
-    hit(t,fighterPowers[o.kind].superDamage,o.facing*240,-140,o,
-      {sourceX:t.x,direction:o.facing,projectile:true,overhead:true,x:t.x,y:t.y-95});
+    hitWorkCinematic(c,fighterPowers[o.kind].superDamage,240,-140);
+    c.impact=true;
     burst(t.x,t.y-95,c.owner.kind==="peluche"?"#e5eadb":"#ffdc62",44);dustBurst(t.x,FLOOR,32);
     if(o.kind==="fernando"){smokeBurst(t.x,t.y-85,18);burst(t.x,t.y-95,"#ff6032",40);}
-    if(o.kind==="peluche")t.concreteCoat=1.1;
-    if(["tren","linares"].includes(o.kind)) {t.electricCoat=1.35;burst(t.x,t.y-100,"#81dcff",40);}
+    if(o.kind==="peluche" && !c.blocked)t.concreteCoat=1.1;
+    if(["tren","linares"].includes(o.kind)) {if(!c.blocked)t.electricCoat=1.35;burst(t.x,t.y-100,"#81dcff",40);}
     screenShake=18;
     // The cinematic already owns time. Ordinary melee hit-stop used to mute its climax.
     hitStop=0;syncCombatSounds();
   }
-  if(["tren","linares","gabriel","fernando"].includes(c.owner.kind) && c.impact && state==="playing" && c.elapsed>c.impactAt+.24) {
+  if(!c.blocked && ["tren","linares","gabriel","fernando"].includes(c.owner.kind) && c.impact && state==="playing" && c.elapsed>c.impactAt+.24) {
     if(!c.launched){c.launched=true;beginKnockdown(c.target,c.direction*300);}
     if(c.target.knockdown)updateKnockdown(c.target,dt);
   }
@@ -3472,6 +3495,7 @@ function updateWorkCinematic(dt) {
     stopCombatSound(c.sound,true);
     c.owner.action="idle";c.owner.actionTime=c.owner.actionDuration=0;c.owner.moveSpec=null;
     if(c.target.action==="hit" && c.target.actionTime>0)c.target.actionTime=Math.min(c.target.actionTime,.25);
+    if(c.target.action==="block"){c.target.action="idle";c.target.actionTime=c.target.actionDuration=0;}
     workCinematic=null;
   }
   fighters.forEach(f=>updateAnimation(f,dt));
@@ -3901,9 +3925,7 @@ function updateGanttCinematic(c) {
   c.hits ??= 0;
   while(c.hits<GANTT_HITS.length && c.elapsed>=GANTT_HITS[c.hits].at && state==="playing") {
     const bar=GANTT_HITS[c.hits++],t=c.target,final=c.hits===GANTT_HITS.length;
-    t.action="idle";t.actionTime=0;t.invuln=0;t.guarding=false;
-    hit(t,bar.damage,c.direction*(final?240:55),final?-140:0,c.owner,
-      {sourceX:c.originX,direction:c.direction,projectile:true,overhead:true,x:t.x,y:t.y-95});
+    hitWorkCinematic(c,bar.damage,final?240:55,final?-140:0);
     burst(t.x,t.y-95,bar.color,final?36:12);
     if(final){c.impact=true;dustBurst(t.x,FLOOR,24);}
     screenShake=final?18:7;hitStop=0;syncCombatSounds();
