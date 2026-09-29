@@ -57,6 +57,7 @@ const stageRoster = Object.keys(stages);
 const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(stages[key].src)]));
 
 const assets = {
+  workerGuards: loadImage("assets/worker-guards-v1.webp"),
   gabriel: loadImage("assets/gabriel-atlas-v1.webp"),
   linares: loadImage("assets/linares-atlas-v1.webp"),
   transformer: loadImage("assets/linares-transformer-v1.webp"),
@@ -1725,7 +1726,7 @@ function poseFor(f) {
   // Frames 6–11 come from the movement atlas, with separate jump and guard poses.
   if (f.action === "teleport") return 11;
   if (f.action === "slam") return f.slamLanded ? 11 : f.slamDiving ? POSES.tunki.slam : f.slamLaunched ? 10 : 8;
-  if (f.guarding || f.action === "block") return 9;
+  if (f.guarding || f.action === "block") return f.crouching && ["linares","gabriel"].includes(f.kind) ? 19 : 9;
   if (["punch", "kick", "special"].includes(f.action) && f.moveSpec) {
     const elapsed = f.actionDuration - f.actionTime;
     if (elapsed > f.moveSpec.startup + f.moveSpec.active + f.moveSpec.recovery * .58) {
@@ -1828,7 +1829,7 @@ function fighterMotion(f) {
     motion.scaleX -= .018 * lift;
     motion.rotation -= Math.max(-.045, Math.min(.045, f.vx / 5000));
   }
-  if (f.crouching && (f.guarding || f.action === "block")) {
+  if (f.crouching && (f.guarding || f.action === "block") && !["linares","gabriel"].includes(f.kind)) {
     motion.scaleY = .69;
     motion.scaleX = 1.04;
   }
@@ -3091,14 +3092,17 @@ requestAnimationFrame(loop);
 function atlasSpriteFrame(frame) {
   const key=frame.kind+':'+frame.pose;
   if(spriteFrames.has(key)) return spriteFrames.get(key);
+  const workerGuard=["linares","gabriel"].includes(frame.kind) && [9,19].includes(frame.pose);
   const angelLower=frame.kind==="angel" && [18,19].includes(frame.pose);
   const special=["peluche","angel"].includes(frame.kind) && [16,17].includes(frame.pose);
-  const image=angelLower?assets.angelLowerLoad:special?(frame.kind==="angel"?assets.angelSignals:assets.pelucheSpecial):assets[frame.kind];
+  const image=workerGuard?assets.workerGuards:angelLower?assets.angelLowerLoad:special?(frame.kind==="angel"?assets.angelSignals:assets.pelucheSpecial):assets[frame.kind];
   const pose=angelLower?frame.pose-18:frame.kind==="angel" && special ? frame.pose-16 : ["linares","gabriel"].includes(frame.kind) ? [0,1,2,3,4,5,6,7,8,0,9,8,11,10,12,13,14,15,8][frame.pose] : frame.kind==="tren" ? [0,1,2,3,4,5,6,7,8,9,10,8,12,11,13,3,14,15,8][frame.pose] : frame.kind==="peluche" ? special ? frame.pose-16 : [0,1,2,3,4,5,6,7,8,12,14,8,9,10,11,15,0,0,13][frame.pose] : frame.pose;
   if(!image.complete || !image.naturalWidth) return null;
   const surface=document.createElement('canvas');surface.width=surface.height=270;
   const paint=surface.getContext('2d');paint.imageSmoothingEnabled=false;
-  paint.drawImage(image,(pose%4)*270,Math.floor(pose/4)*270,270,270,0,0,270,270);
+  const column=workerGuard?(frame.pose===19?1:0):pose%4;
+  const row=workerGuard?(frame.kind==="gabriel"?1:0):Math.floor(pose/4);
+  paint.drawImage(image,column*270,row*270,270,270,0,0,270,270);
   spriteFrames.set(key,surface);return surface;
 }
 
