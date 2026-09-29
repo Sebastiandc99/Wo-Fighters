@@ -24,3 +24,17 @@ test('ranking is visible on the title screen and stores a Wo result in its own e
  assert.equal(sent.character,'angel');assert.equal(sent.score,7300);
  assert.equal(g.nodes.get('rankingRows').children[0].children[2].children[0].textContent,'Seba');
 });
+
+test('a rejected score is reported as a server validation error and preserves the result for retry',async()=>{
+ const g=game();g.run("gameMode='solo';startGame('linares','peluche');state='finished';match.complete=true;match.winner=0;match.campaignRun=true;match.recordSlot=0;match.scores=[171817,0];showGameOver()");
+ g.nodes.get('winnerName').value='Seba';
+ g.sandbox.fetch=async()=>({ok:false,status:400,async json(){return {error:'Invalid result'}}});
+ await g.run('saveWinner({preventDefault(){}})');
+ assert.match(g.nodes.get('saveError').textContent,/rechazó los datos/);
+ assert.doesNotMatch(g.nodes.get('saveError').textContent,/revisá la conexión/);
+ assert.equal(g.nodes.get('winnerName').value,'Seba');assert.equal(g.run('match.scores[0]'),171817);
+ assert.equal(g.run('match.saved'),false);assert.equal(g.run('match.saving'),false);
+ assert.equal(g.nodes.get('saveScoreBtn').disabled,false);
+ g.sandbox.fetch=async(url,options={})=>({ok:true,status:200,async json(){return options.method==='POST'?{entry:{}}:{entries:[],next:null}}});
+ await g.run('saveWinner({preventDefault(){}})');assert.equal(g.run('match.saved'),true);
+});

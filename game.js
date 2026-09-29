@@ -1436,8 +1436,12 @@ async function rankingFetch(url, options = {}) {
   const timeout = controller ? setTimeout(() => controller.abort(), 15000) : null;
   try {
     const response = await fetch(url, {...options, signal: controller?.signal, credentials: "omit", cache: "no-store"});
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "No se pudo conectar con el ranking.");
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data) {
+      const error = new Error(data?.error || "El servicio de ranking no pudo completar la solicitud.");
+      error.status = response.status;
+      throw error;
+    }
     return data;
   } finally { if (timeout) clearTimeout(timeout); }
 }
@@ -1459,8 +1463,14 @@ async function saveWinner(event) {
     })});
     result.saved = true;
     if (state === "finished" && match === result) await showRanking(result.id);
-  } catch (_) {
-    if (match === result) message.textContent = "No se pudo guardar. Tu nombre sigue acá; revisá la conexión y volvé a intentar.";
+  } catch (error) {
+    if (match === result) {
+      const reason = error.status === 400 ? "El ranking rechazó los datos de la partida."
+        : error.status === 429 ? "El ranking recibió demasiados intentos; esperá un momento."
+        : error.status ? "El servicio de ranking no pudo guardar la partida."
+        : "No se pudo contactar con el servicio de ranking.";
+      message.textContent = reason + " Tu nombre y puntaje siguen acá; volvé a intentar.";
+    }
   } finally { result.saving = false; button.disabled = false; }
 }
 
