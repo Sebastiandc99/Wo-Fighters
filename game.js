@@ -60,6 +60,7 @@ const assets = {
   primitivoIntro: loadImage("assets/primitivo-intro-v1.webp"),
   pelucheIntro: loadImage("assets/peluche-intro-v1.webp"),
   gabrielIntro: loadImage("assets/gabriel-intro-v1.webp"),
+  angelIntro: loadImage("assets/angel-intro-v1.webp"),
   fernando: loadImage("assets/fernando-atlas-v1.webp"),
   fernandoHit: loadImage("assets/fernando-hit-v2.webp"),
   workerGuards: loadImage("assets/worker-guards-v1.webp"),
@@ -3134,7 +3135,8 @@ function atlasSpriteFrame(frame) {
 const ROUND_TAUNTS={
   primitivo:{asset:'primitivoIntro',lines:['Qué se haga agua','el helado']},
   peluche:{asset:'pelucheIntro',lines:['Te llenaré','de hormigon!']},
-  gabriel:{asset:'gabrielIntro',lines:['Planifiqué','derrotarte!']}
+  gabriel:{asset:'gabrielIntro',lines:['Planifiqué','derrotarte!']},
+  angel:{asset:'angelIntro',lines:['Te derrotaré','marico!']}
 };
 function roundIntroPose(f) {
   if(!ROUND_TAUNTS[f.kind] || !(state==="intro" || state==="paused" && pauseFrom==="intro"))return null;

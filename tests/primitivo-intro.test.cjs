@@ -32,7 +32,7 @@ test('the presentation freezes with pause and repeats after restarting a round',
 test('two Primitivos present independently, other fighters and combat poses remain normal',()=>{
  const g=setup();g.run("match.cpuKind='primitivo';startRound()");g.tick(1.4);
  assert.equal(g.run('fighters.filter(roundIntroSpeaking).length'),2);assert.doesNotThrow(()=>g.run('draw()'));
- g.run("match.playerKind='linares';match.cpuKind='angel';startRound()");g.tick(1.4);
+ g.run("match.playerKind='linares';match.cpuKind='tren';startRound()");g.tick(1.4);
  assert.equal(g.run('fighters.some(roundIntroSpeaking)'),false);
  assert.equal(g.run('poseFor(player)'),0);assert.equal(g.run('poseFor(cpu)'),0);
  assert.ok(g.requestedImages.includes('assets/primitivo-intro-v1.webp'));
