@@ -27,7 +27,7 @@ test('Tren has requested attributes, taller proportions, clickable selection and
  assert.ok(g.run('stats.peluche.size<stats.angel.size && stats.angel.size<stats.tren.size && stats.tren.size<stats.primitivo.size'));
  g.run("openModeSelection();gameMode='solo';openSelection();chooseFighter('angel')");const tile=g.nodes.get('pick-tren');tile.listeners.pointerenter?.();assert.equal(g.run('playerChoice'),'angel');tile.listeners.click();assert.equal(g.run('playerChoice'),'tren');
  const guide=g.nodes.get('selectionGuide').innerHTML;assert.match(guide,/Arco Voltaico/);assert.match(guide,/Tormenta Eléctrica/);assert.match(guide,/tren-voltaic.svg/);assert.match(guide,/aria-valuenow="88"/);
- g.run('beginGame()');assert.deepEqual(Array.from(g.run('campaign.opponents')).sort(),['angel','gabriel','linares','peluche','primitivo']);
+ g.run('beginGame()');assert.deepEqual(Array.from(g.run('campaign.opponents')).sort(),['angel','fernando','gabriel','linares','peluche','primitivo']);
 });
 test('Arco Voltaico costs 30, hits each fighter once in either direction, and releases controls',()=>{
  for(const rival of ['angel','primitivo','peluche','tren'])for(const d of [-1,1]){

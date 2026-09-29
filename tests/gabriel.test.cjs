@@ -7,12 +7,12 @@ test('Gabriel attributes, relative height, selection, atlas and tournament',()=>
  const g=setup();assert.deepEqual(Array.from(g.run('[stats.gabriel.normalDamage,stats.gabriel.resistance,stats.gabriel.agility,stats.gabriel.meleeReach,stats.gabriel.recovery,stats.gabriel.powerDamage,stats.gabriel.superDamage]')),[8,94,7,5,.56,23,34]);
  assert.ok(g.run('stats.peluche.size<stats.gabriel.size && stats.gabriel.size<stats.linares.size && stats.peluche.height<stats.gabriel.height && stats.gabriel.height<stats.linares.height'));
  g.run("openModeSelection();gameMode='solo';openSelection()");g.nodes.get('pick-gabriel').listeners.click();assert.equal(g.run('playerChoice'),'gabriel');assert.match(g.nodes.get('selectionGuide').innerHTML,/Camino Crítico/);assert.match(g.nodes.get('selectionGuide').innerHTML,/Gantt Impacto/);
- g.run('beginGame()');assert.deepEqual(Array.from(g.run('campaign.opponents')).sort(),['angel','linares','peluche','primitivo','tren']);
+ g.run('beginGame()');assert.deepEqual(Array.from(g.run('campaign.opponents')).sort(),['angel','fernando','linares','peluche','primitivo','tren']);
  assert.doesNotThrow(()=>g.run('for(let pose=0;pose<=18;pose++)drawSpriteFrame({...renderedFighter(player),pose,fromPose:pose,mix:1})'));
  assert.ok(g.requestedImages.includes('assets/gabriel-atlas-v1.webp'));
 });
 test('critical path reuses Jairo schedule, launch timing and original sounds, costs30 and damages23 once',()=>{
- for(const rival of ['angel','primitivo','peluche','tren','linares','gabriel'])for(const d of [-1,1]){
+ for(const rival of ['angel','primitivo','peluche','tren','linares','gabriel','fernando'])for(const d of [-1,1]){
   const g=setup(rival,d);assert.equal(g.run("attack(player,'special')"),true);assert.equal(g.run('player.power'),70);
   assert.deepEqual(Array.from(g.run('[player.moveSpec.startup,player.moveSpec.active,player.moveSpec.recovery]')),[.22,.05,.56]);
   frames(g,.24);assert.equal(g.run('projectiles[0].style'),'critical');assert.equal(g.run('projectiles[0].sound.name'),'critical');

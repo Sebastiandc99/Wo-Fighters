@@ -57,6 +57,7 @@ const stageRoster = Object.keys(stages);
 const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(stages[key].src)]));
 
 const assets = {
+  fernando: loadImage("assets/fernando-atlas-v1.webp"),
   workerGuards: loadImage("assets/worker-guards-v1.webp"),
   gabriel: loadImage("assets/gabriel-atlas-v1.webp"),
   linares: loadImage("assets/linares-atlas-v1.webp"),
@@ -98,6 +99,7 @@ for (const [key, src] of Object.entries({
 }
 
 const POSES = {
+  fernando: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
   gabriel: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
   linares: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
   tren: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
@@ -117,6 +119,7 @@ const POSES = {
 };
 
 const stats = {
+  fernando: {name:"FERNANDO", normalDamage:9, resistance:98, powerDamage:21, superDamage:33, agility:6, speed:262, jump:605, defaultFace:1, size:254, height:200, width:24, bodyWidth:.99, recovery:.60, meleeReach:5, powerRange:532, superRange:608, description:"LLUVIA DE CIGARRILLOS (30%) · ↓ + PODER: INCENDIO DE OBRA (100%)", ability:null},
   gabriel: {name:"GABRIEL", normalDamage:8, resistance:94, powerDamage:23, superDamage:34, agility:7, speed:274, jump:615, defaultFace:1, size:249, height:196, width:23, bodyWidth:.94, recovery:.56, meleeReach:5, powerRange:608, superRange:684, description:"CAMINO CRÍTICO (30%) · ↓ + PODER: GANTT IMPACTO (100%)", ability:null},
   linares: {name:"J. LINARES", normalDamage:8, resistance:90, powerDamage:23, superDamage:34, agility:8, speed:286, jump:620, defaultFace:1, size:254, height:200, width:23, bodyWidth:.94, recovery:.54, meleeReach:6, powerRange:608, superRange:684, description:"CABLE DE ALTA TENSIÓN (30%) · ↓ + PODER: DESCARGA DE TRANSFORMADOR (100%)", ability:null},
   tren: {name:"TREN VALENCIA", normalDamage:8, resistance:88, powerDamage:24, superDamage:34, agility:8, speed:286, jump:620, defaultFace:1, size:254, height:200, width:25, recovery:.52, meleeReach:6, powerRange:608, superRange:684, description:"ARCO VOLTAICO (30%) · ↓ + PODER: TORMENTA ELÉCTRICA (100%)", ability:null},
@@ -136,13 +139,14 @@ const stats = {
 };
 
 // Reference strong hit 10 maps to the existing 5-point uppercut; bars stay normalized.
-const powerDamage = f => ["angel","primitivo","peluche","tren","linares","gabriel"].includes(f.kind) ? stats[f.kind].powerDamage : stats[f.kind].powerDamage * .5;
+const powerDamage = f => ["angel","primitivo","peluche","tren","linares","gabriel","fernando"].includes(f.kind) ? stats[f.kind].powerDamage : stats[f.kind].powerDamage * .5;
 const mobilityTempo = f => .82 + stats[f.kind].agility * .035;
 const DAMAGE_SCALE = .70;
 const ROUND_SECONDS = 90;
 const ENERGY_GAIN_SCALE = .75;
 const damageTaken = (f, damage) => Math.round(damage * DAMAGE_SCALE * 100000 / stats[f.kind].resistance) / 1000;
 const fighterPowers = {
+  fernando: {common:"Lluvia de Cigarrillos", super:"Incendio de Obra", superDamage:33, profile:"Ingeniero civil · media distancia, fuego y humo"},
   gabriel: {common:"Camino Crítico", super:"Gantt Impacto", superDamage:34, profile:"Control de Proyecto · técnico, de media/larga distancia"},
   linares: {common:"Cable de Alta Tensión", super:"Descarga de Transformador", superDamage:34, profile:"Ingeniero eléctrico · rápido, técnico y de media/larga distancia"},
   tren: {common:"Arco Voltaico", super:"Tormenta Eléctrica", superDamage:34, profile:"Eléctrico · rápido y técnico"},
@@ -163,7 +167,7 @@ function updateSelectionGuide(kind) {
   const panel=document.getElementById("selectionGuide");
   panel.dataset.kind=kind;
   if(!p){panel.innerHTML="";return;}
-  const art={gabriel:["gabriel-critical.svg","gabriel-gantt.svg"],linares:["linares-cable.svg","linares-transformer-v1.webp"],tren:["tren-voltaic.svg","tren-storm.svg"],angel:["load-v4.webp","hook-v4.webp"],primitivo:["forklift-v4.webp","container-v4.webp"],peluche:["concrete-v1.webp","concrete-hose-v1.webp"]}[kind];
+  const art={fernando:["fernando-cigarettes.svg","fernando-fire.svg"],gabriel:["gabriel-critical.svg","gabriel-gantt.svg"],linares:["linares-cable.svg","linares-transformer-v1.webp"],tren:["tren-voltaic.svg","tren-storm.svg"],angel:["load-v4.webp","hook-v4.webp"],primitivo:["forklift-v4.webp","container-v4.webp"],peluche:["concrete-v1.webp","concrete-hose-v1.webp"]}[kind];
   const icon=name=>`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${{
     shield:"M12 2 21 6v6c0 5-9 10-9 10S3 17 3 12V6Z M12 6v11",
     bolt:"m14 2-9 12h6l-1 8 9-13h-6Z",
@@ -190,11 +194,11 @@ function updatePauseGuide() {
 }
 function timedMove(f, spec, evasion=false, action=null) {
   const tempo=mobilityTempo(f);
-  const fixedRecovery = f.kind==="peluche" || ["tren","linares","gabriel"].includes(f.kind) && action==="special";
-  return {...spec, reach: f.kind==="peluche" && spec.reach ? spec.reach*.82 : f.kind==="gabriel" && spec.reach ? spec.reach*5/6 : spec.reach, startup:spec.startup/(evasion?tempo:1), active:spec.active/(evasion?tempo:1), recovery:fixedRecovery && !evasion ? stats[f.kind].recovery : spec.recovery/tempo};
+  const fixedRecovery = f.kind==="peluche" || ["tren","linares","gabriel","fernando"].includes(f.kind) && action==="special";
+  return {...spec, reach: f.kind==="peluche" && spec.reach ? spec.reach*.82 : ["gabriel","fernando"].includes(f.kind) && spec.reach ? spec.reach*5/6 : spec.reach, startup:spec.startup/(evasion?tempo:1), active:spec.active/(evasion?tempo:1), recovery:fixedRecovery && !evasion ? stats[f.kind].recovery : spec.recovery/tempo};
 }
 
-const roster = ["angel", "primitivo", "peluche", "tren", "linares", "gabriel"];
+const roster = ["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando"];
 const FLOOR = 448;
 const STEP = 1 / 120;
 const JUMP_BOOST = 1.25;
@@ -224,6 +228,9 @@ const KO_AUDIO_BASE64 = "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
 let koVoice = null;
 
 const COMBAT_AUDIO = {
+  cigarettes: {src:"assets/wo-cigarettes-v1.mp3",volume:1.0,start:0,loop:false},
+  emberImpact: {src:"assets/wo-emberImpact-v1.mp3",volume:1.0,start:0,loop:false},
+  fireSuper: {src:"assets/wo-fireSuper-v1.mp3",volume:1.05,start:0,loop:false},
   // Common electric attacks use the exact Marechal lightning clip and playback settings.
   ...Object.fromEntries(["cable","voltaic"].map(name=>[name,{src:"assets/poder-rayo.mp3",volume:1.35,start:.035,end:1.69}])),
   transformerSuper: {src:"assets/wo-transformerSuper-v1.mp3",volume:.9,start:0,loop:false},
@@ -1134,7 +1141,7 @@ function attack(f, type) {
     return false;
   }
   if (type === "special" && f.kind === "facu" && f.mustacheAway) return false;
-  const workFighter = ["angel", "primitivo", "peluche", "tren", "linares", "gabriel"].includes(f.kind);
+  const workFighter = ["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando"].includes(f.kind);
   const workSuper = workFighter && type === "special" && (humanFighter(f) ? fighterInput(f).down : f.power >= 100 && Math.random() < .55);
   const crash = f.kind === "jairo" && type === "special" && (humanFighter(f) ? fighterInput(f).down : f.power >= 45 && Math.random() < .45);
   const cost = type === "special" ? (workFighter ? workSuper ? 100 : 30 : crash ? 45 : 35) : type === "slam" ? 30 : 0;
@@ -1149,6 +1156,7 @@ function attack(f, type) {
   const directionInput=humanFighter(f) ? Number(fighterInput(f).right)-Number(fighterInput(f).left) : f.moveIntent;
   f.kickStyle=type!=="kick" || low ? null : !f.grounded ? "airKick" : directionInput*f.facing<0 ? "volley" : null;
   f.moveSpec = ["jairo","gabriel"].includes(f.kind) && type === "special" ? {...MOVES.special, startup:crash?.32:.22, active:.05, recovery:crash?.62:.42} : f.kind === "paula" && type === "special" ? {...MOVES.special, startup:.24, active:.06, recovery:.70} : MOVES[f.kickStyle || (low && type === "kick" ? "lowKick" : type)];
+  if(f.kind==="fernando" && type==="special")f.moveSpec={...MOVES.special,startup:.14,active:.05,recovery:.60};
   f.moveSpec = timedMove(f, f.moveSpec, ["roll","teleport"].includes(type), type);
   if(f.kind === "padrino" && type === "special") f.moveSpec.startup = .28;
   f.action = type;
@@ -1163,7 +1171,7 @@ function attack(f, type) {
   f.queueTime = 0;
   f.power -= cost;
   if (workSuper) {
-    f.specialStyle = f.kind === "gabriel" ? "ganttSuper" : f.kind === "linares" ? "transformerSuper" : f.kind === "tren" ? "stormSuper" : f.kind === "peluche" ? "concreteSuper" : f.kind === "angel" ? "hookSuper" : "containerSuper";
+    f.specialStyle = f.kind === "fernando" ? "fireSuper" : f.kind === "gabriel" ? "ganttSuper" : f.kind === "linares" ? "transformerSuper" : f.kind === "tren" ? "stormSuper" : f.kind === "peluche" ? "concreteSuper" : f.kind === "angel" ? "hookSuper" : "containerSuper";
     f.vx = 0;
     startWorkCinematic(f);
     return true;
@@ -1192,7 +1200,7 @@ function attack(f, type) {
     f.vx = f.vy = 0;
   } else if (type === "special") {
     f.specialSpawned = false;
-    f.specialStyle = f.kind === "gabriel" ? "critical" : f.kind === "linares" ? "cable" : f.kind === "tren" ? "voltaic" : f.kind === "peluche" ? "concrete" : f.kind === "angel" ? "beam" : f.kind === "primitivo" ? "forklift" : f.kind === "jairo" ? (crash ? "crash" : "critical") : f.kind === "paula" ? "water" : f.kind === "padrino" ? "dog" : f.kind === "galante" ? "whip" : f.kind === "flor" ? "hockey" : f.kind === "facu" ? "boomerang" : f.kind === "sergio" ? (f.projectileToggle++ % 2 ? "bottle" : "meat") : f.kind === "tunki" ? "flowers" : f.kind === "marechal" ? "lightning" : "ki";
+    f.specialStyle = f.kind === "fernando" ? "cigarettes" : f.kind === "gabriel" ? "critical" : f.kind === "linares" ? "cable" : f.kind === "tren" ? "voltaic" : f.kind === "peluche" ? "concrete" : f.kind === "angel" ? "beam" : f.kind === "primitivo" ? "forklift" : f.kind === "jairo" ? (crash ? "crash" : "critical") : f.kind === "paula" ? "water" : f.kind === "padrino" ? "dog" : f.kind === "galante" ? "whip" : f.kind === "flor" ? "hockey" : f.kind === "facu" ? "boomerang" : f.kind === "sergio" ? (f.projectileToggle++ % 2 ? "bottle" : "meat") : f.kind === "tunki" ? "flowers" : f.kind === "marechal" ? "lightning" : "ki";
     if (COMBAT_AUDIO[f.specialStyle]) f.attackSound = startCombatSound(f.specialStyle);
     f.vx = 0;
   } else if (f.kickStyle === "volley") {
@@ -1212,6 +1220,7 @@ function attack(f, type) {
 }
 
 function spawnProjectile(owner, style) {
+  if(style==="cigarettes") {spawnCigarettes(owner);return;}
   if(style==="cable") {spawnCable(owner);return;}
   if(style==="voltaic") { spawnVoltaic(owner); return; }
   if(style==="concrete") { spawnConcrete(owner); return; }
@@ -1240,6 +1249,7 @@ function spawnProjectile(owner, style) {
 function updateProjectiles(dt) {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
+    if(p.style==="cigarettes") {updateCigarettes(p,dt);if(state!=="playing")return;continue;}
     if(p.style==="cable") {updateCable(p,dt);if(state!=="playing")return;continue;}
     if(p.style==="voltaic") {updateVoltaic(p,dt);if(state!=="playing")return;continue;}
     if (["critical", "crash"].includes(p.style)) { updateSchedule(p, dt); if (state !== "playing") return; continue; }
@@ -1589,7 +1599,7 @@ function updateParticles(dt) {
 }
 
 function powerColor(kind) {
-  return { gabriel:"#ff426b", linares:"#8eeaff", tren:"#8eeaff", peluche:"#d9e1df", angel: "#ffe269", primitivo: "#ffb65b", jairo: "#ff426b", paula: "#60d9ff", padrino: "#ff902e", galante: "#ffdb43", flor: "#d7ff99", facu: "#ffe47a", sergio: "#ffc650", blotta: "#76daff", tunki: "#ff8bd5", marechal: "#a5eaff" }[kind] || "#ffe47a";
+  return { fernando:"#ff9b42", gabriel:"#ff426b", linares:"#8eeaff", tren:"#8eeaff", peluche:"#d9e1df", angel: "#ffe269", primitivo: "#ffb65b", jairo: "#ff426b", paula: "#60d9ff", padrino: "#ff902e", galante: "#ffdb43", flor: "#d7ff99", facu: "#ffe47a", sergio: "#ffc650", blotta: "#76daff", tunki: "#ff8bd5", marechal: "#a5eaff" }[kind] || "#ffe47a";
 }
 
 function addEffect(type, x, y, color, radius, life) {
@@ -1703,8 +1713,8 @@ function draw() {
 function poseFor(f) {
   if(f.concreteHold>0)return f.concretePose;
   if(workCinematic?.owner===f && f.kind==="angel")return workCinematic.elapsed<.38 || workCinematic.elapsed>=.78 ? 16 : 17;
-  if (workCinematic?.owner === f && ["linares","gabriel"].includes(f.kind)) return 17;
-  if(["linares","gabriel"].includes(f.kind) && f.action==="special")return f.specialSpawned?16:4;
+  if (workCinematic?.owner === f && ["linares","gabriel","fernando"].includes(f.kind)) return 17;
+  if(["linares","gabriel","fernando"].includes(f.kind) && f.action==="special")return f.specialSpawned?16:4;
   if (workCinematic?.owner === f) return ["peluche","tren"].includes(f.kind) ? 17 : POSES[f.kind].power;
   if(f.kind==="angel" && f.action==="special")return 18+Math.floor((f.actionDuration-f.actionTime)*12)%2;
   if(f.kind==="peluche" && f.action==="roll")return 18;
@@ -1726,7 +1736,7 @@ function poseFor(f) {
   // Frames 6–11 come from the movement atlas, with separate jump and guard poses.
   if (f.action === "teleport") return 11;
   if (f.action === "slam") return f.slamLanded ? 11 : f.slamDiving ? POSES.tunki.slam : f.slamLaunched ? 10 : 8;
-  if (f.guarding || f.action === "block") return f.crouching && ["linares","gabriel"].includes(f.kind) ? 19 : 9;
+  if (f.guarding || f.action === "block") return f.crouching && ["linares","gabriel","fernando"].includes(f.kind) ? 19 : 9;
   if (["punch", "kick", "special"].includes(f.action) && f.moveSpec) {
     const elapsed = f.actionDuration - f.actionTime;
     if (elapsed > f.moveSpec.startup + f.moveSpec.active + f.moveSpec.recovery * .58) {
@@ -1735,7 +1745,7 @@ function poseFor(f) {
   }
   if(f.action==="kick" && f.kickStyle==="airKick")return progress<.12?10:13;
   if(f.action==="kick" && f.kickStyle==="volley")return progress<.19?POSES[f.kind].idle:14;
-  if (["angel", "primitivo", "peluche", "tren", "linares", "gabriel"].includes(f.kind) && f.lowAttack && f.action === "kick") return POSES[f.kind].sweep;
+  if (["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando"].includes(f.kind) && f.lowAttack && f.action === "kick") return POSES[f.kind].sweep;
   if (f.kind === "flor" && f.lowAttack && f.action === "kick") return POSES.flor.sweep;
   if (f.kind === "facu" && f.lowAttack && f.action === "kick") return POSES.facu.sweep;
   if (f.kind === "marechal" && f.lowAttack && f.action === "kick") return POSES.marechal.sweep;
@@ -1750,7 +1760,7 @@ function poseFor(f) {
   if (f.action === "kick") return progress < .12 ? POSES[f.kind].idle : POSES[f.kind].kick;
   if (f.action === "special") {
     if (progress < .15) return POSES[f.kind].idle;
-    if (["angel", "primitivo", "peluche", "tren", "linares", "gabriel"].includes(f.kind)) return POSES[f.kind].power;
+    if (["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando"].includes(f.kind)) return POSES[f.kind].power;
     if (f.kind === "blotta") return POSES.blotta.power;
     if (f.kind === "tunki") return POSES.tunki.power;
     if (f.kind === "padrino") return POSES.padrino.power;
@@ -1829,7 +1839,7 @@ function fighterMotion(f) {
     motion.scaleX -= .018 * lift;
     motion.rotation -= Math.max(-.045, Math.min(.045, f.vx / 5000));
   }
-  if (f.crouching && (f.guarding || f.action === "block") && !["linares","gabriel"].includes(f.kind)) {
+  if (f.crouching && (f.guarding || f.action === "block") && !["linares","gabriel","fernando"].includes(f.kind)) {
     motion.scaleY = .69;
     motion.scaleX = 1.04;
   }
@@ -2023,7 +2033,7 @@ function drawMotionLines(f, motion) {
 }
 
 function spriteFrame(frame) {
-  if(["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "galante", "padrino", "paula", "jairo"].includes(frame.kind)) return atlasSpriteFrame(frame);
+  if(["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando", "galante", "padrino", "paula", "jairo"].includes(frame.kind)) return atlasSpriteFrame(frame);
   if(frame.pose===13 || frame.pose===14)return classicKickFrame(frame);
   if (frame.kind === "flor") return florSpriteFrame(frame);
   if (frame.kind === "facu") return facuSpriteFrame(frame);
@@ -2288,6 +2298,7 @@ function drawFighter(f) {
   if(f.kind === "paula") drawWaterCharge(f);
   if(f.kind === "peluche") drawConcreteCharge(f);
   if(f.kind === "tren") drawVoltaicCharge(f,frame);
+  if(f.kind==="fernando")drawSmokingFernando(f,frame);
   if(f.electricCoat>0) drawElectricCoat(f,frame);
   if(f.concreteCoat>0) drawConcreteCoat(f,frame);
   if (f.guarding || f.guardFlash > 0) {
@@ -2338,6 +2349,7 @@ function drawProjectileTrail(p) {
 }
 
 function drawProjectile(p) {
+  if(p.style==="cigarettes") {drawCigarettes(p);return;}
   if(p.style==="cable") {drawCable(p);return;}
   if(p.style==="voltaic") {drawVoltaic(p);return;}
   if(p.style==="concrete") { drawConcrete(p); return; }
@@ -2574,7 +2586,7 @@ function ensureAudio() {
       for (const name of ["punchHit", "kickHit", "uppercutHit", "bodyFall", "meleeSwing",
         "cable", "transformerSuper", "voltaic", "stormSuper", "beam", "beamImpact",
         "forklift", "forkliftImpact", "concrete", "concreteImpact",
-        "hookSuper", "containerSuper", "concreteSuper", "critical", "crash"]) loadCombatAudio(name);
+        "hookSuper", "containerSuper", "concreteSuper", "critical", "crash", "cigarettes", "emberImpact", "fireSuper"]) loadCombatAudio(name);
       rosterAudioPreloaded = true;
     }
   }
@@ -2950,7 +2962,7 @@ window.addEventListener("keydown", event => {
     return;
   }
   if (state === "select") {
-    const offsets={KeyA:-1,ArrowLeft:-1,KeyD:1,ArrowRight:1,KeyW:-5,ArrowUp:-5,KeyS:5,ArrowDown:5};
+    const offsets={KeyA:-1,ArrowLeft:-1,KeyD:1,ArrowRight:1,KeyW:-4,ArrowUp:-4,KeyS:4,ArrowDown:4};
     if (code in offsets) {
       const selected = selectionPlayer === 2 ? opponentChoice : playerChoice;
       const choices=roster;
@@ -3368,8 +3380,8 @@ function workHookLift(t) {
 }
 function startWorkCinematic(owner) {
   const target=owner===player?cpu:player;
-  const duration=owner.kind==="gabriel"?2.85:owner.kind==="linares"?3.1:owner.kind==="tren"?2.8:owner.kind==="peluche"?2.65:1.85;
-  const impactAt=owner.kind==="gabriel"?2.05:owner.kind==="linares"?2.05:owner.kind==="tren"?1.95:owner.kind==="peluche"?1.90:1.12;
+  const duration=owner.kind==="fernando"?2.85:owner.kind==="gabriel"?2.85:owner.kind==="linares"?3.1:owner.kind==="tren"?2.8:owner.kind==="peluche"?2.65:1.85;
+  const impactAt=owner.kind==="fernando"?1.85:owner.kind==="gabriel"?2.05:owner.kind==="linares"?2.05:owner.kind==="tren"?1.95:owner.kind==="peluche"?1.90:1.12;
   workCinematic={owner,target,elapsed:0,duration,impactAt,impact:false,originX:owner.x,impactX:target.x,direction:owner.facing,sound:owner.kind==="gabriel"?null:startCombatSound(owner.specialStyle)};
   owner.action="special";owner.actionTime=owner.actionDuration=duration;
   owner.specialSpawned=true;owner.specialCooldown=.7;
@@ -3396,13 +3408,14 @@ function updateWorkCinematic(dt) {
     hit(t,fighterPowers[o.kind].superDamage,o.facing*240,-140,o,
       {sourceX:t.x,direction:o.facing,projectile:true,overhead:true,x:t.x,y:t.y-95});
     burst(t.x,t.y-95,c.owner.kind==="peluche"?"#e5eadb":"#ffdc62",44);dustBurst(t.x,FLOOR,32);
+    if(o.kind==="fernando"){smokeBurst(t.x,t.y-85,18);burst(t.x,t.y-95,"#ff6032",40);}
     if(o.kind==="peluche")t.concreteCoat=1.1;
     if(["tren","linares"].includes(o.kind)) {t.electricCoat=1.35;burst(t.x,t.y-100,"#81dcff",40);}
     screenShake=18;
     // The cinematic already owns time. Ordinary melee hit-stop used to mute its climax.
     hitStop=0;syncCombatSounds();
   }
-  if(["tren","linares","gabriel"].includes(c.owner.kind) && c.impact && state==="playing" && c.elapsed>c.impactAt+.24) {
+  if(["tren","linares","gabriel","fernando"].includes(c.owner.kind) && c.impact && state==="playing" && c.elapsed>c.impactAt+.24) {
     if(!c.launched){c.launched=true;beginKnockdown(c.target,c.direction*300);}
     if(c.target.knockdown)updateKnockdown(c.target,dt);
   }
@@ -3416,6 +3429,7 @@ function updateWorkCinematic(dt) {
 }
 function drawWorkCinematic() {
   const c=workCinematic,t=c.elapsed,owner=c.owner,target=c.target;
+  if(owner.kind==="fernando") {drawFireCinematic(c);return;}
   if(owner.kind==="gabriel") {drawGanttCinematic(c);return;}
   if(owner.kind==="linares") {drawTransformerCinematic(c);return;}
   if(owner.kind==="tren") {drawStormCinematic(c);return;}
@@ -3468,7 +3482,7 @@ function drawWorkCinematic() {
 
 // Deterministic cinematic effects: paused frames hold still and draw never changes gameplay.
 function superPalette(kind) {
-  return kind==="gabriel" ? ["#ff426b","#46caff","#ffffff"] : ["tren","linares"].includes(kind) ? ["#81dcff","#8c91ff","#ffffff"] : kind==="angel" ? ["#fff0a3","#82dfff","#ffffff"]
+  return kind==="fernando" ? ["#ff8a32","#ff4230","#fff2ad"] : kind==="gabriel" ? ["#ff426b","#46caff","#ffffff"] : ["tren","linares"].includes(kind) ? ["#81dcff","#8c91ff","#ffffff"] : kind==="angel" ? ["#fff0a3","#82dfff","#ffffff"]
     : kind==="primitivo" ? ["#ffaf48","#ff663e","#ffe6a1"]
     : ["#e9efbd","#b1c9bf","#ffffff"];
 }
@@ -3870,4 +3884,123 @@ function drawGanttCinematic(c) {
   });
   ctx.restore();
   if(c.impact)drawSuperImpact(c);
+}
+
+// One attack owns three independently swept cigarettes: 7+7+7 raw damage.
+function spawnCigarettes(owner) {
+  const x=owner.x+owner.facing*45,y=owner.y-118;
+  const sound=owner.attackSound||startCombatSound('cigarettes');owner.attackSound=null;
+  projectiles.push({owner,style:'cigarettes',sound,x,y,prevX:x,prevY:y,prevSpin:0,spin:0,
+    originX:owner.x,direction:owner.facing,age:0,life:1.08,trail:[],
+    cigarettes:[-8,0,8].map((offset,i)=>({delay:i*.13,x,prevX:x,y:y+offset,done:false,trail:[]}))});
+}
+function updateCigarettes(p,dt) {
+  p.age+=dt;p.life-=dt;
+  const target=p.owner===player?cpu:player,reach=stats[p.owner.kind].powerRange;
+  for(const c of p.cigarettes) {
+    if(c.done || p.age<c.delay)continue;
+    c.prevX=c.x;
+    const travel=Math.min(reach-45,Math.max(0,p.age-c.delay)*1050);
+    c.x=p.originX+p.direction*(45+travel);
+    c.trail.unshift({x:c.x,y:c.y});if(c.trail.length>10)c.trail.pop();
+    const box={left:Math.min(c.prevX,c.x)-8,right:Math.max(c.prevX,c.x)+8,top:c.y-9,bottom:c.y+9};
+    if(target.invuln<=0 && !isVanished(target) && overlaps(box,hurtBox(target))) {
+      c.done=true;
+      hit(target,powerDamage(p.owner)/3,p.direction*65,0,p.owner,
+        {sourceX:p.originX,direction:p.direction,projectile:true,x:target.x,y:c.y});
+      burst(target.x,c.y,'#ff7632',12);addEffect('ring',target.x,c.y,'#ffb34e',28,.18);
+      if(state!=='playing')return;
+      startCombatSound('emberImpact');
+    }else if(travel>=reach-45 || c.x<STAGE_LEFT || c.x>STAGE_RIGHT)c.done=true;
+  }
+  if(p.life<=0 || p.cigarettes.every(c=>c.done))removeConcrete(p);
+}
+function drawLitCigarette(x,y,direction,angle=0,scale=1) {
+  ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(direction*scale,scale);
+  ctx.fillStyle='#24190f';ctx.fillRect(-18,-4,29,8);
+  ctx.fillStyle='#f2e5cf';ctx.fillRect(-16,-2,22,4);
+  ctx.fillStyle='#ba7835';ctx.fillRect(-16,-2,7,4);
+  ctx.shadowColor='#ff5621';ctx.shadowBlur=10;ctx.fillStyle='#e7391f';ctx.fillRect(6,-3,5,6);
+  ctx.fillStyle='#fff0a1';ctx.fillRect(8,-1,3,2);ctx.restore();
+}
+function drawCigarettes(p) {
+  ctx.save();
+  for(const c of p.cigarettes) {
+    if(c.done || p.age<c.delay)continue;
+    c.trail.forEach((point,i)=>{
+      ctx.globalAlpha=(1-i/10)*.25;ctx.fillStyle='#aaa99e';
+      ctx.fillRect(point.x-5,point.y-3-i*1.5,5+i*.5,5+i*.5);
+      if(i%3===0){ctx.globalAlpha=.65;ctx.fillStyle='#ff8b35';ctx.fillRect(point.x,point.y+Math.sin(p.age*30+i)*6,3,2);}
+    });
+    ctx.globalAlpha=1;drawLitCigarette(lerp(c.prevX,c.x,renderAlpha),c.y,p.direction,Math.sin(p.age*14)*.12,.82);
+  }
+  ctx.restore();
+}
+function drawSmokingFernando(f,frame) {
+  if(f.action!=='idle' && !f.guarding && f.action!=='block')return;
+  const scale=stats[f.kind].size*FIGHTER_SCALE/270;
+  const x=frame.x+f.facing*28*scale,y=frame.y-(f.crouching?99:174)*scale;
+  ctx.save();ctx.fillStyle='#c1bfbc';
+  for(let i=0;i<7;i++){
+    const rise=(f.animClock*19+i*6)%42;
+    ctx.globalAlpha=.24*(1-rise/45);
+    ctx.fillRect(x+Math.sin(rise*.17+i)*4,y-rise,3+i%2,5);
+  }
+  ctx.restore();
+}
+// Pixel-shaped flames and smoke use the simulation clock, including during pause.
+function drawSiteFlame(x,y,height,width,t,seed) {
+  ctx.save();
+  for(const [scale,color] of [[1,'#d73720'],[.76,'#ff8b2a'],[.45,'#ffe16a']]) {
+    const h=height*scale,w=width*scale;
+    ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x-w/2,y);
+    for(let i=0;i<=6;i++) {
+      const q=i/6,tip=(i%2?.55:1)*(1+.15*Math.sin(t*15+seed+i*2.3));
+      ctx.lineTo(Math.round((x-w/2+q*w)/3)*3,Math.round((y-h*tip*Math.sin(Math.PI*q))/3)*3);
+    }
+    ctx.lineTo(x+w/2,y);ctx.closePath();ctx.fill();
+  }
+  ctx.restore();
+}
+function drawFireCinematic(c) {
+  const t=c.elapsed,origin=c.originX-cameraX,impact=c.impactX-cameraX,dir=c.direction;
+  const fade=Math.min(1,t/.15,Math.max(0,(c.duration-t)/.35));
+  const spread=Math.max(0,Math.min(1,(t-.65)/(c.impactAt-.65)));
+  const front=lerp(origin+dir*50,impact,spread),distance=Math.abs(front-origin);
+  ctx.save();ctx.globalAlpha=fade;ctx.fillStyle='rgba(29,10,4,.32)';ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
+  drawSuperAtmosphere(c);
+  // A small timber pallet and stacked planks ignite at the start of the sequence.
+  const pallet=origin+dir*72;
+  ctx.fillStyle='#402519';ctx.fillRect(pallet-37,FLOOR-22,74,18);
+  ctx.fillStyle='#95643a';for(let i=0;i<4;i++)ctx.fillRect(pallet-36+i*20,FLOOR-38-i%2*9,16,28);
+  ctx.fillStyle='#c18b51';for(let i=0;i<3;i++)ctx.fillRect(pallet-42,FLOOR-25-i*7,86,4);
+  if(t>.22 && t<.75)for(let i=0;i<3;i++){
+    const q=Math.max(0,Math.min(1,(t-.22-i*.09)/.28));
+    drawLitCigarette(lerp(origin+dir*45,pallet+dir*(i-1)*12,q),lerp(FLOOR-115,FLOOR-38,q),dir,q*2,.7);
+  }
+  if(t>.45) {
+    const decay=t<c.impactAt?1:Math.max(.1,1-(t-c.impactAt)/(c.duration-c.impactAt));
+    for(let i=0;i<=Math.ceil(distance/22);i++){
+      const x=origin+dir*(40+i*22),height=(55+28*Math.sin(t*13+i*1.6))*decay;
+      drawSiteFlame(x,FLOOR,Math.max(22,height),44,t,i);
+      if(i%2===0) {
+        ctx.fillStyle='#524c44';ctx.globalAlpha=fade*.34;
+        for(let j=0;j<3;j++){
+          const rise=(t*67+j*44+i*17)%145;
+          ctx.fillRect(x+Math.sin(j+i+t)*18-15,FLOOR-height-rise,30+j*7,24+j*9);
+        }
+        ctx.globalAlpha=fade;
+      }
+      ctx.fillStyle='#ffc553';ctx.fillRect(x+Math.sin(t*9+i)*9,FLOOR-((t*83+i*29)%110),3,4);
+    }
+  }
+  if(c.impact && t-c.impactAt<.65) {
+    const q=(t-c.impactAt)/.65;
+    for(let i=-3;i<=3;i++)drawSiteFlame(impact+i*22,FLOOR,Math.max(20,(180-Math.abs(i)*23)*(1-q)),58,t,i+12);
+  }
+  drawSuperImpact(c);
+  ctx.globalAlpha=fade;ctx.fillStyle='rgba(20,8,4,.78)';ctx.fillRect(250,48,460,65);
+  ctx.textAlign='center';ctx.font='italic bold 32px Arial';ctx.fillStyle='#ffbd6b';ctx.fillText('INCENDIO DE OBRA',480,79);
+  ctx.font='bold 14px Arial';ctx.fillStyle='#ffe5c0';ctx.fillText(t<.65?'ENCENDER · PROPAGAR':'FUEGO · HUMO · BRASAS',480,101);
+  ctx.restore();
 }

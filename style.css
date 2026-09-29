@@ -1197,3 +1197,10 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
 .portrait-gabriel img {height:86%;object-fit:contain;object-position:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
 .choice-tile[data-pick="gabriel"] img {object-fit:contain;object-position:center;background:#142341;}
 .selection-guide[data-kind="gabriel"] {--skill-accent:#ff7791;--skill-fill:#f33158;}
+
+/* Seven fighters retain two selection rows. */
+.choice-row {grid-template-columns:repeat(4,minmax(0,1fr));}
+.portrait-fernando {left:7%;border:0;background:transparent;box-shadow:none;}
+.portrait-fernando img {height:88%;object-fit:contain;object-position:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
+.choice-tile[data-pick="fernando"] img {object-fit:contain;object-position:center;background:#142341;}
+.selection-guide[data-kind="fernando"] {--skill-accent:#ffb763;--skill-fill:#ef6539;}
