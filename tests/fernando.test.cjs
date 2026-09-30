@@ -23,7 +23,7 @@ test('common flame impacts persist briefly without repeated damage and clear on 
 test('Fernando stats, stature, selection and six-rival tournament',()=>{
  const g=setup();assert.deepEqual(Array.from(g.run('[stats.fernando.normalDamage,stats.fernando.resistance,stats.fernando.agility,stats.fernando.meleeReach,stats.fernando.recovery,stats.fernando.powerDamage,stats.fernando.superDamage]')),[9,98,6,5,.60,21,33]);assert.equal(g.run('stats.fernando.height'),g.run('stats.linares.height'));
  g.run("openModeSelection();gameMode='solo';openSelection()");g.nodes.get('pick-fernando').listeners.click();assert.equal(g.run('playerChoice'),'fernando');assert.match(g.nodes.get('selectionGuide').innerHTML,/Lluvia de Cigarrillos/);assert.match(g.nodes.get('selectionGuide').innerHTML,/Incendio de Obra/);
- g.run('beginGame()');assert.equal(g.run('campaign.opponents.length'),6);assert.equal(g.run("campaign.opponents.includes('fernando')"),false);
+ g.run('beginGame()');g.tick(3.9);assert.equal(g.run('campaign.opponents.length'),6);assert.equal(g.run("campaign.opponents.includes('fernando')"),false);
  assert.doesNotThrow(()=>g.run('for(let pose=0;pose<=19;pose++)drawSpriteFrame({...renderedFighter(player),pose,fromPose:pose,mix:1})'));
 });
 test('three consecutive cigarettes cost30, total21 damage, are fast and do not hit twice',()=>{

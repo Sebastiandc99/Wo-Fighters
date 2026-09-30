@@ -8,7 +8,8 @@
   <title>WO FIGHTERS</title>
   <link rel="preload" href="assets/fonts/Bangers-Regular.woff" as="font" type="font/woff" crossorigin>
   <link rel="preload" href="assets/fonts/VT323-Regular.woff" as="font" type="font/woff" crossorigin>
-  <link rel="stylesheet" href="style.css?v=20260929-fernando">
+  <link rel="preload" href="assets/tournament-tower-v1.webp" as="image">
+  <link rel="stylesheet" href="style.css?v=20260930-tower">
 </head>
 <body>
   <main id="arcade" class="arcade" aria-label="Wo Fighters">
@@ -89,6 +90,16 @@
       </div>
 
       <button id="fighterBackBtn" class="arcade-btn fighter-back" type="button">VOLVER</button><p class="select-help">← ↑ ↓ → ELEGIR · ENTER CONFIRMAR</p>
+    </section>
+
+    <section id="towerScreen" class="screen tower-screen" aria-label="Torre del Torneo">
+      <canvas id="towerCanvas" width="960" height="540" aria-hidden="true"></canvas>
+      <p id="towerAnnouncement" class="tower-accessible" role="status" aria-live="polite"></p>
+      <div class="tower-controls">
+        <button id="towerMenuBtn" type="button">MENÚ</button>
+        <button id="towerSoundBtn" type="button" aria-label="Desactivar sonido">SONIDO ON</button>
+        <button id="towerSkipBtn" type="button" disabled>RECORRIENDO TORRE…</button>
+      </div>
     </section>
 
     <section id="stageScreen" class="screen stage-screen" aria-labelledby="stageTitle">
@@ -235,6 +246,6 @@
     <div class="scanlines" aria-hidden="true"></div>
   </main>
 
-  <script src="game.js?v=20260930-ranking-repair"></script>
+  <script src="game.js?v=20260930-tower"></script>
 </body>
 </html>

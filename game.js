@@ -28,6 +28,7 @@ const ui = {
   selectScreen: document.getElementById("selectScreen"),
   stageScreen: document.getElementById("stageScreen"),
   gameScreen: document.getElementById("gameScreen"),
+  towerScreen: document.getElementById("towerScreen"),
   startBtn: document.getElementById("startBtn"),
   confirmBtn: document.getElementById("confirmBtn"),
   announcement: document.getElementById("announcement"),
@@ -265,6 +266,7 @@ const COMBAT_AUDIO = {
 const combatSounds = new Set();
 const EXTRA_AUDIO = {
   title: {src: "assets/title-menu-v1.mp3", usage: "title"},
+  tower: {src: "assets/tournament-tower-v1.mp3", usage: "tower"},
   music: [{src: "assets/fighter-1.mp3", usage: "fight"}, {src: "assets/fighter-2.mp3", usage: "fight"}],
   selection: {src: "assets/seleccion-v2.mp3?v=20260907g", usage: "selection"}
 };
@@ -382,7 +384,7 @@ function mainMenu() {
   ui.confirmBtn.disabled = false;
   stopRoundVoice(); stopAllCombatSounds();
   clearHeld();
-  campaign = null;
+  campaign = null; tower = null;
   fighters = []; player = cpu = null; workCinematic = null;
   projectiles = []; particles = []; afterimages = []; effects = [];
   hitStop = screenShake = accumulator = 0;
@@ -458,7 +460,7 @@ function makeFighter(kind, x, isPlayer) {
 }
 
 function showScreen(screen) {
-  [ui.titleScreen, ui.modeScreen, ui.selectScreen, ui.stageScreen, ui.gameScreen, ui.rankingScreen, ui.onlineScreen].forEach(node => {
+  [ui.titleScreen, ui.modeScreen, ui.selectScreen, ui.stageScreen, ui.gameScreen, ui.rankingScreen, ui.onlineScreen, ui.towerScreen].forEach(node => {
     node.classList.toggle("active", node === screen);
   });
 }
@@ -538,17 +540,204 @@ const DIFFICULTIES = [
  {name:"SUPREMO", reaction:.05, guard:.90, attack:1, speed:1, power:.55, tactics:.93}
 ];
 function difficulty() { return DIFFICULTIES[campaign && gameMode==="solo" ? Math.min(campaign.index,DIFFICULTIES.length-1) : 3]; }
+// Tournament presentation shares the campaign's fixed opponents and difficulty index.
+const towerCanvas = document.getElementById("towerCanvas");
+const towerCtx = towerCanvas.getContext("2d");
+const towerArtwork = loadImage("assets/tournament-tower-v1.webp");
+const towerPortraits = Object.fromEntries(Object.entries({
+  angel:"assets/angel-cutout-v2.webp", primitivo:"assets/primitivo-cutout-v4.webp",
+  peluche:"assets/peluche-presentation-v3.webp", tren:"assets/tren-presentation-v3.webp",
+  linares:"assets/linares-portrait-v1.webp", gabriel:"assets/gabriel-portrait-v1.webp",
+  fernando:"assets/fernando-portrait-v1.webp"
+}).map(([kind,src])=>[kind,loadImage(src)]));
+const TOWER_FLOORS = [1127,950,775,610,438,272];
+let tower = null;
+
+function towerCameraAt(t) {
+  const target=TOWER_FLOORS[campaign.index];
+  const wide={y:768,zoom:.29};
+  const focus={y:target,zoom:1.32};
+  const blend=(a,b,q)=>({y:lerp(a.y,b.y,smoothstep(q)),zoom:lerp(a.zoom,b.zoom,smoothstep(q))});
+  if(tower.skip) return blend(tower.skip.from,tower.champion?wide:focus,(t-tower.skip.at)/.30);
+  if(tower.champion) return blend({y:TOWER_FLOORS[5],zoom:1.32},wide,t/1.55);
+  if(tower.first) {
+    if(t<.45)return wide;
+    if(t<1.0)return blend(wide,{y:TOWER_FLOORS[5],zoom:.82},(t-.45)/.55);
+    return blend({y:TOWER_FLOORS[5],zoom:.82},focus,(t-1.0)/1.70);
+  }
+  const from={y:TOWER_FLOORS[Math.max(0,campaign.index-1)],zoom:1.32};
+  return blend(from,focus,(t-.40)/(tower.final?1.75:1.20));
+}
+
+function showTournamentTower(champion=false) {
+  stopRoundVoice(); stopAllCombatSounds(); clearHeld();
+  ui.resultPanel.hidden=true;
+  state="tower"; accumulator=0;
+  tower={elapsed:0,loadingElapsed:0,first:campaign.index===0&&!champion,
+    final:campaign.index===5&&!champion,champion,settled:false,movePlayed:false,skip:null};
+  tower.duration=champion?3.8:tower.first?3.85:tower.final?3.45:2.9;
+  document.getElementById("towerSkipBtn").disabled=tower.first;
+  document.getElementById("towerSkipBtn").textContent=tower.first?"RECORRIENDO TORRE…":"ENTER / START / TOCAR · CONTINUAR";
+  document.getElementById("towerSoundBtn").textContent=muted?"SONIDO OFF":"SONIDO ON";
+  const names=campaign.opponents.map((kind,i)=>"Nivel "+(i+1)+": "+stats[kind].name+(campaign.defeated.includes(kind)?", KO":""));
+  document.getElementById("towerAnnouncement").textContent=(champion?"CAMPEÓN DEL TORNEO: "+stats[playerChoice].name:
+    (tower.final?"COMBATE FINAL. ":"PRÓXIMO COMBATE. ")+stats[playerChoice].name+" contra "+stats[campaign.opponents[campaign.index]].name)+". "+names.join(". ");
+  showScreen(ui.towerScreen);
+  selectMusic("tower");
+  drawTournamentTower();
+}
+
+function skipTournamentTower() {
+  if(state!=="tower" || !tower || tower.first || tower.skip)return;
+  // Short smooth travel, then hold the opponent card; never jump directly into combat.
+  tower.skip={at:tower.elapsed,from:towerCameraAt(tower.elapsed)};
+  tower.duration=tower.elapsed+1.05;
+  document.getElementById("towerSkipBtn").disabled=true;
+}
+
+function towerSettleAt() {
+  return tower.skip?tower.skip.at+.30:tower.champion?1.55:tower.first?2.70:tower.final?2.15:1.60;
+}
+
+function updateTournamentTower(dt) {
+  if(document.hidden || tower.paused)return;
+  tower.loadingElapsed+=dt;
+  const ready=towerArtwork.complete&&towerArtwork.naturalWidth&&campaign.opponents.every(kind=>towerPortraits[kind]?.complete);
+  // Preloaded during menus. A failed image still has a drawn industrial fallback.
+  if(!ready && tower.loadingElapsed<2)return;
+  tower.elapsed+=dt;
+  if(!tower.movePlayed && tower.elapsed>=.40){tower.movePlayed=true;sfx("towerPan");}
+  if(!tower.settled && tower.elapsed>=towerSettleAt()) {
+    tower.settled=true;sfx("towerStop");sfx("confirm");
+  }
+  if(tower.elapsed<tower.duration)return;
+  const champion=tower.champion;
+  stopMusic();stopSynthSounds();tower=null;
+  if(champion) {
+    state="finished";showScreen(ui.gameScreen);ui.resultPanel.hidden=false;
+    showGameOver();
+  } else {
+    startGame(playerChoice,campaign.opponents[campaign.index],true);
+    ui.gameScreen.classList.add("tower-entry");
+  }
+}
+
+function towerText(text,x,y,size,color="#fff1c2",align="left",maxWidth) {
+  towerCtx.font="900 "+size+"px Arial";towerCtx.textAlign=align;
+  towerCtx.fillStyle=color;
+  if(maxWidth)towerCtx.fillText(text,x,y,maxWidth);else towerCtx.fillText(text,x,y);
+}
+
+function towerPortrait(kind,x,y,w,h) {
+  const img=towerPortraits[kind];
+  if(!img?.complete || !img.naturalWidth)return;
+  const iw=img.naturalWidth,ih=img.naturalHeight||iw;
+  // Crop the upper half of the existing presentation to keep faces readable.
+  const sh=ih*.57,sw=Math.min(iw,sh*w/h);
+  towerCtx.drawImage(img,(iw-sw)/2,0,sw,sh,x,y,w,h);
+}
+
+function drawTowerPanel(kind,index) {
+  const c=towerCtx,y=TOWER_FLOORS[index]-55;
+  const defeated=campaign.defeated.includes(kind);
+  const active=!tower.champion&&index===campaign.index&&tower.settled;
+  c.save();
+  c.globalAlpha=defeated?.47:active?1:.70;
+  c.fillStyle="#061125";c.fillRect(360,y,302,110);
+  const glow=c.createLinearGradient(360,y,662,y+110);
+  glow.addColorStop(0,active?"#144b79":"#102740");glow.addColorStop(1,"#030b17");
+  c.fillStyle=glow;c.fillRect(362,y+2,298,106);
+  towerPortrait(kind,396,y+3,108,104);
+  c.fillStyle="#061020";c.fillRect(360,y,36,110);
+  towerText("NIVEL",378,y+27,9,"#a4b4c5","center");
+  towerText(String(index+1),378,y+65,30,active?"#ffdc65":"#e1af56","center");
+  towerText(stats[kind].name,505,y+49,19,active?"#fff4bb":"#dbe4ec","left",151);
+  towerText(defeated?"DERROTADO":active?(tower.final?"FINAL":"PRÓXIMO RIVAL"):"EN LA TORRE",505,y+75,11,defeated?"#a3b0bd":"#6db8d6");
+  c.strokeStyle=active?"#ffe88b":"#716337";c.lineWidth=active?4:1;c.strokeRect(359,y-1,304,112);
+  c.restore();
+  if(defeated) {
+    c.save();c.translate(548,y+83);c.rotate(-.12);c.fillStyle="#410e0e";c.fillRect(-26,-23,66,32);
+    c.strokeStyle="#ed7762";c.lineWidth=2;c.strokeRect(-26,-23,66,32);
+    towerText("KO",6,2,28,"#ffbbaa","center");c.restore();
+  }
+}
+
+function drawTournamentTower() {
+  if(!tower || !campaign)return;
+  const c=towerCtx,t=tower.elapsed,cam=towerCameraAt(t);
+  c.save();c.imageSmoothingEnabled=true;c.fillStyle="#020610";c.fillRect(0,0,960,540);
+  c.save();c.beginPath();c.rect(0,0,650,540);c.clip();
+  // One backdrop, one transform, six cached portraits; no per-frame DOM layout.
+  c.translate(335,270);c.scale(cam.zoom,cam.zoom);c.translate(-512,-cam.y);
+  if(towerArtwork.complete&&towerArtwork.naturalWidth)c.drawImage(towerArtwork,0,0,1024,1536);
+  else {
+    c.fillStyle="#0c1a31";c.fillRect(0,0,1024,1536);
+    c.fillStyle="#b68a28";c.fillRect(328,150,20,1120);c.fillRect(677,150,20,1120);
+    for(const y of TOWER_FLOORS){c.fillRect(328,y+65,370,12);c.fillRect(328,y-68,370,12);}
+  }
+  campaign.opponents.forEach(drawTowerPanel);
+  c.restore();
+  // Subtle steam and work lights stay in screen coordinates for inexpensive motion.
+  const fog=c.createLinearGradient(0,400,0,540);
+  fog.addColorStop(0,"rgba(137,165,185,0)");fog.addColorStop(1,"rgba(100,126,145,.20)");
+  c.fillStyle=fog;c.fillRect(0,400,650,140);
+  c.fillStyle="rgba(1,5,13,.75)";c.fillRect(0,0,650,48);
+  towerText("WO FIGHTERS",22,27,19,"#ffdc79");
+  towerText("TORRE DEL TORNEO",625,27,16,"#d0dce7","right");
+  if(tower.final) {
+    c.globalAlpha=.08+.04*Math.sin(t*4);c.fillStyle="#ffb632";c.fillRect(0,48,650,440);c.globalAlpha=1;
+  }
+  c.fillStyle="#08101e";c.fillRect(650,0,310,540);
+  c.fillStyle="#c49032";c.fillRect(650,0,3,540);
+  towerText(tower.champion?"CAMPEÓN DEL":tower.final?"COMBATE FINAL":"PRÓXIMO COMBATE",677,38,22,"#ffe395");
+  if(tower.champion)towerText("TORNEO",677,65,26,"#ffe395");
+  else towerText("NIVEL "+(campaign.index+1)+" DE 6",677,64,16,"#81a8c9");
+  towerPortrait(playerChoice,682,81,91,104);
+  const rival=campaign.opponents[campaign.index];
+  if(!tower.champion) {
+    towerText("VS",801,142,25,"#ffc658","center");
+    towerPortrait(rival,831,81,91,104);
+    towerText(stats[playerChoice].name,727,205,16,"#dfe9f4","center",120);
+    towerText(stats[rival].name,877,205,16,"#ffdf94","center",127);
+  } else {
+    towerText(stats[playerChoice].name,790,116,25,"#fff0ad","left",157);
+    towerText("6 / 6 VICTORIAS",790,148,15,"#83d5b1");
+    towerText("PUNTOS · "+campaign.score.toLocaleString("es-AR"),677,205,19,"#fff0bd");
+  }
+  towerText("ASCENSO DEL TORNEO",677,248,15,"#94aec5");
+  campaign.opponents.forEach((kind,i)=>{
+    const y=276+(5-i)*32,done=campaign.defeated.includes(kind),active=!tower.champion&&i===campaign.index;
+    c.fillStyle=active?"#253b52":done?"#0e1c26":"#101c2a";c.fillRect(671,y-21,276,29);
+    c.fillStyle=active?"#ffdc65":done?"#67867d":"#46617a";c.fillRect(671,y-21,4,29);
+    towerText(String(i+1).padStart(2,"0"),685,y,16,active?"#ffe49a":"#738da4");
+    towerText(stats[kind].name,716,y,17,done?"#7e909e":active?"#fff0b6":"#d0dce6","left",184);
+    if(done)towerText("KO",933,y,16,"#eb9c89","right");
+    else if(active)towerText("◀",934,y,16,"#ffdc65","right");
+  });
+  towerText(campaign.defeated.length+" DERROTADOS · "+(6-campaign.defeated.length)+" RESTANTES",677,481,14,"#91abc2");
+  const settle=smoothstep((t-towerSettleAt())/.25);
+  if(settle>0) {
+    c.globalAlpha=settle;c.fillStyle="rgba(3,9,18,.90)";c.fillRect(15,438,619,56);
+    towerText(tower.champion?"CAMPEÓN DEL TORNEO":tower.final?"FINAL DEL TORNEO":"PRÓXIMO COMBATE",325,460,16,"#ffce67","center");
+    towerText(tower.champion?stats[playerChoice].name:stats[playerChoice].name+"  VS  "+stats[rival].name,325,484,21,"#fff2c6","center",590);
+    c.globalAlpha=1;
+  }
+  const fade=Math.max(0,1-(tower.duration-t)/.35);
+  if(fade>0){c.fillStyle="rgba(0,0,0,"+fade+")";c.fillRect(0,0,960,540);}
+  c.restore();
+}
+
 function beginGame() {
   if(gameMode!=="solo") { startGame(playerChoice); return; }
   const opponents=roster.filter(kind=>kind!==playerChoice);
   for(let i=opponents.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opponents[i],opponents[j]]=[opponents[j],opponents[i]];}
-  campaign={opponents,index:0,wins:0,score:0,completed:false};
-  startGame(playerChoice,opponents[0],true);
+  campaign={opponents,index:0,wins:0,score:0,completed:false,defeated:[]};
+  showTournamentTower();
 }
 function nextOpponent() {
   if(!campaign || !match.nextOpponent)return;
   campaign.index++;
-  startGame(playerChoice,campaign.opponents[campaign.index],true);
+  showTournamentTower();
 }
 function startGame(choice, opponentKind = null, keepCampaign = false) {
   if(!keepCampaign)campaign=null;
@@ -563,6 +752,7 @@ function startGame(choice, opponentKind = null, keepCampaign = false) {
 }
 
 function startRound() {
+  ui.gameScreen.classList.remove("tower-entry");
   workCinematic = null;
   stopRoundVoice();
   stopAllCombatSounds();
@@ -646,7 +836,8 @@ function positionSpeech() {
 
 function update(dt) {
   if (online?.guest && online.started) { updateOnlineGuest(dt); return; }
-  if (["title", "mode", "select", "stage", "intro", "playing", "roundOver"].includes(state)) advanceMusic(dt);
+  if (["title", "mode", "select", "stage", "tower", "intro", "playing", "roundOver"].includes(state)) advanceMusic(dt);
+  if (state === "tower") { updateTournamentTower(dt); return; }
   if (!["intro", "playing", "roundOver", "finished"].includes(state)) return;
   fighters.forEach(f => {
     f.prevX = f.x; f.prevY = f.y;
@@ -702,7 +893,10 @@ function update(dt) {
     });
     if (state === "finished" && resultElapsed >= .8) ui.resultPanel.hidden = false;
     if (state === "finished" && match.nextOpponent && resultElapsed >= 2.65) { nextOpponent(); return; }
-    if (state === "finished" && !match.nextOpponent && resultElapsed >= 2.2 && !match.endShown) showGameOver();
+    if (state === "finished" && campaign?.completed && !match.towerShown && resultElapsed >= 2.65) {
+      match.towerShown=true;showTournamentTower(true);return;
+    }
+    if (state === "finished" && !match.nextOpponent && (!campaign?.completed || match.towerShown) && resultElapsed >= 2.2 && !match.endShown) showGameOver();
     if (state === "finished" && resultElapsed >= 3.8 && match.winner === 1 && gameMode === "solo" && !match.campaignRun) showRanking();
     if (state === "roundOver" && resultElapsed >= .8) document.getElementById("roundNotice").hidden = false;
     if (state === "roundOver" && resultElapsed >= 2.65) {
@@ -1365,7 +1559,9 @@ function finishRound(winner, reason) {
     addScore(winner, 2000);
     if(campaign && gameMode==="solo"){
       if(winner===player){
-        campaign.wins++; addScore(player,2000*(campaign.index+1));
+        campaign.wins++;
+        if(!campaign.defeated.includes(cpu.kind))campaign.defeated.push(cpu.kind);
+        addScore(player,2000*(campaign.index+1));
         match.nextOpponent=campaign.index+1<campaign.opponents.length;
         campaign.completed=!match.nextOpponent;
         if(campaign.completed)addScore(player,10000);
@@ -1395,6 +1591,7 @@ function finishRound(winner, reason) {
   announce(reason, winner && reason==="K.O." ? KO_AUDIO.duration*1000 : 750);
   if(winner && reason==="K.O."){koVoice={elapsed:0,waited:0,started:false,source:null,gain:null};loadKOAudio();syncKOAudio();}
   sfx(match.complete ? winner === player ? "win" : "lose" : "confirm");
+  if(match.complete && campaign && winner!==player)campaign=null;
 }
 
 function addScore(f, points) {
@@ -2598,6 +2795,13 @@ let lastHudState = null;
 function loop(now) {
   advanceGameClock(now);
   renderAlpha = online?.guest ? Math.min(1, (performance.now()-online.lastFrame)/online.renderInterval) : state === "paused" ? 1 : accumulator / (mobileRendering ? STEP * 2 : STEP);
+  if(state === "tower") {
+    let startPressed=false;
+    try {startPressed=Array.from(navigator.getGamepads?.()||[]).some(pad=>pad?.buttons?.[9]?.pressed);} catch (_) { /* Embedded browsers can disable controllers. */ }
+    if(startPressed&&!tower.startHeld)skipTournamentTower();
+    tower.startHeld=startPressed;
+    drawTournamentTower();
+  }
   if (["intro", "playing", "paused", "roundOver", "finished"].includes(state)) {
     if (state !== "paused") draw();
     // The bars and clock need a few updates per second, not a DOM rewrite every frame.
@@ -2629,6 +2833,7 @@ function ensureAudio() {
     }
   }
   if (["title", "mode", "select", "stage"].includes(state)) loadMusic(EXTRA_AUDIO.selection);
+  if (gameMode === "solo" && ["select", "stage"].includes(state)) loadMusic(EXTRA_AUDIO.tower);
   if (musicTrack) loadMusic(musicTrack);
 }
 
@@ -2779,7 +2984,7 @@ function loadRoundVoice(round = match.round) {
 function selectMusic(usage = "fight") {
   if (["title", "selection"].includes(usage) && musicTrack?.usage === usage) { ensureAudio(); syncMusic(); return; }
   stopMusic();
-  musicTrack = usage === "title" ? EXTRA_AUDIO.title : usage === "selection" ? EXTRA_AUDIO.selection : EXTRA_AUDIO.music[Math.floor(Math.random() * EXTRA_AUDIO.music.length)];
+  musicTrack = usage === "title" ? EXTRA_AUDIO.title : usage === "selection" ? EXTRA_AUDIO.selection : usage === "tower" ? EXTRA_AUDIO.tower : EXTRA_AUDIO.music[Math.floor(Math.random() * EXTRA_AUDIO.music.length)];
   ensureAudio();
   syncMusic();
 }
@@ -2804,16 +3009,18 @@ function loadMusic(track) {
 }
 
 function syncMusic() {
-  const allowed = musicTrack?.usage === "title" ? ["title", "mode"] : musicTrack?.usage === "selection" ? ["select", "stage"] : ["intro", "playing", "roundOver"];
+  const allowed = musicTrack?.usage === "title" ? ["title", "mode"] : musicTrack?.usage === "selection" ? ["select", "stage"] : musicTrack?.usage === "tower" ? ["tower"] : ["intro", "playing", "roundOver"];
+  if (state === "tower" && tower?.paused)return;
   if (!allowed.includes(state) || muted || !audioCtx || audioCtx.state !== "running" || !musicTrack) return;
   if (!musicTrack.buffer) { loadMusic(musicTrack); return; }
-  if (musicGain) musicGain.gain.value = state === "intro" ? .22 : musicTrack.usage === "selection" ? .52 : .46;
+  const volume=musicTrack.usage === "tower" ? .46 * Math.min(1,Math.max(0,(tower.duration-tower.elapsed)/.35)) : state === "intro" ? .22 : musicTrack.usage === "selection" ? .52 : .46;
+  if (musicGain) musicGain.gain.value = volume;
   if (musicSource) return;
   musicSource = audioCtx.createBufferSource();
   musicGain = audioCtx.createGain();
   musicSource.buffer = musicTrack.buffer;
   musicSource.loop = true;
-  musicGain.gain.value = state === "intro" ? .22 : musicTrack.usage === "selection" ? .52 : .46;
+  musicGain.gain.value = volume;
   musicSource.connect(musicGain).connect(audioCtx.destination);
   musicSource.start(0, musicElapsed % musicTrack.buffer.duration);
   musicStartedAt = audioCtx.currentTime || 0;
@@ -2887,6 +3094,8 @@ function sfx(name) {
   const generation = soundGeneration;
   const later = (callback, delay) => setTimeout(() => { if (generation === soundGeneration) callback(); }, delay);
   const sounds = {
+    towerPan: () => { tone(110,.45,"sawtooth",.02,220);tone(220,.42,"triangle",.018,-120); },
+    towerStop: () => { tone(470,.10,"triangle",.04,-300);tone(93,.18,"square",.018,-45); },
     start: () => { tone(130, .12); later(() => tone(195, .18), 110); },
     move: () => tone(290, .055, "square", .025, 70),
     confirm: () => { tone(330, .08, "square", .035); later(() => tone(660, .14, "square", .035), 70); },
@@ -2922,6 +3131,14 @@ ui.confirmBtn.addEventListener("click", () => { requestMobileLandscape(); sfx("c
 document.querySelectorAll("[data-stage]").forEach(button => button.addEventListener("click", () => chooseStage(button.dataset.stage)));
 document.getElementById("stageBackBtn").addEventListener("click", openSelection);
 document.getElementById("stageConfirmBtn").addEventListener("click", () => { requestMobileLandscape(); beginGame(); });
+document.getElementById("towerSkipBtn").addEventListener("click",skipTournamentTower);
+ui.towerScreen.addEventListener("pointerdown",event=>{if(event.target?.tagName!=="BUTTON")skipTournamentTower();});
+document.getElementById("towerMenuBtn").addEventListener("click",mainMenu);
+document.getElementById("towerSoundBtn").addEventListener("click",()=>{
+  toggleSound();
+  document.getElementById("towerSoundBtn").textContent=muted?"SONIDO OFF":"SONIDO ON";
+  document.getElementById("towerSoundBtn").setAttribute("aria-label",muted?"Activar sonido":"Desactivar sonido");
+});
 ui.pauseBtn.addEventListener("click", togglePause);
 document.getElementById("resumeBtn").addEventListener("click", () => { if (state === "paused") togglePause(); });
 document.getElementById("quitBtn").addEventListener("click", mainMenu);
@@ -2932,13 +3149,14 @@ document.getElementById("rankingMenuBtn").addEventListener("click", mainMenu);
 document.getElementById("newGameBtn").addEventListener("click", openModeSelection);
 document.getElementById("rankingRetryBtn").addEventListener("click", showRanking);
 document.getElementById("winnerForm").addEventListener("submit", saveWinner);
-ui.soundBtn.addEventListener("click", () => {
+function toggleSound() {
   muted = !muted;
   if (muted) { stopRoundVoice(); suspendCombatSounds(); pauseMusic(); }
   ui.soundBtn.textContent = muted ? "🔇" : "🔊";
   ui.soundBtn.setAttribute("aria-label", muted ? "Activar sonido" : "Desactivar sonido");
   if (!muted) { ensureAudio(); syncRoundVoice(); syncCombatSounds(); syncKOAudio(); syncMusic(); }
-});
+}
+ui.soundBtn.addEventListener("click", toggleSound);
 
 const HOLD_KEYS = {
   KeyA: "left", ArrowLeft: "left", KeyD: "right", ArrowRight: "right",
@@ -2990,6 +3208,11 @@ window.addEventListener("keydown", event => {
   const binding = keyBinding(code);
   if (binding.hold || binding.tap || ["Space", "Enter", "Escape"].includes(code)) event.preventDefault();
   if (event.repeat) return;
+  if (state === "tower") {
+    if (["Enter", "Space", "GamepadStart"].includes(code))skipTournamentTower();
+    if (code === "Escape")mainMenu();
+    return;
+  }
   if (state === "title") { if (["Enter", "Space"].includes(code)) openModeSelection(); return; }
   if (state === "mode") {
     if (["KeyA", "KeyD", "ArrowLeft", "ArrowRight"].includes(code)) chooseMode(modeChoice === "solo" ? "versus" : "solo");
@@ -3032,11 +3255,17 @@ window.addEventListener("keyup", event => {
 });
 function pauseOnLeave() {
   clearHeld();
+  if(state === "tower") { tower.paused=true;pauseMusic();return; }
   if (online?.active) { online.input(held); return; }
   if (state === "playing" || state === "intro" || state === "roundOver" || (state === "finished" && match.nextOpponent)) togglePause();
 }
 window.addEventListener("blur", pauseOnLeave);
-document.addEventListener("visibilitychange", () => { if (document.hidden) pauseOnLeave(); });
+function resumeTowerOnReturn() {
+  if(state!=="tower" || document.hidden)return;
+  tower.paused=false;lastTime=performance.now();accumulator=0;syncMusic();
+}
+window.addEventListener("focus",resumeTowerOnReturn);
+document.addEventListener("visibilitychange", () => { if (document.hidden) pauseOnLeave(); else resumeTowerOnReturn(); });
 // A captured pointer controls each stick. Holding down also works with action buttons.
 function moveJoystick(stick, event) {
   const rect = stick.getBoundingClientRect();
