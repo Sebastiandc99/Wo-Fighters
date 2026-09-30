@@ -551,7 +551,8 @@ const towerPortraits = Object.fromEntries(Object.entries({
   fernando:"assets/fernando-portrait-v1.webp"
 }).map(([kind,src])=>[kind,loadImage(src)]));
 const TOWER_FLOORS = [1127,950,775,610,438,272];
-const TOWER_TIMING_SCALE = 1.5; // More time to follow the camera and read the rival.
+const TOWER_TIMING_SCALE = 1.8; // More time to follow the camera and read the rival.
+const TOWER_RIVAL_HOLD_SECONDS = 2;
 let tower = null;
 
 function towerCameraAt(t) {
@@ -577,7 +578,8 @@ function showTournamentTower(champion=false) {
   state="tower"; accumulator=0;
   tower={elapsed:0,loadingElapsed:0,first:campaign.index===0&&!champion,
     final:campaign.index===5&&!champion,champion,settled:false,movePlayed:false,skip:null};
-  tower.duration=(champion?3.8:tower.first?3.85:tower.final?3.45:2.9)*TOWER_TIMING_SCALE;
+  // Finish the highlight fade-in, hold the rival for two seconds, then fade out.
+  tower.duration=champion?3.8*TOWER_TIMING_SCALE:towerSettleAt()+.25+TOWER_RIVAL_HOLD_SECONDS+.35;
   document.getElementById("towerSkipBtn").disabled=tower.first;
   document.getElementById("towerSkipBtn").textContent=tower.first?"RECORRIENDO TORRE…":"ENTER / START / TOCAR · CONTINUAR";
   document.getElementById("towerSoundBtn").textContent=muted?"SONIDO OFF":"SONIDO ON";
@@ -593,7 +595,7 @@ function skipTournamentTower() {
   if(state!=="tower" || !tower || tower.first || tower.skip)return;
   // Short smooth travel, then hold the opponent card; never jump directly into combat.
   tower.skip={at:tower.elapsed,from:towerCameraAt(tower.elapsed)};
-  tower.duration=tower.elapsed+1.05;
+  tower.duration=towerSettleAt()+.25+TOWER_RIVAL_HOLD_SECONDS+.35;
   document.getElementById("towerSkipBtn").disabled=true;
 }
 

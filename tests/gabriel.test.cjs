@@ -7,7 +7,7 @@ test('Gabriel attributes, relative height, selection, atlas and tournament',()=>
  const g=setup();assert.deepEqual(Array.from(g.run('[stats.gabriel.normalDamage,stats.gabriel.resistance,stats.gabriel.agility,stats.gabriel.meleeReach,stats.gabriel.recovery,stats.gabriel.powerDamage,stats.gabriel.superDamage]')),[8,94,7,5,.56,23,34]);
  assert.ok(g.run('stats.peluche.size<stats.gabriel.size && stats.gabriel.size<stats.linares.size && stats.peluche.height<stats.gabriel.height && stats.gabriel.height<stats.linares.height'));
  g.run("openModeSelection();gameMode='solo';openSelection()");g.nodes.get('pick-gabriel').listeners.click();assert.equal(g.run('playerChoice'),'gabriel');assert.match(g.nodes.get('selectionGuide').innerHTML,/Camino Crítico/);assert.match(g.nodes.get('selectionGuide').innerHTML,/Gantt Impacto/);
- g.run('beginGame()');g.tick(5.9);assert.deepEqual(Array.from(g.run('campaign.opponents')).sort(),['angel','fernando','linares','peluche','primitivo','tren']);
+ g.run('beginGame()');g.tick(g.run('tower.duration')+.05);assert.deepEqual(Array.from(g.run('campaign.opponents')).sort(),['angel','fernando','linares','peluche','primitivo','tren']);
  assert.doesNotThrow(()=>g.run('for(let pose=0;pose<=18;pose++)drawSpriteFrame({...renderedFighter(player),pose,fromPose:pose,mix:1})'));
  assert.ok(g.requestedImages.includes('assets/gabriel-atlas-v1.webp'));
 });

@@ -7,14 +7,15 @@ La presentación del modo solo reutiliza `campaign.opponents` y `campaign.index`
 Se conserva el sorteo único del roster actual, con seis rivales diferentes del jugador.
 `campaign.defeated` registra los combates completos ganados, independientemente de los rounds.
 
-La primera presentación dura 5,78 segundos: vista completa, acercamiento al piso superior,
+La primera presentación dura 7,46 segundos: vista completa, acercamiento al piso superior,
 recorrido continuo de los seis pisos y detención en el primer rival. Entre victorias,
-la cámara asciende desde el piso anterior; estas presentaciones duran 4,35 segundos.
-El recorrido y la pausa sobre el rival tienen un 50 % más de tiempo para mejorar la lectura. La final dura 5,18 segundos. Al completar
+la cámara asciende desde el piso anterior; estas presentaciones duran 5,48 segundos.
+El recorrido usa un factor de tiempo de 1,8. Tras completar el resaltado, el rival
+permanece visible dos segundos completos antes del fundido hacia la pelea. La final dura 6,47 segundos. Al completar
 la torre, se presenta al campeón antes de volver al formulario habitual del ranking.
 
 Enter, Espacio, Start de un mando, el botón Continuar o un toque permiten acelerar las
-presentaciones posteriores. Conservan 0,3 segundos de desplazamiento y una pausa visible
+presentaciones posteriores. Conservan 0,3 segundos de desplazamiento y los dos segundos sobre el rival
 antes del fundido. La primera presentación de cada torneo se reproduce completa.
 El menú cancela la torre. Cambiar de pestaña pausa cámara y música.
 

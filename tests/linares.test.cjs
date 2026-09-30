@@ -7,7 +7,7 @@ test('Linares selection, attributes, atlas and solo tournament are integrated',(
  const g=setup();assert.deepEqual(Array.from(g.run('[stats.linares.normalDamage,stats.linares.resistance,stats.linares.agility,stats.linares.meleeReach,stats.linares.recovery,stats.linares.powerDamage,stats.linares.superDamage]')),[8,90,8,6,.54,23,34]);
  g.run("openModeSelection();gameMode='solo';openSelection()");g.nodes.get('pick-linares').listeners.click();assert.equal(g.run('playerChoice'),'linares');
  assert.match(g.nodes.get('selectionGuide').innerHTML,/Descarga de Transformador/);
- g.run('beginGame()');g.tick(5.9);assert.deepEqual(Array.from(g.run('campaign.opponents')).sort(),['angel','fernando','gabriel','peluche','primitivo','tren']);
+ g.run('beginGame()');g.tick(g.run('tower.duration')+.05);assert.deepEqual(Array.from(g.run('campaign.opponents')).sort(),['angel','fernando','gabriel','peluche','primitivo','tren']);
  assert.doesNotThrow(()=>g.run('for(let pose=0;pose<=18;pose++)drawSpriteFrame({...renderedFighter(player),pose,fromPose:pose,mix:1})'));
 });
 test('cable costs 30, hits each opponent once in both directions and returns without locking controls',()=>{
