@@ -551,6 +551,7 @@ const towerPortraits = Object.fromEntries(Object.entries({
   fernando:"assets/fernando-portrait-v1.webp"
 }).map(([kind,src])=>[kind,loadImage(src)]));
 const TOWER_FLOORS = [1127,950,775,610,438,272];
+const TOWER_TIMING_SCALE = 1.5; // More time to follow the camera and read the rival.
 let tower = null;
 
 function towerCameraAt(t) {
@@ -559,6 +560,7 @@ function towerCameraAt(t) {
   const focus={y:target,zoom:1.32};
   const blend=(a,b,q)=>({y:lerp(a.y,b.y,smoothstep(q)),zoom:lerp(a.zoom,b.zoom,smoothstep(q))});
   if(tower.skip) return blend(tower.skip.from,tower.champion?wide:focus,(t-tower.skip.at)/.30);
+  t /= TOWER_TIMING_SCALE;
   if(tower.champion) return blend({y:TOWER_FLOORS[5],zoom:1.32},wide,t/1.55);
   if(tower.first) {
     if(t<.45)return wide;
@@ -575,7 +577,7 @@ function showTournamentTower(champion=false) {
   state="tower"; accumulator=0;
   tower={elapsed:0,loadingElapsed:0,first:campaign.index===0&&!champion,
     final:campaign.index===5&&!champion,champion,settled:false,movePlayed:false,skip:null};
-  tower.duration=champion?3.8:tower.first?3.85:tower.final?3.45:2.9;
+  tower.duration=(champion?3.8:tower.first?3.85:tower.final?3.45:2.9)*TOWER_TIMING_SCALE;
   document.getElementById("towerSkipBtn").disabled=tower.first;
   document.getElementById("towerSkipBtn").textContent=tower.first?"RECORRIENDO TORRE…":"ENTER / START / TOCAR · CONTINUAR";
   document.getElementById("towerSoundBtn").textContent=muted?"SONIDO OFF":"SONIDO ON";
@@ -596,7 +598,7 @@ function skipTournamentTower() {
 }
 
 function towerSettleAt() {
-  return tower.skip?tower.skip.at+.30:tower.champion?1.55:tower.first?2.70:tower.final?2.15:1.60;
+  return tower.skip?tower.skip.at+.30:(tower.champion?1.55:tower.first?2.70:tower.final?2.15:1.60)*TOWER_TIMING_SCALE;
 }
 
 function updateTournamentTower(dt) {
@@ -606,7 +608,7 @@ function updateTournamentTower(dt) {
   // Preloaded during menus. A failed image still has a drawn industrial fallback.
   if(!ready && tower.loadingElapsed<2)return;
   tower.elapsed+=dt;
-  if(!tower.movePlayed && tower.elapsed>=.40){tower.movePlayed=true;sfx("towerPan");}
+  if(!tower.movePlayed && tower.elapsed>=.40*TOWER_TIMING_SCALE){tower.movePlayed=true;sfx("towerPan");}
   if(!tower.settled && tower.elapsed>=towerSettleAt()) {
     tower.settled=true;sfx("towerStop");sfx("confirm");
   }

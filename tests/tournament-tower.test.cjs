@@ -10,23 +10,23 @@ test('all seven fighters get a fixed tower of six unique rivals, excluding thems
   assert.equal(rivals.length,6);assert.equal(new Set(rivals).size,6);assert.ok(!rivals.includes(kind));
   assert.equal(g.run('state'),'tower');assert.equal(g.run('musicTrack.usage'),'tower');
   g.key('Enter');g.nodes.get('towerScreen').listeners.pointerdown({target:{tagName:'CANVAS'}});
-  assert.equal(g.run('tower.skip'),null);g.tick(3.1);assert.equal(g.run('state'),'tower');
+  assert.equal(g.run('tower.skip'),null);g.tick(4.7);assert.equal(g.run('state'),'tower');
   assert.doesNotThrow(()=>g.run('drawTournamentTower()'));
-  g.tick(.8);assert.equal(g.run('state'),'intro');assert.equal(g.run('cpu.kind'),rivals[0]);
+  g.tick(1.2);assert.equal(g.run('state'),'intro');assert.equal(g.run('cpu.kind'),rivals[0]);
   assert.deepEqual(Array.from(g.run('campaign.opponents')),rivals);
   assert.equal(g.run('musicTrack.usage'),'fight');
  }
 });
 test('camera visibly traverses upper and intermediate floors before settling at level one',()=>{
  const g=tournament();
- const wide=g.run('towerCameraAt(.1)'),top=g.run('towerCameraAt(1)'),middle=g.run('towerCameraAt(1.8)'),end=g.run('towerCameraAt(2.7)');
+ const wide=g.run('towerCameraAt(.1)'),top=g.run('towerCameraAt(1.5)'),middle=g.run('towerCameraAt(2.7)'),end=g.run('towerCameraAt(4.05)');
  assert.equal(wide.zoom,.29);assert.equal(top.y,272);assert.ok(middle.y>top.y&&middle.y<end.y);
  assert.equal(end.y,1127);assert.equal(end.zoom,1.32);
  // Smoothstep joins have small velocity at arrival, rather than a camera teleport.
- assert.ok(g.run('Math.abs(towerCameraAt(2.7).y-towerCameraAt(2.69).y)')<1);
+ assert.ok(g.run('Math.abs(towerCameraAt(4.05).y-towerCameraAt(4.04).y)')<1);
 });
 test('only full match victories advance, preserving all six difficulties, score and opponent order',()=>{
- const g=tournament('linares');g.tick(3.9);
+ const g=tournament('linares');g.tick(5.9);
  const rivals=Array.from(g.run('campaign.opponents'));let score=0;
  for(let i=0;i<6;i++) {
   assert.equal(g.run('cpu.kind'),rivals[i]);assert.equal(g.run('campaign.index'),i);
@@ -42,10 +42,10 @@ test('only full match victories advance, preserving all six difficulties, score 
   if(i<5) {
    const before=g.run('towerCameraAt(0).y');g.tick(1);
    assert.ok(g.run('towerCameraAt(tower.elapsed).y')<before);
-   g.tick(2.5);assert.equal(g.run('state'),'intro');
+   g.tick(4.3);assert.equal(g.run('state'),'intro');
   }else {
    assert.equal(g.run('tower.champion'),true);assert.equal(g.run('campaign.completed'),true);
-   g.tick(3.9);assert.equal(g.run('state'),'finished');assert.equal(g.run('match.endShown'),true);
+   g.tick(5.9);assert.equal(g.run('state'),'finished');assert.equal(g.run('match.endShown'),true);
    assert.equal(g.nodes.get('winnerForm').hidden,false);
    assert.equal(g.run('campaign.score'),score);assert.equal(g.run('match.scores[0]'),score);
   }
@@ -53,7 +53,7 @@ test('only full match victories advance, preserving all six difficulties, score 
 });
 test('Enter, mobile touch and controller Start shorten later presentations but hold the correct opponent',()=>{
  for(const input of ['key','touch','start']) {
-  const g=tournament();g.tick(3.9);win(g);g.tick(2.7);
+  const g=tournament();g.tick(5.9);win(g);g.tick(2.7);
   assert.equal(g.run('tower.first'),false);
   const before=g.run('towerCameraAt(tower.elapsed).y');
   if(input==='key')g.key('Enter');
@@ -66,10 +66,10 @@ test('Enter, mobile touch and controller Start shorten later presentations but h
  }
 });
 test('final presentation is slower, loss resets campaign and keeps the usual score-entry flow',()=>{
- const g=tournament();g.tick(3.9);
+ const g=tournament();g.tick(5.9);
  g.run(`campaign.index=5;showTournamentTower()`);
- assert.equal(g.run('tower.final'),true);assert.equal(g.run('tower.duration'),3.45);
- g.tick(3.5);g.run(`state='playing';addScore(player,100);match.cpuWins=1;finishRound(cpu,'TIEMPO')`);
+ assert.equal(g.run('tower.final'),true);assert.equal(g.run('tower.duration'),3.45*1.5);
+ g.tick(5.3);g.run(`state='playing';addScore(player,100);match.cpuWins=1;finishRound(cpu,'TIEMPO')`);
  const score=g.run('match.scores[0]');assert.equal(g.run('campaign'),null);
  g.tick(2.3);assert.equal(g.run('state'),'finished');assert.equal(g.nodes.get('winnerForm').hidden,false);
  assert.equal(g.run('match.scores[0]'),score);
@@ -94,7 +94,7 @@ test('mobile landscape retains the same camera duration and the original six dif
  assert.equal(g.run('state'),'tower');assert.ok(Math.abs(g.run('tower.elapsed')-3)<.03);
  assert.doesNotThrow(()=>g.run('drawTournamentTower()'));
  assert.deepEqual(Array.from(g.run('DIFFICULTIES.slice(0,6).map(d=>d.reaction)')),[.23,.19,.15,.12,.09,.08]);
- g.run('for(let n=181;n<=240;n++)advanceGameClock(n*1000/60)');assert.equal(g.run('state'),'intro');
+ g.run('for(let n=181;n<=360;n++)advanceGameClock(n*1000/60)');assert.equal(g.run('state'),'intro');
 });
 
 test('an embedded browser without controller permissions can still render the tower',()=>{
