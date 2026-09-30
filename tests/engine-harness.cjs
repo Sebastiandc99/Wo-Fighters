@@ -57,7 +57,7 @@ function game(sourcePath = path.join(__dirname, "..", "game.js")) {
       set src(value) { this._src = value; requestedImages.push(value); }
       get src() { return this._src; }
     },
-    performance: { now: () => 0 }, requestAnimationFrame() {}, setTimeout() {}, console
+    performance: { now: () => 0 }, requestAnimationFrame() {}, setTimeout() {}, console, URL
   });
   vm.runInContext(fs.readFileSync(sourcePath, "utf8"), sandbox);
   const run = code => vm.runInContext(code, sandbox);

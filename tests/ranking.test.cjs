@@ -13,13 +13,13 @@ test('ranking is visible on the title screen and stores a Wo result in its own e
  const calls=[];
  g.sandbox.fetch=async (url, options={})=>{
   calls.push({url,options});
-  return {ok:true,async json(){return options.method==='POST'?{entry:{id:'record-123'}}:{entries:[{id:'record-123',name:'Seba',score:7300,createdAt:1}],next:null}}};
+  return {ok:true,async json(){return options.method==='POST'?[{id:'record-123'}]:[{id:'record-123',name:'Seba',score:7300,created_at:1}]}};
  };
  g.nodes.get('winnerName').value='Seba';
  await g.run('saveWinner({preventDefault(){}})');
  assert.equal(g.run('state'),'ranking');
  assert.equal(calls.length,2);
- for(const call of calls){assert.match(call.url,/\/api\/wo-ranking/);assert.doesNotMatch(call.url,/\/api\/ranking(?:\?|$)/)}
+ for(const call of calls){assert.match(call.url,/\/rest\/v1\/wo_scores\?/);assert.ok(call.options.headers.apikey.startsWith('sb_publishable_'));}
  const sent=JSON.parse(calls[0].options.body);
  assert.equal(sent.character,'angel');assert.equal(sent.score,7300);
  assert.equal(g.nodes.get('rankingRows').children[0].children[2].children[0].textContent,'Seba');
@@ -35,6 +35,23 @@ test('a rejected score is reported as a server validation error and preserves th
  assert.equal(g.nodes.get('winnerName').value,'Seba');assert.equal(g.run('match.scores[0]'),171817);
  assert.equal(g.run('match.saved'),false);assert.equal(g.run('match.saving'),false);
  assert.equal(g.nodes.get('saveScoreBtn').disabled,false);
- g.sandbox.fetch=async(url,options={})=>({ok:true,status:200,async json(){return options.method==='POST'?{entry:{}}:{entries:[],next:null}}});
+ g.sandbox.fetch=async()=>({ok:true,status:200,async json(){return []}});
  await g.run('saveWinner({preventDefault(){}})');assert.equal(g.run('match.saved'),true);
+});
+
+test('all seven characters keep their names and scores and retries use insert-only deduplication',async()=>{
+ for(const kind of ['angel','primitivo','peluche','tren','linares','gabriel','fernando']){
+  const g=game();g.run(`gameMode='solo';startGame('${kind}','peluche');state='finished';match.complete=true;match.winner=0;match.campaignRun=true;match.recordSlot=0;match.scores=[171817,0];showGameOver()`);
+  g.nodes.get('winnerName').value='Seba';const calls=[];
+  g.sandbox.fetch=async(url,options={})=>{calls.push({url,options});return {ok:true,status:200,async json(){return []}}};
+  await g.run('saveWinner({preventDefault(){}})');
+  const body=JSON.parse(calls[0].options.body);assert.equal(body.character,kind);assert.equal(body.name,'Seba');assert.equal(body.score,171817);
+  assert.match(calls[0].options.headers.Prefer,/ignore-duplicates/);assert.equal(new URL(calls[0].url).searchParams.get('on_conflict'),'id');assert.equal(g.run('match.saved'),true);
+ }
+});
+test('the complete ranking is paginated with stable server ordering',async()=>{
+ const g=game(),calls=[];
+ g.sandbox.fetch=async url=>{const query=new URL(url);calls.push(query);const offset=Number(query.searchParams.get('offset'));return {ok:true,status:200,async json(){return Array.from({length:offset?2:101},(_,i)=>({id:'entry-'+(offset+i),name:'Jugador '+(offset+i),score:1000-offset-i,created_at:offset+i}))}}};
+ await g.run('showRanking()');assert.equal(calls.length,2);assert.equal(calls[1].searchParams.get('offset'),'100');
+ assert.equal(calls[0].searchParams.get('order'),'score.desc,created_at.asc,id.asc');assert.equal(g.nodes.get('rankingRows').children.length,102);
 });

@@ -1428,21 +1428,38 @@ function rankingPosition(position) {
   return position + suffix;
 }
 
-const RANKING_API = "https://kp-fighter-ranking.sebastiandc99.chatgpt.site/api/wo-ranking";
+const RANKING_API = "https://paidalaojrkplnkucmwl.supabase.co/rest/v1/wo_scores";
+const RANKING_PUBLIC_KEY = "sb_publishable_FRjdw2pLXnN4CoUwiebbfQ_tFO9YQct";
 let rankingRequest = 0;
 
 async function rankingFetch(url, options = {}) {
+  // The public scoreboard only grants insert/read; existing results cannot be edited or removed.
+  const after = new URL(url).searchParams.get('after');
+  const offset = after === null ? 0 : Number(after);
+  if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('Página de ranking inválida.');
+  const endpoint = new URL(RANKING_API);
+  const saving = options.method === 'POST';
+  if (saving) endpoint.searchParams.set('on_conflict','id');
+  else {
+    endpoint.searchParams.set('select','id,name,score,mode,character,created_at');
+    endpoint.searchParams.set('order','score.desc,created_at.asc,id.asc');
+    endpoint.searchParams.set('limit','101');endpoint.searchParams.set('offset',String(offset));
+  }
+  const headers = {...options.headers, apikey:RANKING_PUBLIC_KEY};
+  if(saving) headers.Prefer='resolution=ignore-duplicates,return=representation';
   const controller = typeof AbortController === "function" ? new AbortController() : null;
   const timeout = controller ? setTimeout(() => controller.abort(), 15000) : null;
   try {
-    const response = await fetch(url, {...options, signal: controller?.signal, credentials: "omit", cache: "no-store"});
+    const response = await fetch(endpoint.href, {...options, headers, signal: controller?.signal, credentials: "omit", cache: "no-store"});
     const data = await response.json().catch(() => null);
     if (!response.ok || !data) {
-      const error = new Error(data?.error || "El servicio de ranking no pudo completar la solicitud.");
+      const error = new Error(data?.message || "El servicio de ranking no pudo completar la solicitud.");
       error.status = response.status;
       throw error;
     }
-    return data;
+    if(!Array.isArray(data)) throw new Error('Respuesta de ranking inválida.');
+    if(saving) return {entry:data[0] || {id:JSON.parse(options.body).id}};
+    return {entries:data.slice(0,100).map(row=>({...row,createdAt:row.created_at})),next:data.length>100?String(offset+100):null};
   } finally { if (timeout) clearTimeout(timeout); }
 }
 
