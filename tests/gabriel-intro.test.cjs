@@ -34,5 +34,16 @@ test('Gabriel intro art has a normal-pose fallback while loading',()=>{
  assert.ok(g.run("atlasSpriteFrame({kind:'gabriel',pose:21})"));assert.equal(g.run("spriteFrames.has('gabriel:21')"),false);
  g.run('assets.gabrielIntro.complete=true;');assert.ok(g.run("atlasSpriteFrame({kind:'gabriel',pose:21})"));
  assert.equal(g.run("spriteFrames.has('gabriel:21')"),true);
- assert.ok(g.requestedImages.includes('assets/gabriel-intro-v1.webp'));
+  assert.ok(g.requestedImages.includes('assets/gabriel-intro-v2.webp'));
+});
+test('Gabriel guards remain visible using canonical combat poses while the matching sheet loads',()=>{
+ const g=setup();g.run("state='playing';assets.gabrielGuards.complete=false");
+ for(const pose of [9,19]){
+  assert.ok(g.run(`atlasSpriteFrame({kind:'gabriel',pose:${pose}})`));
+  assert.equal(g.run(`spriteFrames.has('gabriel:${pose}')`),false);
+ }
+ g.run('assets.gabrielGuards.complete=true');
+ for(const pose of [9,19])assert.ok(g.run(`atlasSpriteFrame({kind:'gabriel',pose:${pose}})`));
+ assert.ok(g.requestedImages.includes('assets/gabriel-guards-v2.webp'));
+ assert.equal(g.run('poseFor(subject)'),0);
 });

@@ -40,14 +40,28 @@ test('cigarettes require energy, respect7/10 range and can be blocked or jumped'
  const guard=setup();guard.run("held2.guard=true;attack(player,'special')");frames(guard,1.2);assert.ok(Math.abs(guard.run('cpu.health')-guard.run('100-3*damageTaken(cpu,1)'))<.003);
  const jump=setup();jump.key('ArrowUp');jump.run("attack(player,'special')");frames(jump,1.2);assert.equal(jump.run('cpu.health'),100);
 });
-test('fire super costs100, respects8/10 range, freezes input, hits33 once and knocks down',()=>{
+test('red-can super runs, pours, lights and throws before one guarded or unguarded impact',()=>{
  for(const d of [-1,1]){
-  const g=setup('primitivo',d);g.run('held.down=true;player.power=99');assert.equal(g.run("attack(player,'special')"),false);g.run('player.power=100');assert.equal(g.run("attack(player,'special')"),true);assert.equal(g.run('player.power'),0);assert.equal(g.run('poseFor(player)'),17);
-  assert.equal(g.run("attack(cpu,'punch')"),false);g.key('ArrowLeft');const x=g.run('cpu.x');frames(g,1.8);assert.equal(g.run('cpu.x'),x);assert.equal(g.run('cpu.health'),100);
-  frames(g,.1);assert.equal(g.run('cpu.health'),g.run('Math.round((100-damageTaken(cpu,33))*1000)/1000'));const hp=g.run('cpu.health');assert.equal(g.run('hitStop'),0);assert.equal(g.run('workCinematic.sound.name'),'fireSuper');
-  g.run('togglePause()');const age=g.run('workCinematic.elapsed');const sound=g.run('workCinematic.sound.elapsed');frames(g,.5);assert.equal(g.run('workCinematic.elapsed'),age);assert.equal(g.run('workCinematic.sound.elapsed'),sound);g.run('togglePause()');g.key('ArrowLeft','keyup');frames(g,.4);assert.ok(g.run('cpu.knockdown'));frames(g,2.8);assert.equal(g.run('workCinematic'),null);assert.equal(g.run('cpu.health'),hp);g.run('held.down=false');g.key('KeyJ');g.key('Digit7');assert.equal(g.run('player.action'),'punch');assert.equal(g.run('cpu.action'),'punch');
+  const g=setup('primitivo',d);g.run('held.down=true;player.power=99');assert.equal(g.run("attack(player,'special')"),false);
+  g.run('player.power=100');assert.equal(g.run("attack(player,'special')"),true);assert.equal(g.run('player.power'),0);assert.equal(g.run('poseFor(player)'),24);
+  assert.equal(g.run("attack(cpu,'punch')"),false);g.key('ArrowLeft');const x=g.run('cpu.x'),origin=g.run('player.x');
+  frames(g,.6);assert.ok((g.run('player.x')-origin)*d>0);assert.ok([24,25].includes(g.run('poseFor(player)')));
+  frames(g,.7);assert.equal(g.run('poseFor(player)'),26);assert.equal(g.run('player.x'),g.run('workCinematic.approachX'));
+  frames(g,.95);assert.equal(g.run('poseFor(player)'),27);frames(g,.68);assert.equal(g.run('poseFor(player)'),28);
+  frames(g,.32);assert.equal(g.run('poseFor(player)'),29);assert.equal(g.run('cpu.x'),x);assert.equal(g.run('cpu.health'),100);
+  frames(g,.15);assert.equal(g.run('cpu.health'),g.run('Math.round((100-damageTaken(cpu,33))*1000)/1000'));
+  const hp=g.run('cpu.health');assert.equal(g.run('hitStop'),0);assert.equal(g.run('workCinematic.sound.name'),'fireSuper');
+  assert.equal(g.run('workCinematic.scream.name'),'fireScream');assert.ok(g.run('cpu.fernandoBurn>0'));assert.equal(g.run('cpu.knockdown'),null);
+  g.run('togglePause()');const age=g.run('workCinematic.elapsed'),sound=g.run('workCinematic.scream.elapsed'),px=g.run('player.x'),burn=g.run('cpu.fernandoBurn');
+  frames(g,.5);assert.equal(g.run('workCinematic.elapsed'),age);assert.equal(g.run('workCinematic.scream.elapsed'),sound);assert.equal(g.run('player.x'),px);assert.equal(g.run('cpu.fernandoBurn'),burn);
+  g.run('togglePause()');g.key('ArrowLeft','keyup');frames(g,.8);assert.ok(g.run('cpu.knockdown'));frames(g,2.8);
+  assert.equal(g.run('workCinematic'),null);assert.equal(g.run('cpu.health'),hp);assert.equal(g.run("Array.from(combatSounds).filter(v=>['fireSuper','fireScream'].includes(v.name)).length"),0);
+  g.run('held.down=false');g.key('KeyJ');g.key('Digit7');assert.equal(g.run('player.action'),'punch');assert.equal(g.run('cpu.action'),'punch');
  }
  const far=setup();far.run('cpu.x=player.x+650;held.down=true');assert.equal(far.run("attack(player,'special')"),false);assert.equal(far.run('player.power'),100);
+ const guard=setup();guard.run("held2.guard=true;held.down=true;attack(player,'special')");frames(guard,3.5);
+ assert.equal(guard.run('workCinematic.blocked'),true);assert.equal(guard.run('workCinematic.scream'),undefined);assert.ok(!guard.run('cpu.fernandoBurn'));
+ assert.ok(Math.abs(guard.run('100-cpu.health')-guard.run('damageTaken(cpu,33)*.30'))<.003);
 });
 test('Fernando standing and crouching guard differs from idle; two-player touch attacks work',()=>{
  const g=setup('fernando');g.key('KeyI');g.key('Digit0');frames(g,.2);assert.equal(g.run('poseFor(player)'),9);assert.equal(g.run('poseFor(cpu)'),9);g.key('KeyS');g.key('ArrowDown');frames(g,.2);assert.equal(g.run('poseFor(player)'),19);assert.equal(g.run('poseFor(cpu)'),19);assert.ok(g.run('fighterMotion(player).scaleY>.9'));
@@ -56,5 +70,5 @@ test('Fernando standing and crouching guard differs from idle; two-player touch 
 });
 test('CPU fire, deterministic draw, KO and menu stop all owned cues',()=>{
  const g=setup();g.run("gameMode='solo';startGame('angel','fernando');state='playing';cpu.power=100;Math.random=()=>0;attack(cpu,'special')");assert.equal(g.run('workCinematic.owner'),g.run('cpu'));frames(g,.6);g.run('const before=JSON.stringify([workCinematic.elapsed,cpu.power,player.health]);draw();draw()');assert.equal(g.run('before===JSON.stringify([workCinematic.elapsed,cpu.power,player.health])'),true);g.run('mainMenu()');assert.equal(g.run('combatSounds.size'),0);assert.equal(g.run('workCinematic'),null);
- const ko=setup();ko.run("cpu.health=1;held.down=true;attack(player,'special')");frames(ko,2);assert.equal(ko.run('cpu.health'),0);assert.equal(ko.run('workCinematic'),null);
+ const ko=setup();ko.run("cpu.health=1;held.down=true;attack(player,'special')");frames(ko,3.4);assert.equal(ko.run('cpu.health'),0);assert.equal(ko.run('workCinematic'),null);assert.equal(ko.run("Array.from(combatSounds).filter(v=>v.name==='fireScream').length"),1);frames(ko,1.3);assert.equal(ko.run("Array.from(combatSounds).filter(v=>v.name==='fireScream').length"),0);
 });

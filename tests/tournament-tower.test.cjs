@@ -28,7 +28,7 @@ test('camera visibly traverses upper and intermediate floors before settling at 
  g.tick(1.99);assert.equal(g.run('state'),'tower');assert.equal(g.run('towerCameraAt(tower.elapsed).y'),1127);
  g.tick(.4);assert.equal(g.run('state'),'intro');
 });
-test('only full match victories advance, preserving all six difficulties, score and opponent order',()=>{
+test('only full match victories advance, preserving all six difficulty names, score and opponent order',()=>{
  const g=tournament('linares');g.tick(g.run('tower.duration')+.05);
  const rivals=Array.from(g.run('campaign.opponents'));let score=0;
  for(let i=0;i<6;i++) {
@@ -68,11 +68,11 @@ test('Enter, mobile touch and controller Start shorten later presentations but h
   g.tick(1.99);assert.equal(g.run('state'),'tower');g.tick(.7);assert.equal(g.run('state'),'intro');assert.equal(g.run('cpu.kind'),g.run('campaign.opponents[1]'));
  }
 });
-test('final presentation is slower, loss resets campaign and keeps the usual score-entry flow',()=>{
+test('final presentation is slower and an exhausted life keeps the usual score-entry flow',()=>{
  const g=tournament();g.tick(g.run('tower.duration')+.05);
  g.run(`campaign.index=5;showTournamentTower()`);
  assert.equal(g.run('tower.final'),true);assert.equal(g.run('tower.duration'),g.run('towerSettleAt()+.25+2+.35'));
- g.tick(g.run('tower.duration')+.05);g.run(`state='playing';addScore(player,100);match.cpuWins=1;finishRound(cpu,'TIEMPO')`);
+ g.tick(g.run('tower.duration')+.05);g.run(`campaign.extraLives=0;state='playing';addScore(player,100);match.cpuWins=1;finishRound(cpu,'TIEMPO')`);
  const score=g.run('match.scores[0]');assert.equal(g.run('campaign'),null);
  g.tick(2.3);assert.equal(g.run('state'),'finished');assert.equal(g.nodes.get('winnerForm').hidden,false);
  assert.equal(g.run('match.scores[0]'),score);
@@ -92,11 +92,12 @@ test('tower music uses the attachment, fades before combat, and honors its mute 
  g.nodes.get('towerSoundBtn').listeners.click();assert.equal(g.run('muted'),true);assert.equal(g.run('musicSource'),null);
  g.nodes.get('towerSoundBtn').listeners.click();assert.equal(g.run('muted'),false);assert.ok(g.run('musicSource'));
 });
-test('mobile landscape retains the same camera duration and the original six difficulty settings',()=>{
+test('mobile landscape retains camera timing and uses the new tournament difficulty progression',()=>{
  const g=tournament();g.run('navigator.maxTouchPoints=1;window.innerWidth=740;window.innerHeight=416;syncViewport();lastTime=0;accumulator=0;for(let n=1;n<=180;n++)advanceGameClock(n*1000/60)');
  assert.equal(g.run('state'),'tower');assert.ok(Math.abs(g.run('tower.elapsed')-3)<.03);
  assert.doesNotThrow(()=>g.run('drawTournamentTower()'));
  assert.deepEqual(Array.from(g.run('DIFFICULTIES.slice(0,6).map(d=>d.reaction)')),[.23,.19,.15,.12,.09,.08]);
+ assert.deepEqual(Array.from(g.run('TOURNAMENT_DIFFICULTIES.map(d=>d.reaction)')),[.23,.18,.135,.095,.065,.04]);
  g.run('for(let n=181;n<=480;n++)advanceGameClock(n*1000/60)');assert.equal(g.run('state'),'intro');
 });
 
