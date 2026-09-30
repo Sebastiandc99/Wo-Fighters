@@ -649,10 +649,7 @@ function drawTowerPanel(kind,index) {
   const glow=c.createLinearGradient(360,y,662,y+110);
   glow.addColorStop(0,active?"#144b79":"#102740");glow.addColorStop(1,"#030b17");
   c.fillStyle=glow;c.fillRect(362,y+2,298,106);
-  towerPortrait(kind,396,y+3,108,104);
-  c.fillStyle="#061020";c.fillRect(360,y,36,110);
-  towerText("NIVEL",378,y+27,9,"#a4b4c5","center");
-  towerText(String(index+1),378,y+65,30,active?"#ffdc65":"#e1af56","center");
+  towerPortrait(kind,373,y+3,127,104);
   towerText(stats[kind].name,505,y+49,19,active?"#fff4bb":"#dbe4ec","left",151);
   towerText(defeated?"DERROTADO":active?(tower.final?"FINAL":"PRÓXIMO RIVAL"):"EN LA TORRE",505,y+75,11,defeated?"#a3b0bd":"#6db8d6");
   c.strokeStyle=active?"#ffe88b":"#716337";c.lineWidth=active?4:1;c.strokeRect(359,y-1,304,112);
@@ -667,10 +664,13 @@ function drawTowerPanel(kind,index) {
 function drawTournamentTower() {
   if(!tower || !campaign)return;
   const c=towerCtx,t=tower.elapsed,cam=towerCameraAt(t);
-  c.save();c.imageSmoothingEnabled=true;c.fillStyle="#020610";c.fillRect(0,0,960,540);
-  c.save();c.beginPath();c.rect(0,0,650,540);c.clip();
-  // One backdrop, one transform, six cached portraits; no per-frame DOM layout.
-  c.translate(335,270);c.scale(cam.zoom,cam.zoom);c.translate(-512,-cam.y);
+  c.save();c.imageSmoothingEnabled=true;
+  const backdrop=c.createLinearGradient(0,0,0,540);
+  backdrop.addColorStop(0,"#101e35");backdrop.addColorStop(1,"#020610");
+  c.fillStyle=backdrop;c.fillRect(0,0,960,540);
+  c.save();c.beginPath();c.rect(0,0,960,540);c.clip();
+  // The tower uses the entire viewport and stays centered throughout the camera path.
+  c.translate(480,270);c.scale(cam.zoom,cam.zoom);c.translate(-512,-cam.y);
   if(towerArtwork.complete&&towerArtwork.naturalWidth)c.drawImage(towerArtwork,0,0,1024,1536);
   else {
     c.fillStyle="#0c1a31";c.fillRect(0,0,1024,1536);
@@ -679,49 +679,21 @@ function drawTournamentTower() {
   }
   campaign.opponents.forEach(drawTowerPanel);
   c.restore();
-  // Subtle steam and work lights stay in screen coordinates for inexpensive motion.
   const fog=c.createLinearGradient(0,400,0,540);
   fog.addColorStop(0,"rgba(137,165,185,0)");fog.addColorStop(1,"rgba(100,126,145,.20)");
-  c.fillStyle=fog;c.fillRect(0,400,650,140);
-  c.fillStyle="rgba(1,5,13,.75)";c.fillRect(0,0,650,48);
+  c.fillStyle=fog;c.fillRect(0,400,960,140);
+  c.fillStyle="rgba(1,5,13,.75)";c.fillRect(0,0,960,48);
   towerText("WO FIGHTERS",22,27,19,"#ffdc79");
-  towerText("TORRE DEL TORNEO",625,27,16,"#d0dce7","right");
+  towerText("TORRE DEL TORNEO",480,27,16,"#d0dce7","center");
   if(tower.final) {
-    c.globalAlpha=.08+.04*Math.sin(t*4);c.fillStyle="#ffb632";c.fillRect(0,48,650,440);c.globalAlpha=1;
+    c.globalAlpha=.08+.04*Math.sin(t*4);c.fillStyle="#ffb632";c.fillRect(0,48,960,440);c.globalAlpha=1;
   }
-  c.fillStyle="#08101e";c.fillRect(650,0,310,540);
-  c.fillStyle="#c49032";c.fillRect(650,0,3,540);
-  towerText(tower.champion?"CAMPEÓN DEL":tower.final?"COMBATE FINAL":"PRÓXIMO COMBATE",677,38,22,"#ffe395");
-  if(tower.champion)towerText("TORNEO",677,65,26,"#ffe395");
-  else towerText("NIVEL "+(campaign.index+1)+" DE 6",677,64,16,"#81a8c9");
-  towerPortrait(playerChoice,682,81,91,104);
   const rival=campaign.opponents[campaign.index];
-  if(!tower.champion) {
-    towerText("VS",801,142,25,"#ffc658","center");
-    towerPortrait(rival,831,81,91,104);
-    towerText(stats[playerChoice].name,727,205,16,"#dfe9f4","center",120);
-    towerText(stats[rival].name,877,205,16,"#ffdf94","center",127);
-  } else {
-    towerText(stats[playerChoice].name,790,116,25,"#fff0ad","left",157);
-    towerText("6 / 6 VICTORIAS",790,148,15,"#83d5b1");
-    towerText("PUNTOS · "+campaign.score.toLocaleString("es-AR"),677,205,19,"#fff0bd");
-  }
-  towerText("ASCENSO DEL TORNEO",677,248,15,"#94aec5");
-  campaign.opponents.forEach((kind,i)=>{
-    const y=276+(5-i)*32,done=campaign.defeated.includes(kind),active=!tower.champion&&i===campaign.index;
-    c.fillStyle=active?"#253b52":done?"#0e1c26":"#101c2a";c.fillRect(671,y-21,276,29);
-    c.fillStyle=active?"#ffdc65":done?"#67867d":"#46617a";c.fillRect(671,y-21,4,29);
-    towerText(String(i+1).padStart(2,"0"),685,y,16,active?"#ffe49a":"#738da4");
-    towerText(stats[kind].name,716,y,17,done?"#7e909e":active?"#fff0b6":"#d0dce6","left",184);
-    if(done)towerText("KO",933,y,16,"#eb9c89","right");
-    else if(active)towerText("◀",934,y,16,"#ffdc65","right");
-  });
-  towerText(campaign.defeated.length+" DERROTADOS · "+(6-campaign.defeated.length)+" RESTANTES",677,481,14,"#91abc2");
   const settle=smoothstep((t-towerSettleAt())/.25);
   if(settle>0) {
-    c.globalAlpha=settle;c.fillStyle="rgba(3,9,18,.90)";c.fillRect(15,438,619,56);
-    towerText(tower.champion?"CAMPEÓN DEL TORNEO":tower.final?"FINAL DEL TORNEO":"PRÓXIMO COMBATE",325,460,16,"#ffce67","center");
-    towerText(tower.champion?stats[playerChoice].name:stats[playerChoice].name+"  VS  "+stats[rival].name,325,484,21,"#fff2c6","center",590);
+    c.globalAlpha=settle;c.fillStyle="rgba(3,9,18,.90)";c.fillRect(170,438,620,56);
+    towerText(tower.champion?"CAMPEÓN DEL TORNEO":tower.final?"FINAL DEL TORNEO":"PRÓXIMO COMBATE",480,460,16,"#ffce67","center");
+    towerText(tower.champion?stats[playerChoice].name:stats[playerChoice].name+"  VS  "+stats[rival].name,480,484,21,"#fff2c6","center",590);
     c.globalAlpha=1;
   }
   const fade=Math.max(0,1-(tower.duration-t)/.35);

@@ -1,5 +1,8 @@
 # Torre del Torneo
 
+La torre ocupa toda la pantalla y está centrada, sin panel lateral ni números junto a
+los retratos. El anuncio del siguiente combate aparece abajo al finalizar el recorrido.
+
 La presentación del modo solo reutiliza `campaign.opponents` y `campaign.index`.
 Se conserva el sorteo único del roster actual, con seis rivales diferentes del jugador.
 `campaign.defeated` registra los combates completos ganados, independientemente de los rounds.
