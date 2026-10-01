@@ -369,6 +369,7 @@ let musicTrack = null;
 let musicElapsed = 0;
 let musicSource = null;
 let musicGain = null;
+let musicGainVolume = null;
 let musicStartedAt = 0;
 
 let state = "title";
@@ -429,6 +430,7 @@ function mobileInput() {
 function syncViewport() {
   joystickGeometry = new WeakMap();
   mobileRendering = mobileInput();
+  if(mobileRendering)document.body.classList.add("touch-device");
   const sideways = mobileRendering && window.innerHeight > window.innerWidth;
   document.body.classList.toggle("phone-portrait", sideways);
   document.body.classList.toggle("two-touch", gameMode === "versus" && (mobileRendering || window.innerWidth <= 820));
@@ -3110,7 +3112,42 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-let rosterAudioPreloaded = false;
+const fightAudioKinds = new Set();
+const FIGHT_AUDIO = {
+  angel:["beam","beamImpact","hookSuper"],primitivo:["forklift","forkliftImpact","containerSuper"],
+  peluche:["concrete","concreteImpact","concreteSuper"],tren:["voltaic","stormSuper"],
+  linares:["cable","transformerSuper"],gabriel:["critical","crash"],
+  fernando:["cigarettes","emberImpact","fireSuper","fireScream"]
+};
+const audioDecodes=[];
+const decodedAudio=new Map();
+let audioDecodeBusy=false;
+function fetchGameAudio(src,priority) {
+  if(!decodedAudio.has(src)) {
+    const loading=Promise.resolve().then(()=>fetch(src)).then(response=>{
+      if(!response.ok)throw new Error("Audio unavailable");
+      return response.arrayBuffer();
+    }).then(bytes=>decodeGameAudio(bytes,priority)).catch(error=>{decodedAudio.delete(src);throw error;});
+    decodedAudio.set(src,loading);
+  }
+  return decodedAudio.get(src);
+}
+function decodeGameAudio(bytes,priority=0) {
+  // One decoder at a time; another frame gets a turn before the next decoded buffer.
+  return new Promise((resolve,reject)=>{
+    audioDecodes.push({bytes,priority,resolve,reject});
+    pumpAudioDecodes();
+  });
+}
+function pumpAudioDecodes() {
+  if(audioDecodeBusy || !audioDecodes.length)return;
+  audioDecodes.sort((a,b)=>b.priority-a.priority);
+  const job=audioDecodes.shift();audioDecodeBusy=true;
+  Promise.resolve().then(()=>audioCtx.decodeAudioData(job.bytes)).then(job.resolve,job.reject).finally(()=>{
+    // This also runs in a hidden tab, where animation callbacks can stop entirely.
+    setTimeout(()=>{audioDecodeBusy=false;pumpAudioDecodes();},16);
+  });
+}
 function ensureAudio() {
   const Audio = window.AudioContext || window.webkitAudioContext;
   if (!Audio) return;
@@ -3119,13 +3156,13 @@ function ensureAudio() {
   if (["intro", "playing", "roundOver", "finished"].includes(state)) {
     loadKOAudio();
     loadRoundVoice(match.round);
-    if (!rosterAudioPreloaded) {
-      // Decode current roster cues during the round intro instead of every menu tap.
-      for (const name of ["punchHit", "kickHit", "uppercutHit", "bodyFall", "meleeSwing",
-        "cable", "transformerSuper", "voltaic", "stormSuper", "beam", "beamImpact",
-        "forklift", "forkliftImpact", "concrete", "concreteImpact",
-        "hookSuper", "containerSuper", "concreteSuper", "critical", "crash", "cigarettes", "emberImpact", "fireSuper", "fireScream"]) loadCombatAudio(name);
-      rosterAudioPreloaded = true;
+    if(!fightAudioKinds.has("common")) {
+      for(const name of ["punchHit","kickHit","uppercutHit","bodyFall","meleeSwing"])loadCombatAudio(name);
+      fightAudioKinds.add("common");
+    }
+    for(const fighter of fighters)if(!fightAudioKinds.has(fighter.kind)) {
+      for(const name of FIGHT_AUDIO[fighter.kind]||[])loadCombatAudio(name);
+      fightAudioKinds.add(fighter.kind);
     }
   }
   if (["title", "mode", "select", "stage"].includes(state)) loadMusic(EXTRA_AUDIO.selection);
@@ -3137,7 +3174,7 @@ function loadKOAudio() {
   if(!audioCtx || KO_AUDIO.buffer || KO_AUDIO.loading || typeof atob!=="function")return;
   KO_AUDIO.loading=Promise.resolve().then(()=>{
     const bytes=Uint8Array.from(atob(KO_AUDIO_BASE64),c=>c.charCodeAt(0));
-    return audioCtx.decodeAudioData(bytes.buffer);
+    return decodeGameAudio(bytes.buffer,2);
   }).then(buffer=>{KO_AUDIO.buffer=buffer;syncKOAudio();})
     .catch(()=>{}).finally(()=>{KO_AUDIO.loading=null;});
 }
@@ -3161,11 +3198,10 @@ function syncKOAudio() {
 function loadCombatAudio(name) {
   const cue = COMBAT_AUDIO[name];
   if (!audioCtx || cue.buffer || cue.loading || typeof fetch !== "function") return;
-  cue.loading = fetch(cue.src)
-    .then(response => { if (!response.ok) throw new Error("Combat audio unavailable"); return response.arrayBuffer(); })
-    .then(bytes => audioCtx.decodeAudioData(bytes))
+  cue.loading = fetchGameAudio(cue.src,1)
     .then(buffer => { cue.buffer = buffer; syncCombatSounds(); })
-    .catch(() => { /* A missing sound must never interrupt combat. */ });
+    .catch(() => { /* A missing sound must never interrupt combat. */ })
+    .finally(()=>{cue.loading=null;});
 }
 
 function startCombatSound(name) {
@@ -3271,11 +3307,10 @@ function advanceCombatSounds(dt) {
 function loadRoundVoice(round = match.round) {
   const cue = ROUND_AUDIO[round];
   if (!audioCtx || !cue.src || cue.loading || cue.buffer || typeof fetch !== "function") return;
-  cue.loading = fetch(cue.src)
-    .then(response => { if (!response.ok) throw new Error("Round audio unavailable"); return response.arrayBuffer(); })
-    .then(bytes => audioCtx.decodeAudioData(bytes))
+  cue.loading = fetchGameAudio(cue.src,3)
     .then(buffer => { cue.buffer = buffer; syncRoundVoice(); })
-    .catch(() => { /* Keep the round playable with the synthesized cue if loading fails. */ });
+    .catch(() => { /* Keep the round playable with the synthesized cue if loading fails. */ })
+    .finally(()=>{cue.loading=null;});
 }
 
 function selectMusic(usage = "fight") {
@@ -3289,10 +3324,7 @@ function selectMusic(usage = "fight") {
 function loadMusic(track) {
   if (!track || !audioCtx || track.buffer || track.loading || typeof fetch !== "function") return track?.loading;
   if (performance.now() < (track.retryAt || 0)) return;
-  track.loading = Promise.resolve().then(() => fetch(track.src)).then(response => {
-    if (!response.ok) throw new Error("Music unavailable");
-    return response.arrayBuffer();
-  }).then(bytes => audioCtx.decodeAudioData(bytes)).then(buffer => {
+  track.loading = fetchGameAudio(track.src,3).then(buffer => {
     track.buffer = buffer;
     track.retryAt = 0;
   }).catch(() => {
@@ -3311,13 +3343,14 @@ function syncMusic() {
   if (!allowed.includes(state) || muted || !audioCtx || audioCtx.state !== "running" || !musicTrack) return;
   if (!musicTrack.buffer) { loadMusic(musicTrack); return; }
   const volume=musicTrack.usage === "tower" ? .46 * Math.min(1,Math.max(0,(tower.duration-tower.elapsed)/.35)) : state === "intro" ? .22 : musicTrack.usage === "selection" ? .52 : .46;
-  if (musicGain) musicGain.gain.value = volume;
+  if(musicGain && musicGainVolume!==volume){musicGain.gain.value=volume;musicGainVolume=volume;}
   if (musicSource) return;
   musicSource = audioCtx.createBufferSource();
   musicGain = audioCtx.createGain();
   musicSource.buffer = musicTrack.buffer;
   musicSource.loop = true;
   musicGain.gain.value = volume;
+  musicGainVolume = volume;
   musicSource.connect(musicGain).connect(audioCtx.destination);
   musicSource.start(0, musicElapsed % musicTrack.buffer.duration);
   musicStartedAt = audioCtx.currentTime || 0;
@@ -3329,6 +3362,7 @@ function pauseMusic() {
     try { musicSource.stop(); } catch (_) {} musicSource.disconnect(); musicSource = null;
   }
   if (musicGain) { musicGain.disconnect(); musicGain = null; }
+  musicGainVolume=null;
 }
 
 function stopMusic() { pauseMusic(); musicTrack = null; musicElapsed = 0; }
@@ -4250,7 +4284,8 @@ function drawElectricArc(x1,y1,x2,y2,time,width=3,seed=0) {
   const dx=x2-x1,dy=y2-y1;
   const reusable=mobileRendering && (dy===0 || dx===46 && dy===-32 || dx===25 && dy===49);
   if(!reusable){paintElectricArc(ctx,x1,y1,x2,y2,time,width,seed);return;}
-  const key=[dx,dy,Math.floor(time*28),width,seed,drawingScale].join(":");
+  const phase=Math.floor(time*28);
+  const key=[dx,dy,width,seed,drawingScale].join(":");
   let entry=electricRasters.get(key);
   if(!entry) {
     // Include every branch, all three luminous layers and the full blur extent.
@@ -4258,15 +4293,22 @@ function drawElectricArc(x1,y1,x2,y2,time,width=3,seed=0) {
     const w=Math.ceil((Math.abs(dx)+padding*2)*drawingScale),h=Math.ceil((Math.abs(dy)+padding*2)*drawingScale);
     if(w*h>ELECTRIC_CACHE_PIXELS){paintElectricArc(ctx,x1,y1,x2,y2,time,width,seed);return;}
     const surface=document.createElement("canvas");surface.width=w;surface.height=h;
-    const brush=surface.getContext("2d");brush.scale(drawingScale,drawingScale);brush.translate(-left,-top);
-    paintElectricArc(brush,0,0,dx,dy,time,width,seed);
-    entry={surface,left,top,pixels:w*h};
+    const brush=surface.getContext("2d");
+    entry={surface,brush,left,top,pixels:w*h,phase:null};
     while(electricRasterPixels+entry.pixels>ELECTRIC_CACHE_PIXELS) {
       const oldest=electricRasters.keys().next().value;electricRasterPixels-=electricRasters.get(oldest).pixels;electricRasters.delete(oldest);
     }
     electricRasters.set(key,entry);electricRasterPixels+=entry.pixels;
   } else {
     electricRasters.delete(key);electricRasters.set(key,entry);
+  }
+  if(entry.phase!==phase) {
+    // Keep the GPU surface, replacing its pixels at the original 28 Hz lightning cadence.
+    entry.brush.setTransform(1,0,0,1,0,0);
+    entry.brush.clearRect(0,0,entry.surface.width,entry.surface.height);
+    entry.brush.setTransform(drawingScale,0,0,drawingScale,-entry.left*drawingScale,-entry.top*drawingScale);
+    paintElectricArc(entry.brush,0,0,dx,dy,time,width,seed);
+    entry.phase=phase;
   }
   ctx.save();ctx.imageSmoothingEnabled=true;
   ctx.drawImage(entry.surface,x1+entry.left,y1+entry.top,entry.surface.width/drawingScale,entry.surface.height/drawingScale);ctx.restore();

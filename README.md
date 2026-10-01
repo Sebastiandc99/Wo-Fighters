@@ -117,10 +117,19 @@ En celular, el lienzo dibuja a la resolución base de 960 × 540, evita desenfoc
 
 El escenario y su iluminación se preparan una vez a la resolución existente.
 Se reutiliza el brillo de los rayos de geometría fija sin cambiar sus fases,
-ramas o capas; los rayos que cambian de forma se siguen dibujando completos.
+ramas o capas; cada fase actualiza la misma superficie, sin crear imágenes
+temporales nuevas. Los rayos que cambian de forma se siguen dibujando completos.
 La caché eléctrica tiene un límite de 4 MiB de píxeles y se liberan los cuadros
 de rivales anteriores al cambiar de combate. La presentación prepara un cuadro
 de animación por frame para evitar el primer tirón durante un golpe.
 El joystick mide su posición una vez por gesto y las barras/textos sólo escriben
 cambios. No se reduce la resolución, la frecuencia de animación, las partículas,
 los efectos ni los sonidos. Las pruebas están en `tests/mobile-performance.test.cjs`.
+
+La carga de audio prepara los golpes comunes y los poderes de los dos luchadores
+activos. Una cola decodifica un archivo a la vez, deja 16 ms entre archivos y
+prioriza música y anuncios. Los personajes que entran después preparan sus propios
+poderes durante la nueva introducción. Los sonidos con el mismo archivo comparten
+el buffer, conservando sus volúmenes, recortes y voces independientes. Se evita
+reescribir el volumen de música cuando permanece constante, y el estilo móvil se
+activa al detectar el dispositivo, antes del primer movimiento de la palanca.

@@ -1058,6 +1058,7 @@ test('KO waits for decoding and then starts at the beginning of the voice',()=>{
 
 test('embedded KO matches the supplied recording and failed decoding can retry',async()=>{
  const g=game();enableCombatAudio(g);
+ g.sandbox.setTimeout=setTimeout; // Let the decoder yield between the failed file and its retry.
  assert.deepEqual(Buffer.from(g.run('KO_AUDIO_BASE64'),'base64'),fs.readFileSync(path.join(__dirname,'../assets/ko.mp3')));
  g.run('var attempts=0;var atob=()=>"abc";audioCtx.decodeAudioData=()=>{attempts++;return attempts===1?Promise.reject(Error("decode failed")):Promise.resolve({name:"ko",duration:1.56})};loadKOAudio()');
  await g.run('KO_AUDIO.loading');assert.equal(g.run('KO_AUDIO.loading'),null);
