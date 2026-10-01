@@ -162,6 +162,80 @@ const fighterPowers = {
   primitivo: {common:"Descarga express", super:"Lanzamiento de contenedor", superDamage:35, profile:"Robusto · golpes pesados"},
   peluche: {common:"Hormigonazo", super:"Colado masivo", superDamage:34, profile:"Técnico · inmoviliza con hormigón"}
 };
+// P/K are the existing punch/kick buttons; U/D/B are down+punch,
+// down+kick and away+kick. Every queued token still needs its own press.
+const MELEE_COMBOS = {
+  angel: [
+    {name:"Maniobra de izaje", tokens:["P","K","U"], effect:"Gancho y derribo"},
+    {name:"Descarga lateral", tokens:["K","P","B"], effect:"Volea para ganar espacio"}
+  ],
+  primitivo: [
+    {name:"Puños de acero", tokens:["P","P","K"], effect:"Tres golpes pesados"},
+    {name:"Descarga pesada", tokens:["K","P","U"], effect:"Gancho contundente"}
+  ],
+  peluche: [
+    {name:"Compactadora", tokens:["P","D","K"], effect:"Barrida y empuje cercano"},
+    {name:"Base firme", tokens:["K","D","P","U"], effect:"Barrida y gancho final"}
+  ],
+  tren: [
+    {name:"Secuencia de arco", tokens:["K","K","B"], effect:"Patadas rápidas y volea"},
+    {name:"Tormenta de golpes", tokens:["P","K","P","K","B"], effect:"Cinco golpes ágiles"}
+  ],
+  linares: [
+    {name:"Fase cruzada", tokens:["P","K","B"], effect:"Golpes rápidos y distancia"},
+    {name:"Trifásico", tokens:["K","P","K","U"], effect:"Cuatro golpes y derribo"}
+  ],
+  gabriel: [
+    {name:"Camino directo", tokens:["P","P","U"], effect:"Doble puño y gancho"},
+    {name:"Ruta crítica", tokens:["K","P","D","B"], effect:"Barrida y volea técnica"}
+  ],
+  fernando: [
+    {name:"Golpe de obra", tokens:["P","P","B"], effect:"Doble puño y volea"},
+    {name:"Remate civil", tokens:["P","D","P","K"], effect:"Cuatro golpes con empuje"}
+  ]
+};
+const COMBO_PROFILES = {
+  angel:{tempo:1.10, impact:1.07, advance:92, finishKnock:380},
+  primitivo:{tempo:.91, impact:1.25, advance:64, finishKnock:440},
+  peluche:{tempo:.96, impact:1.17, advance:72, finishKnock:405},
+  tren:{tempo:1.24, impact:1.00, advance:116, finishKnock:360},
+  linares:{tempo:1.20, impact:1.03, advance:110, finishKnock:370},
+  gabriel:{tempo:1.10, impact:1.08, advance:90, finishKnock:380},
+  fernando:{tempo:1.04, impact:1.14, advance:82, finishKnock:410}
+};
+function comboMove(token) {
+  return {P:"punch",K:"kick",U:"uppercut",D:"lowKick",B:"volley"}[token];
+}
+function comboStepSpec(kind, token, index, final) {
+  const profile=COMBO_PROFILES[kind], base=timedMove({kind},MOVES[comboMove(token)],false,comboMove(token));
+  if(index===1)return base;
+  return {...base,
+    startup:Math.max(.045,base.startup*(token==="B"?.78:.66)/profile.tempo),
+    active:base.active/profile.tempo,
+    recovery:final ? .32/profile.tempo : base.recovery/profile.tempo,
+    damage:base.damage*profile.impact*(final?1.65:1.15)*.94**(index-2),
+    knock:final?profile.finishKnock:72,
+    chainStep:index, chainFinisher:final
+  };
+}
+function comboDamage(kind, route, rivalKind) {
+  const resistance=rivalKind?stats[rivalKind].resistance:100;
+  return route.tokens.reduce((total,token,i)=>{
+    const raw=comboStepSpec(kind,token,i+1,i===route.tokens.length-1).damage*stats[kind].normalDamage/10;
+    return total+Math.round(raw*DAMAGE_SCALE*100000/resistance)/1000;
+  },0);
+}
+function comboGuide(kind, rivalKind, compact=false) {
+  if(!MELEE_COMBOS[kind])return "";
+  const labels={P:"G",K:"P",U:"↓G",D:"↓P",B:"←P"};
+  const words={P:"golpe",K:"patada",U:"abajo más golpe",D:"abajo más patada",B:"atrás más patada"};
+  const entries=MELEE_COMBOS[kind].map(route=>{
+    const sequence=route.tokens.map(token=>`<b>${labels[token]}</b>`).join('<i aria-hidden="true">›</i>');
+    const damage=comboDamage(kind,route,rivalKind).toLocaleString("es-AR",{maximumFractionDigits:1});
+    return `<div class="combo-entry"><strong>${route.name}</strong><span class="combo-sequence" role="img" aria-label="${route.tokens.map(token=>words[token]).join(', ')}">${sequence}</span>${compact?"":`<span class="combo-detail">${route.tokens.length} golpes · ${damage}% · ${route.effect}</span>`}</div>`;
+  }).join("");
+  return `<div class="combo-guide${compact?' compact-combos':''}"><h4>COMBOS</h4>${entries}<p class="combo-legend">G: golpe · P: patada · ←: atrás</p>${compact?'<p class="combo-tip">Combinaciones rápidas · guía en PAUSA</p>':'<p class="combo-tip">Pulsá en orden y cerca del rival. ↓ y atrás se mantienen sólo en el golpe indicado.</p>'}</div>`;
+}
 function powerGuide(kind, rivalKind) {
   const s=stats[kind], p=fighterPowers[kind];
   if (!p) return "";
@@ -190,12 +264,12 @@ function updateSelectionGuide(kind) {
   }).join("");
   const meters=[["shield","RESIST.","Resistencia",s.resistance,200],["bolt","VELOC.","Velocidad",s.agility,10],["fist","FUERZA","Fuerza",s.normalDamage,10]].map(([symbol,label,name,value,max])=>
     `<div class="arcade-stat" title="${name}: ${value}${max===10?'/10':''}"><span class="stat-symbol">${icon(symbol)}</span><span class="stat-body"><span class="stat-label">${label}</span><span class="stat-meter" role="meter" aria-label="${name}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${value}"><i style="width:${value/max*100}%"></i></span></span></div>`).join("");
-  panel.innerHTML=`<div class="arcade-guide-head"><span>PODERES</span><i>★</i></div><div class="skill-medals">${powers}</div><div class="skill-key">${icon("hit")} DAÑO <span>·</span> ${icon("bolt")} ENERGÍA</div><div class="arcade-stats">${meters}</div>`;
+  panel.innerHTML=`<div class="arcade-guide-head"><span>PODERES</span><i>★</i></div><div class="skill-medals">${powers}</div><div class="skill-key">${icon("hit")} DAÑO <span>·</span> ${icon("bolt")} ENERGÍA</div><div class="arcade-stats">${meters}</div>${comboGuide(kind,null,true)}`;
 }
 function updatePauseGuide() {
   for (const [id,f,rival] of [["pausePowers1",player,cpu],["pausePowers2",cpu,player]]) {
     if (!f || !rival) continue;
-    document.getElementById(id).innerHTML=`<h3>${f===player?"1P":gameMode==="versus"?"2P":"CPU"} · ${stats[f.kind].name}</h3>${powerGuide(f.kind,rival.kind)}<p class="guide-note">Daño contra ${stats[rival.kind].name}, sin cubrirse.</p>`;
+    document.getElementById(id).innerHTML=`<h3>${f===player?"1P":gameMode==="versus"?"2P":"CPU"} · ${stats[f.kind].name}</h3>${powerGuide(f.kind,rival.kind)}${comboGuide(f.kind,rival.kind)}<p class="guide-note">Daño contra ${stats[rival.kind].name}, sin cubrirse.</p>`;
   }
   document.getElementById("pauseControls2").hidden=gameMode!=="versus";
   document.getElementById("pauseControls2Title").hidden=gameMode!=="versus";
@@ -459,7 +533,8 @@ function makeFighter(kind, x, isPlayer) {
     attackLanded: false, invuln: 0, specialCooldown: 0,
     projectileToggle: 0, facing: x < 480 ? 1 : -1, flash: 0,
     moveSpec: null, lowAttack: false, airAttack: false, kickStyle: null, moveIntent: 0, attackSound: null,
-    walkPhase: 0, combo: 0, comboTime: 0, guardFlash: 0
+    walkPhase: 0, combo: 0, comboTime: 0, comboDamage:0, comboName:"", guardFlash: 0,
+    meleeChain:null, chainCooldown:0, attackConnected:false
   };
   const motion = fighterMotion(f);
   f.animation = { pose: POSES[kind].idle, fromPose: POSES[kind].idle, mix: 1, prevMix: 1,
@@ -968,11 +1043,11 @@ function update(dt) {
     return;
   }
   fighters.forEach(f => {
-    for (const name of ["invuln", "aiEscapeCooldown", "specialCooldown", "flash", "landingSquash", "guardTime", "crouchTime", "queueTime", "comboTime", "guardFlash", "concreteCoat", "electricCoat"]) {
+    for (const name of ["invuln", "aiEscapeCooldown", "specialCooldown", "flash", "landingSquash", "guardTime", "crouchTime", "queueTime", "comboTime", "guardFlash", "concreteCoat", "electricCoat", "chainCooldown"]) {
       f[name] = Math.max(0, f[name] - dt);
     }
     if (!f.queueTime) f.queuedAction = null;
-    if (!f.comboTime) f.combo = 0;
+    if (!f.comboTime) {f.combo = 0;f.comboDamage=0;f.comboName="";}
     tickConcreteHold(f,dt);
     f.animClock += dt;
     f.power = Math.min(100, f.power + dt * 3.2 * ENERGY_GAIN_SCALE);
@@ -1030,6 +1105,7 @@ function updateAI(dt) {
   const distance = Math.abs(dx);
   const toward = Math.sign(dx) || 1;
   setStance(cpu, cpu.crouchTime > 0, cpu.guardTime > 0);
+  if(updateAICombo(cpu,dt))return;
   if (isLocked(cpu) && cpu.action!=="block") return;
   aiClock -= dt;
   if (aiClock > 0) return;
@@ -1256,9 +1332,11 @@ function updateFighter(f, dt) {
       setStance(f, humanFighter(f) ? fighterInput(f).down : f.crouchTime > 0, humanFighter(f) ? fighterInput(f).guard : f.guardTime > 0);
     }
   }
+  advanceMeleeChain(f,dt);
   if (f.queuedAction && f.queueTime > 0) {
     // A connected punch can cancel into a kick or special; other inputs wait for recovery.
-    const canCancel = f.action === "punch" && f.attackLanded && ["kick", "special"].includes(f.queuedAction);
+    const canCancel = f.action === "punch" && (MELEE_COMBOS[f.kind]?f.attackConnected:f.attackLanded)
+      && (MELEE_COMBOS[f.kind]?f.queuedAction==="special":["kick","special"].includes(f.queuedAction));
     if (!isLocked(f) || canCancel) {
       const queued = f.queuedAction;
       if (queued !== "jump" || f.grounded) {
@@ -1317,6 +1395,7 @@ function attackContact(f, target) {
     attacker: f, target, damage: (spec.damage + (f.kind === "sergio" && f.action === "punch" ? 2 : 0)) * stats[f.kind].normalDamage / 10,
     knock: spec.knock, lift: rising ? spec.lift : diagonal ? 0 : f.airAttack ? -120 : 0, direction: f.facing, low, overhead: diagonal,
     sourceX: f.x, projectile: false, attackType:f.action, knockdown:rising,
+    chainStep:spec.chainStep||1, chainFinisher:spec.chainFinisher||false, chainName:spec.chainName||"",
     x: (front + target.x) / 2, y: centerY
   };
 }
@@ -1354,10 +1433,89 @@ function queueAction(f, type) {
   f.queueTime = .18;
 }
 
+function resetMeleeChain(f) { if(f)f.meleeChain=null; }
+function comboStarterHop(f) {
+  return f.meleeChain?.step===1&&f.meleeChain.tokens[0]==="K"&&f.action==="kick"
+    &&f.kickStyle===null&&f.y>=FLOOR-48;
+}
+function meleeToken(f,type) {
+  if(!["punch","kick"].includes(type)||(!f.grounded&&!comboStarterHop(f)))return null;
+  const input=humanFighter(f)?fighterInput(f):null;
+  const down=input?input.down:f.crouching;
+  const direction=input?Number(input.right)-Number(input.left):f.moveIntent;
+  return type==="punch" ? down?"U":"P" : down?"D":direction*f.facing<0?"B":"K";
+}
+function comboChance() {
+  return campaign&&gameMode==="solo" ? [0,.12,.22,.36,.48,.62][Math.min(campaign.index,5)] : .30;
+}
+function startMeleeChain(f,token) {
+  if(f.chainCooldown>0||!MELEE_COMBOS[f.kind]||!f.grounded)return;
+  const candidates=MELEE_COMBOS[f.kind].flatMap((route,i)=>route.tokens[0]===token?[i]:[]);
+  if(!candidates.length)return;
+  f.meleeChain={tokens:[token],pending:[],candidates,step:1,age:0,lastPress:0,aiRoute:null,aiWait:0};
+  if(!humanFighter(f)&&Math.random()<comboChance()){
+    f.meleeChain.aiRoute=candidates[Math.floor(Math.random()*candidates.length)];
+  }
+}
+function bufferMeleeToken(f,token,type) {
+  const chain=f.meleeChain;
+  if(!chain||chain.age>2.4||(!f.grounded&&!comboStarterHop(f))||!token)return false;
+  const candidates=chain.candidates.filter(i=>MELEE_COMBOS[f.kind][i].tokens[chain.tokens.length]===token);
+  if(!candidates.length)return false;
+  chain.tokens.push(token);chain.pending.push(token);chain.candidates=candidates;chain.lastPress=chain.age;
+  // A deliberately buffered string brings the opening hop down sooner.
+  // Unbuffered standing kicks and real aerial kicks retain their original arc.
+  if(comboStarterHop(f)){f.vy=Math.max(f.vy,-80);f.airAttack=false;}
+  // Preserve the ordinary short buffer as a fallback if this opening misses.
+  if(humanFighter(f))queueAction(f,type);
+  return true;
+}
+function advanceMeleeChain(f,dt) {
+  const chain=f.meleeChain;
+  if(!chain)return;
+  chain.age+=dt;
+  const target=f===player?cpu:player;
+  if(humanFighter(f)&&fighterInput(f).guard){
+    resetMeleeChain(f);f.queuedAction=null;f.queueTime=0;return;
+  }
+  if(chain.age>2.4||(!f.grounded&&!comboStarterHop(f))||f.concreteHold>0||f.knockdown||["hit","block","roll","special","teleport"].includes(f.action)){
+    resetMeleeChain(f);return;
+  }
+  const elapsed=f.actionDuration-f.actionTime, move=f.moveSpec;
+  if((f.attackLanded&&!f.attackConnected)||(!f.attackLanded&&move&&elapsed>move.startup+move.active)){
+    resetMeleeChain(f);return;
+  }
+  if(!f.attackConnected)return;
+  if(target.health<=0||target.knockdown||target.action!=="hit"){
+    resetMeleeChain(f);return;
+  }
+  if(!chain.pending.length)return;
+  if(!f.grounded)return;
+  if(move&&elapsed<move.startup+.05/COMBO_PROFILES[f.kind].tempo)return;
+  const token=chain.pending.shift();chain.step++;
+  const route=chain.candidates.map(i=>MELEE_COMBOS[f.kind][i]).find(r=>r.tokens.length===chain.step);
+  stopFighterSound(f);f.action="idle";f.actionTime=0;
+  attack(f,["P","U"].includes(token)?"punch":"kick",{token,index:chain.step,route});
+}
+function updateAICombo(f,dt) {
+  const chain=f.meleeChain;
+  if(!chain||chain.aiRoute===null||f.concreteHold>0||f.knockdown)return false;
+  const route=MELEE_COMBOS[f.kind][chain.aiRoute];
+  if(chain.tokens.length>=route.tokens.length)return isLocked(f);
+  if(chain.pending.length)return true;
+  if(chain.step>1&&!f.attackConnected)return false;
+  chain.aiWait+=dt;
+  if(chain.aiWait<.025+difficulty().reaction*.30)return true;
+  const token=route.tokens[chain.tokens.length];chain.aiWait=0;
+  attack(f,["P","U"].includes(token)?"punch":"kick",null,token);
+  return true;
+}
+
 function jump(f) {
   if(f?.concreteHold>0)return false;
   if (workCinematic) return false;
   if (state !== "playing" || !f) return false;
+  resetMeleeChain(f);
   if (!f.grounded || isLocked(f)) {
     if (humanFighter(f)) queueAction(f, "jump");
     return false;
@@ -1377,13 +1535,18 @@ function evade(f) {
   if(f.action==="block"){f.action="idle";f.actionTime=0;}
   return attack(f,["blotta","galante"].includes(f.kind)?"teleport":"roll");
 }
-function attack(f, type) {
+function attack(f, type, chainStep=null, forcedToken=null) {
   if(f?.concreteHold>0)return false;
   if (workCinematic) return false;
   if (state !== "playing" || !f || !["punch", "kick", "special", "teleport", "slam", "roll"].includes(type)) return false;
   if (type === "teleport" && !["blotta","galante"].includes(f.kind)) return false;
   if (["roll","teleport"].includes(type) && (!f.grounded || (type==="roll" && ["blotta","galante"].includes(f.kind)))) return false;
   if (type === "slam" && f.kind !== "tunki") return false;
+  const token=chainStep?.token||forcedToken||meleeToken(f,type);
+  if(!chainStep&&MELEE_COMBOS[f.kind]){
+    if(f.meleeChain&&["punch","kick"].includes(type)&&bufferMeleeToken(f,token,type))return false;
+    resetMeleeChain(f);
+  }
   if (isLocked(f)) {
     if (humanFighter(f)) queueAction(f, type);
     return false;
@@ -1398,19 +1561,25 @@ function attack(f, type) {
     return false;
   }
   if(workSuper && stats[f.kind].superRange && Math.abs((f===player?cpu:player).x-f.x)>stats[f.kind].superRange) { if(humanFighter(f)) sfx("empty"); return false; }
-  const low = ["punch","kick"].includes(type) && f.grounded && (humanFighter(f) ? fighterInput(f).down : f.crouching) && !cost;
+  const low = ["punch","kick"].includes(type) && f.grounded && ((chainStep||forcedToken)?["U","D"].includes(token):(humanFighter(f) ? fighterInput(f).down : f.crouching)) && !cost;
   if (low && type === "punch") type = "uppercut";
   stopFighterSound(f);
   const directionInput=humanFighter(f) ? Number(fighterInput(f).right)-Number(fighterInput(f).left) : f.moveIntent;
-  f.kickStyle=type!=="kick" || low ? null : !f.grounded ? "airKick" : directionInput*f.facing<0 ? "volley" : null;
+  f.kickStyle=type!=="kick" || low ? null : !f.grounded ? "airKick" : (chainStep||forcedToken)?token==="B"?"volley":null : directionInput*f.facing<0 ? "volley" : null;
   f.moveSpec = ["jairo","gabriel"].includes(f.kind) && type === "special" ? {...MOVES.special, startup:crash?.32:.22, active:.05, recovery:crash?.62:.42} : f.kind === "paula" && type === "special" ? {...MOVES.special, startup:.24, active:.06, recovery:.70} : MOVES[f.kickStyle || (low && type === "kick" ? "lowKick" : type)];
   if(f.kind==="fernando" && type==="special")f.moveSpec={...MOVES.special,startup:.14,active:.05,recovery:.60};
   f.moveSpec = timedMove(f, f.moveSpec, ["roll","teleport"].includes(type), type);
+  if(chainStep){
+    f.moveSpec=comboStepSpec(f.kind,token,chainStep.index,!!chainStep.route);
+    if(chainStep.route)f.moveSpec.chainName=chainStep.route.name;
+    f.vx=f.facing*COMBO_PROFILES[f.kind].advance;
+  }
   if(f.kind === "padrino" && type === "special") f.moveSpec.startup = .28;
   f.action = type;
   f.actionDuration = f.moveSpec.startup + f.moveSpec.active + f.moveSpec.recovery;
   f.actionTime = f.actionDuration;
   f.attackLanded = false;
+  f.attackConnected = false;
   f.lowAttack = low && type !== "uppercut";
   f.airAttack = !f.grounded;
   f.crouching = f.lowAttack;
@@ -1418,6 +1587,7 @@ function attack(f, type) {
   f.queuedAction = null;
   f.queueTime = 0;
   f.power -= cost;
+  if(!chainStep&&["punch","kick"].includes(type)&&token)startMeleeChain(f,token);
   if (workSuper) {
     f.specialStyle = f.kind === "fernando" ? "fireSuper" : f.kind === "gabriel" ? "ganttSuper" : f.kind === "linares" ? "transformerSuper" : f.kind === "tren" ? "stormSuper" : f.kind === "peluche" ? "concreteSuper" : f.kind === "angel" ? "hookSuper" : "containerSuper";
     f.vx = 0;
@@ -1452,14 +1622,14 @@ function attack(f, type) {
     if (COMBAT_AUDIO[f.specialStyle]) f.attackSound = startCombatSound(f.specialStyle);
     f.vx = 0;
   } else if (f.kickStyle === "volley") {
-    f.vx=-f.facing*65;
-  } else if (type === "kick" && !low && f.grounded) {
+    f.vx=chainStep?f.facing*COMBO_PROFILES[f.kind].advance:-f.facing*65;
+  } else if (type === "kick" && !low && f.grounded && !chainStep) {
     f.vy = -260 * mobilityTempo(f);
     f.vx = f.facing * 260;
     f.grounded = false;
     f.airAttack = true;
   } else if (f.grounded) {
-    f.vx = f.facing * (low ? 35 : f.kind === "sergio" ? 180 : 105);
+    f.vx = f.facing * (chainStep?COMBO_PROFILES[f.kind].advance:low ? 35 : f.kind === "sergio" ? 180 : 105);
   }
   if (["punch", "uppercut", "kick"].includes(type)) {
     f.attackSound = startCombatSound(roster.includes(f.kind) ? "meleeSwing" : f.kind === "sergio" && type === "punch" ? "belly" : "general");
@@ -1540,12 +1710,15 @@ function updateProjectiles(dt) {
 function hit(target, damage, knockX, knockY, attacker, contact = {}) {
   if (target.invuln > 0 || isVanished(target) || state !== "playing") return false;
   damage = damageTaken(target, damage);
+  const healthBefore=target.health;
   const sourceX = contact.sourceX ?? attacker.x;
   const inFront = (sourceX - target.x) * target.facing >= 0;
   const blocking = target.guarding && target.grounded && inFront && (!contact.low || target.crouching)
     && (!contact.overhead || !target.crouching)
     && ["idle", "block"].includes(target.action);
+  if(contact.attackType&&!contact.projectile)attacker.attackConnected=!blocking;
   if (blocking) {
+    resetMeleeChain(attacker);
     addScore(target, 25);
     const chipDamage = contact.super ? damage * .30 : contact.projectile ? damageTaken(target,1) : 0;
     target.health = Math.max(0, Math.round((target.health - chipDamage) * 1000) / 1000);
@@ -1562,11 +1735,15 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
     sfx("block");
   } else {
     stopFighterSound(target);
+    resetMeleeChain(target);
     addScore(attacker, Math.min(damage, target.health) * 10);
     target.health = Math.max(0, Math.round((target.health - damage) * 1000) / 1000);
     target.power = Math.min(100, target.power + damage * .8 * ENERGY_GAIN_SCALE);
     attacker.power = Math.min(100, attacker.power + damage * .7 * ENERGY_GAIN_SCALE);
-    attacker.combo = attacker.comboTime > 0 ? attacker.combo + 1 : 1;
+    const continuing=attacker.comboTime>0&&(!MELEE_COMBOS[attacker.kind]||target.action==="hit");
+    attacker.combo = continuing ? attacker.combo + 1 : 1;
+    attacker.comboDamage=(continuing?attacker.comboDamage||0:0)+Math.min(damage,healthBefore);
+    if(!continuing)attacker.comboName="";
     attacker.comboTime = .72;
     target.invuln = .09;
     target.action = "hit";
@@ -1577,6 +1754,7 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
     target.grounded = knockY === 0 && target.y >= FLOOR;
     target.crouching = target.guarding = target.lowAttack = false;
     target.queuedAction = null;
+    target.queueTime=0;
     if(target.concreteHold>0 && target.health>0){
       target.vx=target.vy=0;target.knockdown=null;target.actionTime=target.concreteHold;
     } else if (contact.knockdown && !contact.projectile) beginKnockdown(target, knockX);
@@ -1587,6 +1765,15 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
     addEffect("impact", contact.x ?? target.x, contact.y ?? target.y - 104, powerColor(attacker.kind), damage > 11 ? 57 : 38, .25);
     if (contact.attackType && !contact.projectile) startCombatSound(contact.attackType + "Hit");
     else sfx("hit");
+    if(contact.chainFinisher){
+      attacker.comboName=contact.chainName;attacker.comboTime=1.10;
+      attacker.chainCooldown=.45;
+      target.invuln=Math.max(target.invuln,.32);
+      resetMeleeChain(attacker);
+      burst(contact.x??target.x,contact.y??target.y-104,"#fff0a5",16);
+      addEffect("ring",contact.x??target.x,contact.y??target.y-104,powerColor(attacker.kind),62,.32);
+      screenShake=Math.max(screenShake,4);
+    }
     if (navigator.vibrate) navigator.vibrate(15);
   }
   suspendCombatSounds(false);
@@ -1596,7 +1783,7 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
 
 function finishRound(winner, reason) {
   if (state !== "playing") return;
-  fighters.forEach(f=>{f.concreteHold=0;f.concreteCoat=0;});
+  fighters.forEach(f=>{f.concreteHold=0;f.concreteCoat=0;resetMeleeChain(f);f.queuedAction=null;f.queueTime=0;});
   if (winner === player) match.playerWins++;
   else if (winner === cpu) match.cpuWins++;
   match.repeat = !winner;
@@ -1989,6 +2176,23 @@ function draw() {
   fighters.forEach(drawRoundIntroSpeech);
   ctx.restore();
   if (workCinematic) drawWorkCinematic();
+  fighters.forEach(drawComboHud);
+}
+
+function drawComboHud(f) {
+  if(f.combo<2||f.comboTime<=0)return;
+  ctx.save();
+  const x=f===player?30:VIEW_WIDTH-30;
+  ctx.textAlign=f===player?"left":"right";
+  ctx.font='400 30px "KP Display", Impact, sans-serif';
+  ctx.fillStyle="#ffe47a";ctx.strokeStyle="#080e1c";ctx.lineWidth=4;
+  const label=`${f.combo} GOLPES · ${(f.comboDamage||0).toLocaleString("es-AR",{maximumFractionDigits:1})}%`;
+  ctx.strokeText(label,x,133);ctx.fillText(label,x,133);
+  if(f.comboName){
+    ctx.font='400 20px "KP Display", Impact, sans-serif';ctx.fillStyle=powerColor(f.kind);
+    ctx.strokeText(f.comboName.toUpperCase(),x,156);ctx.fillText(f.comboName.toUpperCase(),x,156);
+  }
+  ctx.restore();
 }
 
 function poseFor(f) {
@@ -2601,17 +2805,6 @@ function drawFighter(f) {
     const centerY = y - (f.crouching ? 72 : 136) * FIGHTER_SCALE;
     ctx.arc(x + f.facing * 20 * FIGHTER_SCALE, centerY, 35 * FIGHTER_SCALE, f.facing > 0 ? -1.2 : Math.PI - 1.2, f.facing > 0 ? 1.2 : Math.PI + 1.2);
     ctx.stroke();
-    ctx.restore();
-  }
-  if (f.combo > 1 && f.comboTime > 0) {
-    ctx.save();
-    ctx.font = "italic bold 20px Arial";
-    ctx.fillStyle = "#ffe47a";
-    ctx.strokeStyle = "#14121d";
-    ctx.lineWidth = 4;
-    const label = f.combo + " HITS";
-    ctx.strokeText(label, f.isPlayer ? 32 : 810, 124);
-    ctx.fillText(label, f.isPlayer ? 32 : 810, 124);
     ctx.restore();
   }
 }
@@ -3772,7 +3965,7 @@ function startWorkCinematic(owner) {
   target.action="hit";target.actionTime=target.actionDuration=duration;
   target.knockdown=null;target.concreteHold=0;target.concreteCoat=0;
   target.vx=target.vy=0;target.guarding=false;target.crouching=false;
-  for(const f of [owner,target]){f.queuedAction=null;f.queueTime=0;f.moveIntent=0;}
+  for(const f of [owner,target]){f.queuedAction=null;f.queueTime=0;f.moveIntent=0;resetMeleeChain(f);}
   updateWorkGuard(workCinematic);
   screenShake=4;
 }

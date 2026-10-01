@@ -25,6 +25,15 @@ Descomprime el ZIP, abre una terminal dentro de la carpeta `Wo-Fighters` y ejecu
 
 GitHub Pages: https://sebastiandc99.github.io/Wo-Fighters/
 
+## Combos de golpes y patadas
+
+Cada uno de los siete personajes tiene dos cadenas de 3–5 golpes con los
+botones actuales. La selección y la pausa enseñan las secuencias; el combate
+muestra el número de golpes, el daño real y el nombre del combo completado.
+Los personajes fuertes usan enlaces pesados y los ágiles combinaciones más
+rápidas. Fallar, cubrirse o recibir un golpe corta la continuación; los remates
+permiten salir de la presión sin cadenas infinitas. [Secuencias y balance](COMBOS.md).
+
 Motor de referencia: `Sebastiandc99/KPFighter@7272d498a80a738c1c16ebcb026f052625dcfb4e`. Se conservan aceleración, frenado, colisiones y tiempos de ataque. El gancho ahora tiene su propia caída completa, por pedido del usuario. Ángel usa la movilidad de Jairo y Primitivo la de Sergio; mantienen sus poderes y atributos de daño propios.
 
 ## Revisión visual

@@ -1205,6 +1205,26 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
 .choice-tile[data-pick="fernando"] img {object-fit:contain;object-position:center;background:#142341;}
 .selection-guide[data-kind="fernando"] {--skill-accent:#ffb763;--skill-fill:#ef6539;}
 
+/* Character strings share the existing punch/kick controls. */
+.selection-guide {top:34%;max-height:58%;overflow-y:auto;touch-action:pan-y;scrollbar-width:thin;scrollbar-color:#c1a458 #0a152b;}
+.combo-guide {margin-top:.9em;padding-top:.65em;border-top:1px solid #8bafd340;}
+.combo-guide h4 {margin:0 0 .35em;color:#ffe071;font:400 clamp(14px,1.7cqw,22px)/1.05 "KP Display",Impact,sans-serif;letter-spacing:.06em;}
+.combo-entry {margin:.5em 0 .7em;}
+.combo-entry strong {display:block;color:#e8f5ff;font:400 clamp(12px,1.5cqw,19px)/1.15 "KP Display",Impact,sans-serif;letter-spacing:.04em;margin-bottom:.3em;}
+.combo-sequence {display:flex;align-items:center;flex-wrap:wrap;gap:.24em;}
+.combo-sequence b {display:inline-grid;place-items:center;padding:.12em .3em;min-width:1.45em;border:1px solid #749ab8;background:linear-gradient(135deg,#203d5b,#091729);color:#ffecaf;font:800 .95em/1.15 Arial,sans-serif;box-shadow:1px 2px #0009;}
+.combo-sequence i {color:#85cbec;font-style:normal;}
+.combo-detail {display:block;margin-top:.35em;color:#c2d4e9;font-size:.86em;line-height:1.3;}
+.combo-legend,.combo-tip {margin:.45em 0 0;color:#b7ccde;font-size:.82em;line-height:1.3;}
+.combo-tip {color:#e3ce93;}
+.compact-combos {margin-top:.7cqw;padding-top:.5cqw;}
+.compact-combos h4 {font-size:clamp(12px,1.4cqw,18px);}
+.compact-combos .combo-entry {margin:.45cqw 0 .7cqw;}
+.compact-combos .combo-entry strong {font-size:clamp(10px,1.2cqw,16px);}
+.compact-combos .combo-sequence {font-size:clamp(9px,1.05cqw,14px);}
+.compact-combos .combo-legend,.compact-combos .combo-tip {font-size:clamp(8px,.8cqw,11px);}
+.combo-controls {padding-top:.6em;border-top:1px solid #8bafd340;}
+
 /* Tournament ladder keeps the same 960 × 540 landscape viewport as the fight. */
 .tower-screen {background:#020610;}
 #towerCanvas {position:absolute;inset:0;width:100%;height:100%;}
