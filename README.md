@@ -112,3 +112,15 @@ Gancho Maestro usa dos poses propias de señalero: bajar mientras entra el ganch
 Cada jugador tiene una palanca virtual en lugar de cuatro flechas táctiles. Arrastrarla a los lados camina, arriba salta una vez por gesto, abajo agacha; las diagonales permiten saltar avanzando o agacharse caminando. Se puede mantener abajo mientras se toca Golpe, Patada o Poder para gancho, barrida o súper. El botón de guardia funciona a la vez. El movimiento vuelve al centro al levantar el dedo, cancelar un toque, pausar o abandonar la pelea. En celulares girados, los ejes siguen la orientación del juego. El teclado conserva sus teclas.
 
 En celular, el lienzo dibuja a la resolución base de 960 × 540, evita desenfocar el escenario detrás de los botones y actualiza el marcador a una frecuencia menor que los fotogramas. La simulación usa 60 pasos por segundo en celular y 120 en PC, con tiempos, movimientos y colisiones verificados. Los sonidos de la pelea se preparan durante la introducción, sin cargar sonidos de personajes antiguos desde el menú. Las imágenes de personajes fuera del plantel actual se cargan solo cuando se necesitan.
+
+### Rendimiento móvil
+
+El escenario y su iluminación se preparan una vez a la resolución existente.
+Se reutiliza el brillo de los rayos de geometría fija sin cambiar sus fases,
+ramas o capas; los rayos que cambian de forma se siguen dibujando completos.
+La caché eléctrica tiene un límite de 4 MiB de píxeles y se liberan los cuadros
+de rivales anteriores al cambiar de combate. La presentación prepara un cuadro
+de animación por frame para evitar el primer tirón durante un golpe.
+El joystick mide su posición una vez por gesto y las barras/textos sólo escriben
+cambios. No se reduce la resolución, la frecuencia de animación, las partículas,
+los efectos ni los sonidos. Las pruebas están en `tests/mobile-performance.test.cjs`.

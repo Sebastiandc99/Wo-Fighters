@@ -1,7 +1,7 @@
 "use strict";
 
 const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d", {alpha:false});
 ctx.imageSmoothingEnabled = false;
 const VIEW_WIDTH = 960;
 const STAGE_LEFT = -180;
@@ -16,6 +16,14 @@ const spriteFrames = new Map();
 const poseBlendSurfaces = new Map();
 let drawingScale = 1;
 let mobileRendering = false;
+// Reuse raster work at the existing resolution; animation clocks and effect counts stay intact.
+let stageRaster = null;
+const electricRasters = new Map();
+let electricRasterPixels = 0;
+const ELECTRIC_CACHE_PIXELS = 1024 * 1024;
+const superAuras = new Map();
+let renderWarmQueue = [];
+const comboDamageFormat = new Intl.NumberFormat("es-AR", {maximumFractionDigits:1});
 
 let online = null;
 let onlineSoundId = 0;
@@ -48,6 +56,15 @@ const ui = {
   pauseBtn: document.getElementById("pauseBtn"),
   abilityBtn: document.getElementById("abilityBtn")
 };
+
+const hudNodes={
+  leftScore:document.getElementById("leftScore"),rightScore:document.getElementById("rightScore"),
+  roundLabel:document.getElementById("roundLabel"),campaignStatus:document.getElementById("campaignStatus"),
+  leftRounds:[...document.querySelectorAll("#leftRounds i")],rightRounds:[...document.querySelectorAll("#rightRounds i")],
+  special:document.querySelector('[data-tap="special"]'),ability2:document.getElementById("abilityBtn2")
+};
+function hudValue(node,property,value){if(node[property]!==value)node[property]=value;}
+function hudClass(node,name,enabled){if(node.classList.contains(name)!==enabled)node.classList.toggle(name,enabled);}
 
 const stages = {
   generadores: { name: "GENERADORES DE RINCÓN", src: "assets/escenario-generadores-v4.webp", description: "Generadores y paneles solares al pie de la cordillera." },
@@ -396,6 +413,7 @@ let aiEnabled = true;
 const keyHolds = new Set();
 const touchHolds = new Map();
 const joystickDirections = new Map();
+let joystickGeometry = new WeakMap();
 
 function loadImage(src) {
   const img = new Image();
@@ -409,6 +427,7 @@ function mobileInput() {
 }
 
 function syncViewport() {
+  joystickGeometry = new WeakMap();
   mobileRendering = mobileInput();
   const sideways = mobileRendering && window.innerHeight > window.innerWidth;
   document.body.classList.toggle("phone-portrait", sideways);
@@ -897,6 +916,7 @@ function startRound() {
   state = "intro";
   showScreen(ui.gameScreen);
   syncViewport();
+  prepareFightRendering();
   setPauseUI(false);
   ui.resultPanel.hidden = true;
   document.getElementById("roundNotice").hidden = true;
@@ -2134,13 +2154,55 @@ function updateCamera(dt) {
 }
 
 function drawStage(image, parallaxX) {
-  if (!image.complete || !image.naturalWidth) { ctx.fillStyle = "#16263a"; ctx.fillRect(0, 0, 960, 540); return; }
+  if (!image.complete || !image.naturalWidth) { ctx.fillStyle = "#16263a"; ctx.fillRect(0, 0, 960, 540); paintStageLighting(ctx,VIEW_WIDTH); return; }
   const width=image.naturalWidth,height=image.naturalHeight || width*9/16;
   const drawWidth=VIEW_WIDTH+160,drawHeight=550;
-  const scale=Math.max(drawWidth/width,drawHeight/height);
-  const cropWidth=drawWidth/scale,cropHeight=drawHeight/scale;
-  ctx.drawImage(image,(width-cropWidth)/2,(height-cropHeight)*.6,cropWidth,cropHeight,
-    -80-cameraX*.35+parallaxX,-5,drawWidth,drawHeight);
+  if(!stageRaster || stageRaster.image!==image || stageRaster.scale!==drawingScale || stageRaster.sourceWidth!==width || stageRaster.sourceHeight!==height) {
+    const surface=document.createElement("canvas");
+    surface.width=Math.round(drawWidth*drawingScale);surface.height=Math.round(drawHeight*drawingScale);
+    const paint=surface.getContext("2d",{alpha:false});
+    paint.imageSmoothingEnabled=false;
+    const scale=Math.max(drawWidth/width,drawHeight/height);
+    const cropWidth=drawWidth/scale,cropHeight=drawHeight/scale;
+    paint.drawImage(image,(width-cropWidth)/2,(height-cropHeight)*.6,cropWidth,cropHeight,0,0,surface.width,surface.height);
+    paint.setTransform(drawingScale,0,0,drawingScale,0,5*drawingScale);
+    paintStageLighting(paint,drawWidth);
+    // Only the current arena is retained, including after a tournament stage change.
+    stageRaster={image,scale:drawingScale,sourceWidth:width,sourceHeight:height,surface};
+  }
+  ctx.drawImage(stageRaster.surface,-80-cameraX*.35+parallaxX,-5,drawWidth,drawHeight);
+}
+
+function paintStageLighting(paint,width) {
+  // Both gradients are independent of horizontal camera movement, so bake them into the arena.
+  const vignette=paint.createLinearGradient(0,0,0,540);
+  vignette.addColorStop(0,"rgba(5,10,22,.12)");vignette.addColorStop(.75,"rgba(5,8,14,0)");vignette.addColorStop(1,"rgba(2,3,8,.5)");
+  paint.fillStyle=vignette;paint.fillRect(0,0,width,540);
+  const floorShade=paint.createLinearGradient(0,405,0,540);
+  floorShade.addColorStop(0,"rgba(4,8,15,0)");floorShade.addColorStop(1,"rgba(2,4,10,.28)");
+  paint.fillStyle=floorShade;paint.fillRect(0,400,width,140);
+}
+
+function prepareFightRendering() {
+  const kinds=new Set(fighters.map(f=>f.kind));
+  // Release past opponents' derived images, without unloading the original artwork.
+  for(const key of spriteFrames.keys())if(![...kinds].some(kind=>key.startsWith(kind+":") || key.startsWith("classic:"+kind+":")))spriteFrames.delete(key);
+  for(const key of poseBlendSurfaces.keys())if(!kinds.has(key))poseBlendSurfaces.delete(key);
+  for(const key of concreteSprites.keys())if(![...kinds].some(kind=>key.startsWith(kind+":")))concreteSprites.delete(key);
+  electricRasters.clear();electricRasterPixels=0;
+  renderWarmQueue=[];
+  if(mobileRendering)for(const kind of kinds)if(roster.includes(kind)) {
+    const poses=[...new Set([...Object.values(POSES[kind]),...Array.from({length:15},(_,i)=>i),16,17,
+      ...(["angel","linares","gabriel"].includes(kind)?[19]:[]),...(ROUND_TAUNTS[kind]?[20,21]:[]),...(kind==="fernando"?[24,25,26,27,28,29]:[])])];
+    for(const pose of poses)renderWarmQueue.push({kind,pose});
+  }
+}
+
+function warmRenderFrame() {
+  // One small pose per presentation frame avoids a first-use hitch during a strike.
+  if(state!=="intro" || !renderWarmQueue.length)return;
+  const frame=renderWarmQueue.shift();
+  if(!spriteFrame(frame))renderWarmQueue.push(frame);
 }
 
 function draw() {
@@ -2152,24 +2214,11 @@ function draw() {
   ctx.translate(shakeX, shakeY);
   drawStage(stageImages[stageChoice], parallaxX);
 
-  const vignette = ctx.createLinearGradient(0, 0, 0, 540);
-  vignette.addColorStop(0, "rgba(5,10,22,.12)");
-  vignette.addColorStop(.75, "rgba(5,8,14,0)");
-  vignette.addColorStop(1, "rgba(2,3,8,.5)");
-  ctx.fillStyle = vignette;
-  ctx.fillRect(0, 0, 960, 540);
-
-  const floorShade = ctx.createLinearGradient(0, 405, 0, 540);
-  floorShade.addColorStop(0, "rgba(4,8,15,0)");
-  floorShade.addColorStop(1, "rgba(2,4,10,.28)");
-  ctx.fillStyle = floorShade;
-  ctx.fillRect(0, 400, 960, 140);
-
   ctx.translate(-cameraX, 0);
   drawShadow(player);
   drawShadow(cpu);
   afterimages.forEach(drawAfterimage);
-  fighters.slice().sort((a, b) => a.x - b.x).forEach(drawFighter);
+  if(player.x<=cpu.x){drawFighter(player);drawFighter(cpu);}else{drawFighter(cpu);drawFighter(player);}
   projectiles.forEach(p => { drawProjectileTrail(p); drawProjectile(p); });
   particles.forEach(drawParticle);
   effects.forEach(drawEffect);
@@ -2186,7 +2235,7 @@ function drawComboHud(f) {
   ctx.textAlign=f===player?"left":"right";
   ctx.font='400 30px "KP Display", Impact, sans-serif';
   ctx.fillStyle="#ffe47a";ctx.strokeStyle="#080e1c";ctx.lineWidth=4;
-  const label=`${f.combo} GOLPES · ${(f.comboDamage||0).toLocaleString("es-AR",{maximumFractionDigits:1})}%`;
+  const label=`${f.combo} GOLPES · ${comboDamageFormat.format(f.comboDamage||0)}%`;
   ctx.strokeText(label,x,133);ctx.fillText(label,x,133);
   if(f.comboName){
     ctx.font='400 20px "KP Display", Impact, sans-serif';ctx.fillStyle=powerColor(f.kind);
@@ -2964,23 +3013,20 @@ function drawParticle(p) {
 
 function updateHud() {
   if (!player || !cpu) return;
-  ui.leftHealth.style.width = `${player.health}%`;
-  ui.rightHealth.style.width = `${cpu.health}%`;
-  ui.leftPower.style.width = `${player.power}%`;
-  ui.rightPower.style.width = `${cpu.power}%`;
-  ui.timer.textContent = String(Math.ceil(roundTime)).padStart(2, "0");
-  document.getElementById("leftScore").textContent = String(match.scores?.[0] || 0).padStart(6, "0");
-  document.getElementById("rightScore").textContent = String(match.scores?.[1] || 0).padStart(6, "0");
-  document.getElementById("roundLabel").textContent = ROUND_AUDIO[match.round].title + " · " + match.playerWins + " — " + match.cpuWins;
-  document.getElementById("campaignStatus").hidden=!campaign;
-  document.getElementById("campaignStatus").textContent=campaign ? "RIVAL "+(campaign.index+1)+"/"+campaign.opponents.length+" · "+difficulty().name+" · "+(campaign.extraLives+1)+((campaign.extraLives+1)===1?" VIDA":" VIDAS")+" · PUNTOS ×"+(1+campaign.index*.25) : "";
-  document.querySelectorAll("#leftRounds i").forEach((dot, index) => dot.classList.toggle("won", index < match.playerWins));
-  document.querySelectorAll("#rightRounds i").forEach((dot, index) => dot.classList.toggle("won", index < match.cpuWins));
-  const controlled = online?.guest ? cpu : player;
-  const powerCost = roster.includes(controlled.kind) ? (fighterInput(controlled).down ? 100 : 30) : controlled.kind === "jairo" && held.down ? 45 : 35;
-  document.querySelector('[data-tap="special"]').classList.toggle("ready", controlled.power >= powerCost && controlled.specialCooldown === 0 && !controlled.mustacheAway);
-  ui.abilityBtn.classList.toggle("ready", controlled.power >= 30 && controlled.specialCooldown === 0);
-  document.getElementById("abilityBtn2").classList.toggle("ready", cpu.power >= 30 && cpu.specialCooldown === 0);
+  for(const [node,value] of [[ui.leftHealth,player.health],[ui.rightHealth,cpu.health],[ui.leftPower,player.power],[ui.rightPower,cpu.power]])hudValue(node.style,"width",`${value}%`);
+  hudValue(ui.timer,"textContent",String(Math.ceil(roundTime)).padStart(2,"0"));
+  hudValue(hudNodes.leftScore,"textContent",String(match.scores?.[0]||0).padStart(6,"0"));
+  hudValue(hudNodes.rightScore,"textContent",String(match.scores?.[1]||0).padStart(6,"0"));
+  hudValue(hudNodes.roundLabel,"textContent",ROUND_AUDIO[match.round].title+" · "+match.playerWins+" — "+match.cpuWins);
+  hudValue(hudNodes.campaignStatus,"hidden",!campaign);
+  hudValue(hudNodes.campaignStatus,"textContent",campaign?"RIVAL "+(campaign.index+1)+"/"+campaign.opponents.length+" · "+difficulty().name+" · "+(campaign.extraLives+1)+((campaign.extraLives+1)===1?" VIDA":" VIDAS")+" · PUNTOS ×"+(1+campaign.index*.25):"");
+  hudNodes.leftRounds.forEach((dot,index)=>hudClass(dot,"won",index<match.playerWins));
+  hudNodes.rightRounds.forEach((dot,index)=>hudClass(dot,"won",index<match.cpuWins));
+  const controlled=online?.guest?cpu:player;
+  const powerCost=roster.includes(controlled.kind)?(fighterInput(controlled).down?100:30):controlled.kind==="jairo"&&held.down?45:35;
+  hudClass(hudNodes.special,"ready",controlled.power>=powerCost&&controlled.specialCooldown===0&&!controlled.mustacheAway);
+  hudClass(ui.abilityBtn,"ready",controlled.power>=30&&controlled.specialCooldown===0);
+  hudClass(hudNodes.ability2,"ready",cpu.power>=30&&cpu.specialCooldown===0);
 }
 
 function setPauseUI(paused) {
@@ -3060,6 +3106,7 @@ function loop(now) {
     }
   }
   lastHudState = state;
+  warmRenderFrame();
   requestAnimationFrame(loop);
 }
 
@@ -3529,8 +3576,9 @@ window.addEventListener("focus",resumeTowerOnReturn);
 document.addEventListener("visibilitychange", () => { if (document.hidden) pauseOnLeave(); else resumeTowerOnReturn(); });
 // A captured pointer controls each stick. Holding down also works with action buttons.
 function moveJoystick(stick, event) {
-  const rect = stick.getBoundingClientRect();
-  const radius = stick.offsetWidth * .34;
+  let geometry=joystickGeometry.get(stick);
+  if(!geometry){geometry={rect:stick.getBoundingClientRect(),radius:stick.offsetWidth*.34};joystickGeometry.set(stick,geometry);}
+  const {rect,radius}=geometry;
   const screenX = event.clientX - (rect.left + rect.width / 2);
   const screenY = event.clientY - (rect.top + rect.height / 2);
   // Portrait phones rotate the entire cabinet clockwise; undo that for controls.
@@ -3559,6 +3607,7 @@ document.querySelectorAll('.joystick').forEach(stick => {
     event.preventDefault();
     if (state !== 'playing' || (slot === 2 && gameMode !== 'versus') || stick.activePointer != null) return;
     if (event.pointerType === 'touch') document.body.classList.add('touch-device');
+    joystickGeometry.delete(stick);
     stick.activePointer = event.pointerId;
     stick.setPointerCapture(event.pointerId);
     stick.classList.add('active');
@@ -3572,6 +3621,7 @@ document.querySelectorAll('.joystick').forEach(stick => {
   const release = event => {
     if (stick.activePointer !== event.pointerId) return;
     stick.activePointer = null;
+    joystickGeometry.delete(stick);
     joystickDirections.delete(event.pointerId);
     stick.classList.remove('active');
     document.getElementById('joystickKnob' + slot).style.transform = 'translate(-50%, -50%)';
@@ -4095,9 +4145,19 @@ function drawSuperAtmosphere(c) {
   ctx.save();ctx.globalAlpha=entry*exit;
   ctx.fillStyle="#020510";ctx.fillRect(0,0,VIEW_WIDTH,18);ctx.fillRect(0,VIEW_HEIGHT-20,VIEW_WIDTH,20);
   const focusX=t<.38?c.owner.x-cameraX:x,focusY=FLOOR-100;
-  const aura=ctx.createRadialGradient(focusX,focusY,8,focusX,focusY,260);
-  aura.addColorStop(0,colors[0]+"75");aura.addColorStop(.4,colors[1]+"25");aura.addColorStop(1,"transparent");
-  ctx.fillStyle=aura;ctx.fillRect(focusX-260,focusY-260,520,520);
+  const auraKey=colors[0]+colors[1]+":"+drawingScale;
+  let aura=superAuras.get(auraKey);
+  if(!aura) {
+    aura=document.createElement("canvas");aura.width=aura.height=Math.round(520*drawingScale);
+    const brush=aura.getContext("2d");brush.scale(drawingScale,drawingScale);
+    const glow=brush.createRadialGradient(260,260,8,260,260,260);
+    glow.addColorStop(0,colors[0]+"75");glow.addColorStop(.4,colors[1]+"25");glow.addColorStop(1,"transparent");
+    brush.fillStyle=glow;brush.fillRect(0,0,520,520);
+    // At most one palette per selected fighter; discard old density/palette surfaces.
+    if(superAuras.size>=2)superAuras.delete(superAuras.keys().next().value);
+    superAuras.set(auraKey,aura);
+  }
+  ctx.drawImage(aura,focusX-260,focusY-260,520,520);
   ctx.globalCompositeOperation="screen";
   // One expanding activation burst, followed by converging speed trails.
   const launch=Math.max(0,1-t/.48);
@@ -4187,20 +4247,46 @@ function updateVoltaic(p,dt) {
 }
 // Deterministic jagged branches animate from game time and therefore freeze on pause.
 function drawElectricArc(x1,y1,x2,y2,time,width=3,seed=0) {
+  const dx=x2-x1,dy=y2-y1;
+  const reusable=mobileRendering && (dy===0 || dx===46 && dy===-32 || dx===25 && dy===49);
+  if(!reusable){paintElectricArc(ctx,x1,y1,x2,y2,time,width,seed);return;}
+  const key=[dx,dy,Math.floor(time*28),width,seed,drawingScale].join(":");
+  let entry=electricRasters.get(key);
+  if(!entry) {
+    // Include every branch, all three luminous layers and the full blur extent.
+    const padding=64+width*20,left=Math.floor(Math.min(0,dx)-padding),top=Math.floor(Math.min(0,dy)-padding);
+    const w=Math.ceil((Math.abs(dx)+padding*2)*drawingScale),h=Math.ceil((Math.abs(dy)+padding*2)*drawingScale);
+    if(w*h>ELECTRIC_CACHE_PIXELS){paintElectricArc(ctx,x1,y1,x2,y2,time,width,seed);return;}
+    const surface=document.createElement("canvas");surface.width=w;surface.height=h;
+    const brush=surface.getContext("2d");brush.scale(drawingScale,drawingScale);brush.translate(-left,-top);
+    paintElectricArc(brush,0,0,dx,dy,time,width,seed);
+    entry={surface,left,top,pixels:w*h};
+    while(electricRasterPixels+entry.pixels>ELECTRIC_CACHE_PIXELS) {
+      const oldest=electricRasters.keys().next().value;electricRasterPixels-=electricRasters.get(oldest).pixels;electricRasters.delete(oldest);
+    }
+    electricRasters.set(key,entry);electricRasterPixels+=entry.pixels;
+  } else {
+    electricRasters.delete(key);electricRasters.set(key,entry);
+  }
+  ctx.save();ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(entry.surface,x1+entry.left,y1+entry.top,entry.surface.width/drawingScale,entry.surface.height/drawingScale);ctx.restore();
+}
+
+function paintElectricArc(brush,x1,y1,x2,y2,time,width=3,seed=0) {
   const dx=x2-x1,dy=y2-y1,length=Math.hypot(dx,dy)||1,nx=-dy/length,ny=dx/length;
   const count=Math.max(5,Math.ceil(length/24)),points=[];
   for(let i=0;i<=count;i++) {
     const q=i/count,j=i===0||i===count?0:Math.sin(i*17.13+Math.floor(time*28)*2.7+seed)*Math.min(22,length*.12);
     points.push([x1+dx*q+nx*j,y1+dy*q+ny*j]);
   }
-  ctx.save();ctx.lineJoin='miter';ctx.shadowColor='#159bff';ctx.shadowBlur=12;
+  brush.save();brush.lineJoin='miter';brush.shadowColor='#159bff';brush.shadowBlur=12;
   for(const [scale,color,alpha] of [[4,'#168bff',.22],[1.8,'#62d8ff',.8],[.65,'#f4ffff',1]]) {
-    ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.lineWidth=width*scale;
-    ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();
+    brush.strokeStyle=color;brush.globalAlpha=alpha;brush.lineWidth=width*scale;
+    brush.beginPath();points.forEach(([x,y],i)=>i?brush.lineTo(x,y):brush.moveTo(x,y));brush.stroke();
   }
-  ctx.shadowBlur=4;ctx.lineWidth=Math.max(1,width*.55);ctx.strokeStyle='#9deaff';ctx.globalAlpha=.85;
-  for(let i=2;i<count;i+=3){const [x,y]=points[i],sign=i%2?1:-1;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+nx*sign*22-dx/count*.4,y+ny*sign*22-dy/count*.4);ctx.lineTo(x+nx*sign*35,y+ny*sign*35);ctx.stroke();}
-  ctx.restore();
+  brush.shadowBlur=4;brush.lineWidth=Math.max(1,width*.55);brush.strokeStyle='#9deaff';brush.globalAlpha=.85;
+  for(let i=2;i<count;i+=3){const [x,y]=points[i],sign=i%2?1:-1;brush.beginPath();brush.moveTo(x,y);brush.lineTo(x+nx*sign*22-dx/count*.4,y+ny*sign*22-dy/count*.4);brush.lineTo(x+nx*sign*35,y+ny*sign*35);brush.stroke();}
+  brush.restore();
 }
 function drawVoltaic(p) {
   const x=lerp(p.prevX,p.x,renderAlpha),length=Math.min(150,Math.abs(x-p.originX));
