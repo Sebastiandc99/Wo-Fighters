@@ -240,7 +240,7 @@ const COMBAT_AUDIO = {
   cigarettes: {src:"assets/wo-cigarettes-v2.mp3",volume:1.0,start:0,loop:false},
   emberImpact: {src:"assets/wo-emberImpact-v2.mp3",volume:1.0,start:0,loop:false},
   fireSuper: {src:"assets/wo-fireSuper-v3.mp3",volume:.82,start:0,loop:false},
-  fireScream: {src:"assets/wo-fireScream-v1.mp3",volume:.80,start:0,end:1.25,loop:false},
+  fireScream: {src:"assets/wo-fireScream-v2.mp3",volume:.80,start:0,end:1.25,loop:false},
   // Common electric attacks use the exact Marechal lightning clip and playback settings.
   ...Object.fromEntries(["cable","voltaic"].map(name=>[name,{src:"assets/poder-rayo.mp3",volume:1.35,start:.035,end:1.69}])),
   transformerSuper: {src:"assets/wo-transformerSuper-v1.mp3",volume:.9,start:0,loop:false},
