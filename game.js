@@ -1742,7 +1742,7 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
   if (blocking) {
     resetMeleeChain(attacker);
     addScore(target, 25);
-    const chipDamage = contact.super ? damage * .30 : contact.projectile ? damageTaken(target,1) : 0;
+    const chipDamage = contact.super ? damage * .30 : contact.projectile ? damageTaken(target,1) : damage * .05;
     target.health = Math.max(0, Math.round((target.health - chipDamage) * 1000) / 1000);
     target.power = Math.min(100, target.power + 4 * ENERGY_GAIN_SCALE);
     target.action = "block";

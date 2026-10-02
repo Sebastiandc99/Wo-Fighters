@@ -11,7 +11,7 @@ function setup(kind='angel',rival='primitivo',slot=1,dir=1,corner=false){
     ${corner?`target.x=${dir===1?'FIGHTER_RIGHT':'FIGHTER_LEFT'};subject.x=target.x - (${dir})*58;`:''}
     let contacts=[];const realHit=hit;
     hit=(...args)=>{const before=target.health,result=realHit(...args);
-      if(args[4]===subject&&args[0]===target&&target.health<before)
+      if(args[4]===subject&&args[0]===target&&target.health<before&&subject.attackConnected)
         contacts.push({type:args[5].attackType,low:args[5].low,finisher:args[5].chainFinisher,
           damage:before-target.health,time:90-roundTime});return result;};
   `);
@@ -69,7 +69,8 @@ test('a whiff or a correctly guarded opening discards the entire buffered string
     if(mode==='whiff')g.run('target.x=subject.x+550');
     else{g.key('Digit0');if(mode==='lowGuard')g.key('ArrowDown');}
     enter(g,route);g.tick(1.3);
-    assert.equal(g.run('target.health'),100,`${kind} ${mode}`);
+    if(mode==='whiff')assert.equal(g.run('target.health'),100,`${kind} ${mode}`);
+    else assert.ok(g.run('target.health')<=100&&g.run('target.health')>98,`${kind} ${mode} chip or high-strike miss`);
     assert.equal(g.run('contacts.length'),0);
     assert.equal(g.run('subject.meleeChain'),null);
     assert.equal(g.run('subject.comboName'),'');
@@ -111,7 +112,7 @@ test('finishers cannot loop in either corner and allow the defender to cover or 
     const g=setup(kind,'primitivo',1,dir,true);enter(g,route,1,dir);g.tick(.80);
     const before=g.run('target.health');g.key('Digit0');
     for(let i=0;i<18;i++){press(g,'P',1,dir);g.tick(.11);}
-    assert.equal(g.run('target.health'),before,`${kind} ${dir} escape/guard`);
+    assert.ok(g.run('target.health')<=before&&before-g.run('target.health')<4,`${kind} ${dir} escape/guard chip`);
     assert.equal(g.run('contacts.length'),route.tokens.length);
     assert.ok(g.run('Number.isFinite(subject.x)&&Number.isFinite(target.x)'));
   }

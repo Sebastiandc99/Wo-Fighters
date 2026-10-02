@@ -55,7 +55,7 @@ test('landing after an uppercut plays once and kicks up debris in normal rounds 
  }
 });
 test('blocking an uppercut prevents knockdown and impact cue',()=>{
- const g=setup();g.key('Digit0');uppercut(g);assert.equal(g.run('cpu.knockdown'),null);assert.equal(g.run('cpu.health'),100);
+ const g=setup();g.key('Digit0');uppercut(g);assert.equal(g.run('cpu.knockdown'),null);assert.ok(g.run('cpu.health')<100&&g.run('cpu.health')>99);
  assert.equal(g.run('[...combatSounds].some(v=>v.name==="uppercutHit")'),false);
 });
 test('whiffs have only swing audio; punch, kick and uppercut use different contact sounds',()=>{

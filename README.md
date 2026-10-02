@@ -133,3 +133,11 @@ poderes durante la nueva introducción. Los sonidos con el mismo archivo compart
 el buffer, conservando sus volúmenes, recortes y voces independientes. Se evita
 reescribir el volumen de música cuando permanece constante, y el estilo móvil se
 activa al detectar el dispositivo, antes del primer movimiento de la palanca.
+
+### Desgaste al cubrirse
+
+Los golpes físicos bloqueados (puños, patadas, ganchos y barridas) restan el 5 %
+del daño que causarían sin defensa, después de aplicar la resistencia del rival.
+El desgaste no inicia combos ni provoca derribo; sólo ocurre si el golpe conecta
+con una guardia válida. Puede terminar la ronda si la vida restante es mínima.
+Los poderes conservan su daño reducido al bloquearlos.
