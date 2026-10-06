@@ -2156,7 +2156,7 @@ function updateCamera(dt) {
 }
 
 function drawStage(image, parallaxX) {
-  if (!image.complete || !image.naturalWidth) { ctx.fillStyle = "#16263a"; ctx.fillRect(0, 0, 960, 540); paintStageLighting(ctx,VIEW_WIDTH); return; }
+  if (!image.complete || !image.naturalWidth) { ctx.fillStyle = workCinematic ? "#242424" : "#16263a"; ctx.fillRect(0, 0, 960, 540); paintStageLighting(ctx,VIEW_WIDTH); return; }
   const width=image.naturalWidth,height=image.naturalHeight || width*9/16;
   const drawWidth=VIEW_WIDTH+160,drawHeight=550;
   if(!stageRaster || stageRaster.image!==image || stageRaster.scale!==drawingScale || stageRaster.sourceWidth!==width || stageRaster.sourceHeight!==height) {
@@ -2169,10 +2169,15 @@ function drawStage(image, parallaxX) {
     paint.drawImage(image,(width-cropWidth)/2,(height-cropHeight)*.6,cropWidth,cropHeight,0,0,surface.width,surface.height);
     paint.setTransform(drawingScale,0,0,drawingScale,0,5*drawingScale);
     paintStageLighting(paint,drawWidth);
+    // Prepare the gray arena once during presentation, never filter the live fight.
+    const graySurface=document.createElement("canvas");
+    graySurface.width=surface.width;graySurface.height=surface.height;
+    const grayPaint=graySurface.getContext("2d",{alpha:false});
+    grayPaint.filter="grayscale(1)";grayPaint.drawImage(surface,0,0);grayPaint.filter="none";
     // Only the current arena is retained, including after a tournament stage change.
-    stageRaster={image,scale:drawingScale,sourceWidth:width,sourceHeight:height,surface};
+    stageRaster={image,scale:drawingScale,sourceWidth:width,sourceHeight:height,surface,graySurface};
   }
-  ctx.drawImage(stageRaster.surface,-80-cameraX*.35+parallaxX,-5,drawWidth,drawHeight);
+  ctx.drawImage(workCinematic?stageRaster.graySurface:stageRaster.surface,-80-cameraX*.35+parallaxX,-5,drawWidth,drawHeight);
 }
 
 function paintStageLighting(paint,width) {
