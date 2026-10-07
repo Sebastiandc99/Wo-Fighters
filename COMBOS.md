@@ -29,8 +29,8 @@ En teclado: J/K para 1P y 7/8 para 2P. En celular: los botones actuales A/B.
 | J. Linares | Trifásico | P → G → P → ↓G | 4 | 10,9% | Gancho rápido |
 | Gabriel | Camino directo | G → G → ↓G | 3 | 8,5% | Gancho de precisión |
 | Gabriel | Ruta crítica | P → G → ↓P → ←P | 4 | 10,5% | Barrida y volea |
-| Fernando | Golpe de obra | G → G → ←P | 3 | 8,8% | Volea con empuje |
-| Fernando | Remate civil | G → ↓P → G → P | 4 | 11,7% | Patada con empuje |
+| Heraldo Fichero | Golpe de obra | G → G → ←P | 3 | 8,8% | Volea con empuje |
+| Heraldo Fichero | Remate civil | G → ↓P → G → P | 4 | 11,7% | Patada con empuje |
 
 Los porcentajes son la suma de impactos sin cubrirse, redondeada a una cifra.
 La pausa calcula el daño contra la resistencia del rival concreto. Los combos
