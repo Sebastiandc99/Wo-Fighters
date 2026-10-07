@@ -127,6 +127,28 @@ test('arena raster is reused while moving, and rebuilt for another arena or dens
   assert.equal(g.run('stageRaster.surface.width'),2240);
 });
 
+test('gray arena works without canvas filters, converts only once and leaves the color arena intact',()=>{
+  const g=game(),source=new Uint8ClampedArray([220,40,90,255,20,200,80,255]);
+  const original=source.slice(),create=g.sandbox.document.createElement;let reads=0,writes=0,gray;
+  g.sandbox.document.createElement=tag=>{
+    const surface=create(tag);if(tag!=='canvas')return surface;
+    const base=surface.getContext('2d');
+    surface.getContext=()=>new Proxy(base,{
+      get:(context,key)=>key==='getImageData'?()=>{reads++;return {data:source.slice()}}:
+        key==='putImageData'?pixels=>{writes++;gray=pixels.data}:context[key],
+      set:(_,key)=>{assert.notEqual(key,'filter','the arena must not depend on filter support');return true;}
+    });return surface;
+  };
+  g.run('navigator.maxTouchPoints=1;syncViewport();drawStage(stageImages[stageChoice],0);var cachedGray=stageRaster.graySurface;var cachedColor=stageRaster.surface;workCinematic={};for(let n=0;n<240;n++)drawStage(stageImages[stageChoice],n/100);workCinematic=null;drawStage(stageImages[stageChoice],0)');
+  assert.equal(reads,1);assert.equal(writes,1);
+  for(let i=0;i<gray.length;i+=4){assert.equal(gray[i],gray[i+1]);assert.equal(gray[i],gray[i+2]);assert.equal(gray[i+3],255);}
+  assert.deepEqual(source,original);
+  assert.equal(g.run('stageRaster.graySurface===cachedGray&&stageRaster.surface===cachedColor'),true);
+  g.run('stageChoice="salinas";drawStage(stageImages[stageChoice],0)');
+  assert.equal(reads,2);assert.equal(writes,2);
+  assert.equal(g.run('stageRaster.graySurface===cachedGray'),false);
+});
+
 test('electrical textures retain live geometry and phases with a bounded memory budget', () => {
   const g=game();
   g.run('navigator.maxTouchPoints=1;syncViewport();drawElectricArc(100,100,146,68,1,1.5,2);var savedRay=[...electricRasters.values()][0];drawElectricArc(240,200,286,168,1,1.5,2)');

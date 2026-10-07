@@ -2172,8 +2172,18 @@ function drawStage(image, parallaxX) {
     // Prepare the gray arena once during presentation, never filter the live fight.
     const graySurface=document.createElement("canvas");
     graySurface.width=surface.width;graySurface.height=surface.height;
-    const grayPaint=graySurface.getContext("2d",{alpha:false});
-    grayPaint.filter="grayscale(1)";grayPaint.drawImage(surface,0,0);grayPaint.filter="none";
+    const grayPaint=graySurface.getContext("2d",{alpha:false,willReadFrequently:true});
+    grayPaint.drawImage(surface,0,0);
+    // Canvas filters can be ignored by some mobile browsers. Bake neutral pixels instead.
+    const grayPixels=grayPaint.getImageData(0,0,graySurface.width,graySurface.height);
+    if(grayPixels?.data) {
+      const pixels=grayPixels.data;
+      for(let i=0;i<pixels.length;i+=4) {
+        const value=Math.round(pixels[i]*.2126+pixels[i+1]*.7152+pixels[i+2]*.0722);
+        pixels[i]=pixels[i+1]=pixels[i+2]=value;
+      }
+      grayPaint.putImageData(grayPixels,0,0);
+    }
     // Only the current arena is retained, including after a tournament stage change.
     stageRaster={image,scale:drawingScale,sourceWidth:width,sourceHeight:height,surface,graySurface};
   }
