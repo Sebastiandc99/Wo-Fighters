@@ -15,7 +15,7 @@ def chain(t):
     a=max(0,t-.27)
     return swoosh+(random.uniform(-1,1)*.9*math.exp(-a*55)+math.sin(2*math.pi*1500*a)*.16*math.exp(-a*20) if t>.27 else 0)
 def stop(t):
-    # Alternating two-tone warning stops at the measured barrier impact.
+    # Alternating two-tone warning stops at the measured closure impact.
     env=min(1,t/.08)*max(0,min(1,(2.12-t)/.14))
     freq=620 if int(t/.23)%2 else 880
     siren=(math.sin(2*math.pi*freq*t)+.15*math.sin(6*math.pi*freq*t))*.24*env

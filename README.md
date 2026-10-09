@@ -150,14 +150,20 @@ alcance físico 6/10 y recuperación de 0,70 s. Conserva la vida normalizada al
 100% y el ajuste general de daño ×0,70.
 
 **Zona de Exclusión** lanza una cadena plástica roja y blanca: daño base 22,
-costo 30%, alcance 8/10 (608 unidades) e inmovilización de 0,65 s. Saltar,
+costo 30%, alcance 8/10 (608 unidades) e inmovilización completa de 3 s.
+La cadena forma tres vueltas helicoidales alrededor del cuerpo; recibir golpes
+no libera al rival ni reinicia el plazo. Saltar,
 evadir o bloquear evita la inmovilización. **Parada Total** requiere la barra
 completa y alcance 8/10; dura 3,25 s, activa STOP, sirena, balizas y perímetro
-de exclusión, y aplica un único impacto de daño base 34 a los 2,10 s.
+de exclusión. El cerco de cadena se cierra y se tensa sobre el rival, aplicando
+un único impacto de daño base 34 a los 2,10 s.
 La defensa reduce el daño del súper al 30%; la pausa congela efectos y audio.
+Los ocho súper cortan la música de fondo durante su cinemática, conservando
+los sonidos del poder. Después retoman la misma pista desde el punto de corte,
+respetando la pausa y la opción de sonido desactivado.
 
 La selección, las guías, los dos combos, el ranking y los controles táctiles
 incluyen a Germán. La torre adapta sus pisos a siete rivales, con dificultad
-LEYENDA en la final. Se verificaron 112 pruebas de los ocho luchadores, poderes,
+LEYENDA en la final. Se verificaron 123 pruebas de los ocho luchadores, poderes,
 combos, defensa, torre, continuaciones, ranking y rendimiento móvil.
 Arte y audio reproducibles: [ART-GERMAN.md](ART-GERMAN.md).

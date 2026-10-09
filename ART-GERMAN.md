@@ -30,8 +30,10 @@ python3 scripts/build-german-audio.py
 ```
 
 La cadena del poder se dibuja además como eslabones rojos/blancos, con extensión,
-retracción y vueltas sobre el rival durante la inmovilización. La cinemática usa
-las poses STOP, cartel octogonal, sirena, balizas, señales y perímetro de exclusión.
+retracción y tres vueltas helicoidales sobre el rival durante los 3 s de
+inmovilización. Las vueltas pasan por detrás y delante de su silueta. La
+cinemática usa las poses STOP, cartel octogonal en la mano, sirena, balizas,
+señales y un cerco helicoidal que se cierra y remata al tensarse.
 Todos los efectos se rigen por el reloj de combate y se detienen al pausar.
 
 ## Verificación
@@ -41,4 +43,5 @@ los ocho cuerpos en ambos sentidos, defensa/salto/evasión, energía, alcance,
 daño único, inmovilización, pausa, súper de ambos jugadores, CPU, táctil,
 sprites móviles y limpieza tras K.O. o regreso al menú. Las capturas del motor
 se revisaron con Canvas real para comprobar poses, cadena, súper y final de torre.
-La suite actual de Wo Fighters terminó con 112 pruebas aprobadas.
+La suite actual de Wo Fighters terminó con 123 pruebas aprobadas, incluyendo
+inmovilización exacta, golpes posteriores y música de los ocho súper.

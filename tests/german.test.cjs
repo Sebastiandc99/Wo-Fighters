@@ -13,11 +13,11 @@ test('Germán attributes, selection, portraits and seven-rival tower are integra
  assert.equal(g.run('tower.final'),true);assert.equal(g.run('difficulty().name'),'LEYENDA');assert.equal(g.run('TOWER_FLOORS.every(Number.isFinite)'),true);
 });
 test('chain costs 30, reaches every stature both ways once and releases the restrained target',()=>{
- for(const rival of ['angel','primitivo','peluche','tren','linares','gabriel','fernando','german'])for(const dir of [-1,1]){
-  const g=setup(rival,dir);assert.equal(g.run("attack(owner,'special')"),true);assert.equal(g.run('owner.power'),70);assert.equal(g.run('owner.moveSpec.recovery'),.7);
+ for(const rival of ['angel','primitivo','peluche','tren','linares','gabriel','fernando','german'])for(const dir of [-1,1])for(const slot of [1,2]){
+  const g=setup(rival,dir,slot);assert.equal(g.run("attack(owner,'special')"),true);assert.equal(g.run('owner.power'),70);assert.equal(g.run('owner.moveSpec.recovery'),.7);
   frames(g,.40);assert.ok(g.run('target.safetyHold')>0);const hp=g.run('target.health');assert.equal(hp,g.run('Math.round((100-damageTaken(target,22))*1000)/1000'));
   const x=g.run('target.x');g.run("(target===player?held:held2).left=true");frames(g,.12);assert.equal(g.run('target.x'),x);assert.equal(g.run("attack(target,'punch')"),false);
-  g.run('(target===player?held:held2).left=false');frames(g,1.25);assert.equal(g.run('target.health'),hp);assert.equal(g.run('target.safetyHold'),0);assert.equal(g.run('projectiles.length'),0);assert.equal(g.run("attack(target,'punch')"),true);
+  g.run('(target===player?held:held2).left=false');frames(g,3.25);assert.equal(g.run('target.health'),hp);assert.equal(g.run('target.safetyHold'),0);assert.equal(g.run('projectiles.length'),0);assert.equal(g.run("attack(target,'punch')"),true);
  }
 });
 test('chain respects energy, range, guard, jump and roll without applying restraint on defense',()=>{
@@ -43,7 +43,21 @@ test('Parada Total reduces damage against guard and keeps draw deterministic',()
 });
 test('CPU, touch, mobile sprites, knockouts and menu cleanup support Germán',()=>{
  const cpu=setup('angel',1,2);cpu.run("gameMode='solo';Math.random=()=>0;attack(owner,'special')");assert.equal(cpu.run('workCinematic.owner===cpu'),true);frames(cpu,3.4);cpu.run('mainMenu()');assert.equal(cpu.run('workCinematic'),null);assert.equal(cpu.run('combatSounds.size'),0);
- const touch=setup();touch.taps[3].listeners.pointerdown({pointerId:22,preventDefault(){}});assert.equal(touch.run('owner.specialStyle'),'safetyChain');frames(touch,1.4);
+ const touch=setup();touch.taps[3].listeners.pointerdown({pointerId:22,preventDefault(){}});assert.equal(touch.run('owner.specialStyle'),'safetyChain');frames(touch,3.4);
  touch.run('navigator.maxTouchPoints=1;syncViewport();for(let pose=0;pose<=21;pose++)spriteFrame({kind:"german",pose});');assert.equal(touch.run('mobileRendering'),true);
  const ko=setup();ko.run("target.health=1;attack(owner,'special')");frames(ko,.6);assert.equal(ko.run('state'),'roundOver');assert.equal(ko.run('target.safetyHold'),0);frames(ko,3.8);assert.equal(ko.run('cpu.health'),100);
+});
+test('three-second chain hold freezes pose and position through hits, pressure and pause',()=>{
+ const g=setup();g.run('applySafetyHold(target)');const x=g.run('target.x'),y=g.run('target.y');
+ const pose=g.run('JSON.stringify(renderedFighter(target))');
+ g.key('ArrowLeft');g.key('ArrowUp');g.key('Digit0');g.key('Digit7');g.key('Digit8');
+ frames(g,.7);assert.equal(g.run('target.x'),x);assert.equal(g.run('target.y'),y);assert.equal(g.run('target.guarding'),false);assert.equal(g.run('target.queuedAction'),null);assert.equal(g.run('JSON.stringify(renderedFighter(target))'),pose);
+ g.run('hit(target,5,250,-420,owner,{knockdown:true,attackType:"uppercut"})');assert.equal(g.run('target.knockdown'),null);assert.equal(g.run('target.vx'),0);assert.equal(g.run('target.vy'),0);const hp=g.run('target.health');
+ frames(g,.2);assert.equal(g.run('target.health'),hp);assert.ok(g.run('target.safetyHold')<2.4);assert.equal(g.run('JSON.stringify(renderedFighter(target))'),pose);
+ g.run('owner.x=target.x-10;separateFighters()');assert.equal(g.run('target.x'),x);
+ g.run('togglePause()');const left=g.run('target.safetyHold');frames(g,4);assert.equal(g.run('target.safetyHold'),left);g.run('togglePause()');frames(g,2.6);assert.equal(g.run('target.safetyHold'),0);assert.equal(g.run("attack(target,'punch')"),true);
+ const precise=setup();precise.run('applySafetyHold(target)');precise.tick(2.99);assert.ok(precise.run('target.safetyHold')>0);precise.tick(.01);assert.equal(precise.run('target.safetyHold'),0);
+});
+test('selection and pause explain the complete three-second immobilization',()=>{
+ const g=setup();g.run('updateSelectionGuide("german");updatePauseGuide()');assert.match(g.nodes.get('selectionGuide').innerHTML,/INMÓVIL · 3 s/);assert.match(g.nodes.get('pausePowers1').innerHTML,/helicoidal.*inmoviliza 3 s/);
 });

@@ -268,7 +268,7 @@ function powerGuide(kind, rivalKind) {
   if (!p) return "";
   const resistance=rivalKind ? stats[rivalKind].resistance : 100;
   const percent=damage=>(damage*DAMAGE_SCALE*100/resistance).toLocaleString("es-AR",{maximumFractionDigits:1})+"%";
-  return `<div class="power-entry"><strong>${p.common}</strong><span>Daño <b>${percent(s.powerDamage)}</b> · Energía <b>30%</b></span>${kind==="peluche"?'<span class="hold-note">Inmoviliza 3 s · permite golpear al rival</span>':kind==="german"?'<span class="hold-note">Cadena roja y blanca · inmoviliza 0,65 s</span>':''}</div>`
+  return `<div class="power-entry"><strong>${p.common}</strong><span>Daño <b>${percent(s.powerDamage)}</b> · Energía <b>30%</b></span>${kind==="peluche"?'<span class="hold-note">Inmoviliza 3 s · permite golpear al rival</span>':kind==="german"?'<span class="hold-note">Cadena helicoidal roja y blanca · inmoviliza 3 s</span>':''}</div>`
     + `<div class="power-entry"><strong>${p.super}</strong><span>Daño <b>${percent(p.superDamage)}</b> · Energía <b>100%</b></span></div>`;
 }
 function updateSelectionGuide(kind) {
@@ -286,8 +286,9 @@ function updateSelectionGuide(kind) {
   const powers=[p.common,p.super].map((name,i)=>{
     const damage=((i?p.superDamage:s.powerDamage)*DAMAGE_SCALE).toLocaleString("es-AR",{maximumFractionDigits:1});
     const energy=i?100:30;
-    const details=`${name}: daño ${damage}% contra resistencia 100; energía ${energy}%${kind==="peluche"&&!i?"; inmoviliza 3 segundos":""}`;
-    return `<div class="skill-medal ${i?"super-medal":""}" role="img" aria-label="${details}" title="${details}"><span class="skill-type">${i?"SÚPER":"COMÚN"}</span><div class="skill-art"><img src="assets/${art[i]}" alt="" draggable="false"></div><span class="skill-damage">${icon("hit")}<b>${damage}%</b></span><span class="skill-cost">${icon("bolt")}${energy}%</span>${kind==="peluche"&&!i?'<span class="skill-effect">INMÓVIL · 3 s</span>':''}</div>`;
+    const hold=["peluche","german"].includes(kind)&&!i;
+    const details=`${name}: daño ${damage}% contra resistencia 100; energía ${energy}%${hold?"; inmoviliza 3 segundos":""}`;
+    return `<div class="skill-medal ${i?"super-medal":""}" role="img" aria-label="${details}" title="${details}"><span class="skill-type">${i?"SÚPER":"COMÚN"}</span><div class="skill-art"><img src="assets/${art[i]}" alt="" draggable="false"></div><span class="skill-damage">${icon("hit")}<b>${damage}%</b></span><span class="skill-cost">${icon("bolt")}${energy}%</span>${hold?'<span class="skill-effect">INMÓVIL · 3 s</span>':''}</div>`;
   }).join("");
   const meters=[["shield","RESIST.","Resistencia",s.resistance,200],["bolt","VELOC.","Velocidad",s.agility,10],["fist","FUERZA","Fuerza",s.normalDamage,10]].map(([symbol,label,name,value,max])=>
     `<div class="arcade-stat" title="${name}: ${value}${max===10?'/10':''}"><span class="stat-symbol">${icon(symbol)}</span><span class="stat-body"><span class="stat-label">${label}</span><span class="stat-meter" role="meter" aria-label="${name}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${value}"><i style="width:${value/max*100}%"></i></span></span></div>`).join("");
@@ -562,7 +563,7 @@ function makeFighter(kind, x, isPlayer) {
     crouching: false, guarding: false, guardTime: 0, crouchTime: 0,
     aiEscapeCooldown: 0, teleportDone: false, teleportSmokeStarted: false, teleportTarget: x,
     slamLaunched: false, slamDiving: false, slamLanded: false, slamFromAir: false,
-    landingSquash: 0, safetyHold:0, concreteCoat:0, concreteHold:0, concretePose:3, electricCoat:0, knockdown:null,
+    landingSquash: 0, safetyHold:0, safetyPose:3, concreteCoat:0, concreteHold:0, concretePose:3, electricCoat:0, knockdown:null,
     attackLanded: false, invuln: 0, specialCooldown: 0,
     projectileToggle: 0, facing: x < 480 ? 1 : -1, flash: 0,
     moveSpec: null, lowAttack: false, airAttack: false, kickStyle: null, moveIntent: 0, attackSound: null,
@@ -1455,6 +1456,12 @@ function separateFighters() {
   const overlap = spacing - Math.abs(dx);
   if (overlap <= 0) return;
   const sign = Math.sign(dx) || 1;
+  if(player.safetyHold>0 || cpu.safetyHold>0){
+    if(player.safetyHold>0 && cpu.safetyHold>0)return;
+    const fixed=player.safetyHold>0?player:cpu,moving=fixed===player?cpu:player;
+    moving.x=Math.max(FIGHTER_LEFT,Math.min(FIGHTER_RIGHT,fixed.x+(moving===cpu?sign:-sign)*spacing));
+    return;
+  }
   player.x = Math.max(FIGHTER_LEFT, Math.min(FIGHTER_RIGHT, player.x - sign * overlap / 2));
   cpu.x = Math.max(FIGHTER_LEFT, Math.min(FIGHTER_RIGHT, cpu.x + sign * overlap / 2));
   // Transfer the unfulfilled push when a fighter is already against the stage edge.
@@ -1793,8 +1800,8 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
     target.crouching = target.guarding = target.lowAttack = false;
     target.queuedAction = null;
     target.queueTime=0;
-    if(target.concreteHold>0 && target.health>0){
-      target.vx=target.vy=0;target.knockdown=null;target.actionTime=target.concreteHold;
+    if((target.safetyHold>0 || target.concreteHold>0) && target.health>0){
+      target.vx=target.vy=0;target.knockdown=null;target.actionTime=target.safetyHold || target.concreteHold;
     } else if (contact.knockdown && !contact.projectile) beginKnockdown(target, knockX);
     target.flash = .13;
     screenShake = damage > 11 ? 4 : 2.5;
@@ -2503,6 +2510,7 @@ function updateAnimation(f, dt) {
 
 function renderedFighter(f) {
   const animation = f.animation;
+  if(f.safetyHold>0)return {kind:f.kind,x:f.x,y:f.y,facing:f.facing,pose:f.safetyPose,fromPose:f.safetyPose,mix:1,motion:{dx:0,dy:0,scaleX:1,scaleY:1,rotation:0}};
   if(f.concreteHold>0)return {kind:f.kind,x:lerp(f.prevX,f.x,renderAlpha),y:lerp(f.prevY,f.y,renderAlpha),facing:f.facing,pose:f.concretePose,fromPose:f.concretePose,mix:1,concrete:true,motion:{dx:0,dy:0,scaleX:1,scaleY:1,rotation:0}};
   const motion = {};
   for (const key of Object.keys(animation.motion)) {
@@ -2872,6 +2880,7 @@ function drawFighter(f) {
       drawElectricArc(x-11,centerY-25,x+14,centerY+24,elapsed,1.2,2);
     }
   }
+  if(f.safetyHold>0)drawSafetyRestraint(f,frame,true);
   drawSpriteFrame(frame, opacity);
   if(f.kind==="angel" && f.action==="special" && !workCinematic) drawLowerLoadCue(f,frame);
   if(f.kind === "galante") drawGalanteProps(f, frame, opacity);
@@ -3378,6 +3387,7 @@ function loadMusic(track) {
 function syncMusic() {
   const allowed = musicTrack?.usage === "title" ? ["title", "mode"] : musicTrack?.usage === "selection" ? ["select", "stage"] : musicTrack?.usage === "tower" ? ["tower"] : ["intro", "playing", "roundOver"];
   if (state === "tower" && tower?.paused)return;
+  if(workCinematic){pauseMusic();return;}
   if (!allowed.includes(state) || muted || !audioCtx || audioCtx.state !== "running" || !musicTrack) return;
   if (!musicTrack.buffer) { loadMusic(musicTrack); return; }
   const volume=musicTrack.usage === "tower" ? .46 * Math.min(1,Math.max(0,(tower.duration-tower.elapsed)/.35)) : state === "intro" ? .22 : musicTrack.usage === "selection" ? .52 : .46;
@@ -3405,7 +3415,7 @@ function pauseMusic() {
 
 function stopMusic() { pauseMusic(); musicTrack = null; musicElapsed = 0; }
 function advanceMusic(dt) {
-  if (!Number.isFinite(audioCtx?.currentTime)) musicElapsed += dt;
+  if (!workCinematic && !Number.isFinite(audioCtx?.currentTime)) musicElapsed += dt;
   syncMusic();
 }
 
@@ -4078,6 +4088,7 @@ function startWorkCinematic(owner) {
   workCinematic={owner,target,elapsed:0,duration,impactAt,impact:false,originX:owner.x,impactX:target.x,direction:owner.facing,
     guardEligible:target.grounded && !target.safetyHold && !target.concreteHold && ["idle","block"].includes(target.action),initialGuard:target.guarding,
     sound:owner.kind==="gabriel"?null:startCombatSound(owner.specialStyle)};
+  pauseMusic();
   if(owner.kind==="fernando"){
     const c=workCinematic;c.direction=Math.sign(target.x-owner.x)||owner.facing;owner.facing=c.direction;
     c.approachX=owner.x+c.direction*Math.max(0,Math.abs(target.x-owner.x)-128);
@@ -4150,6 +4161,7 @@ function updateWorkCinematic(dt) {
     if(c.target.action==="hit" && c.target.actionTime>0)c.target.actionTime=Math.min(c.target.actionTime,.25);
     if(c.target.action==="block"){c.target.action="idle";c.target.actionTime=c.target.actionDuration=0;}
     workCinematic=null;
+    syncMusic();
   }
   fighters.forEach(f=>updateAnimation(f,dt));
 }
@@ -4577,11 +4589,18 @@ function updateSafetyChain(p,dt) {
     p.contactDone=true;
     const connected=hit(target,p.damage,0,0,p.owner,{sourceX:p.originX,direction:p.direction,projectile:true,x:target.x,y:p.y});
     if(connected && target.action==='hit' && state==='playing' && target.health>0){
-      target.safetyHold=.65;target.actionTime=target.actionDuration=.65;target.vx=target.vy=0;
-      target.knockdown=null;target.queuedAction=null;target.queueTime=0;resetMeleeChain(target);
+      applySafetyHold(target);
     }
     stopCombatSound(p.sound);burst(target.x,p.y,'#ffe6c7',12);
   }
+}
+function applySafetyHold(f) {
+  stopFighterSound(f);
+  f.safetyHold=3;f.safetyPose=POSES[f.kind].hit;
+  f.action='hit';f.actionTime=f.actionDuration=3;f.moveSpec=null;
+  f.vx=f.vy=f.moveIntent=0;f.knockdown=null;f.crouching=f.guarding=false;
+  f.queuedAction=null;f.queueTime=0;f.kickStyle=null;f.airAttack=f.lowAttack=false;
+  f.specialSpawned=true;resetMeleeChain(f);
 }
 function tickSafetyHold(f,dt) {
   if(!f.safetyHold)return;
@@ -4605,46 +4624,73 @@ function drawSafetyChain(p) {
   }
   ctx.restore();
 }
-function drawSafetyRestraint(f,frame) {
+function drawSafetyHelix(frame,progress,behind,radius) {
+  const height=stats[frame.kind].height*FIGHTER_SCALE;
+  const span=height*.44,top=frame.y-height*.74,depth=10*FIGHTER_SCALE;
+  const total=Math.ceil(3*Math.PI*2*radius/12);
   ctx.save();
-  for(let row=0;row<2;row++)for(let i=0;i<11;i++){
-    const a=i*Math.PI/10;safetyLink(frame.x+Math.cos(a)*34,frame.y-90+row*22+Math.sin(a)*8,-Math.sin(a)*.18,i,.8);
+  ctx.globalAlpha*=behind?.55:1;
+  for(let i=0;i<=Math.floor(total*progress);i++){
+    const q=i/total,a=-Math.PI/2+q*Math.PI*6;
+    if((Math.sin(a)<0)!==behind)continue;
+    const angle=Math.atan2(span+Math.cos(a)*Math.PI*6*depth,-Math.sin(a)*Math.PI*6*radius);
+    safetyLink(frame.x+Math.cos(a)*radius,top+q*span+Math.sin(a)*depth,angle,i,.8);
   }
   ctx.restore();
+}
+function drawSafetyRestraint(f,frame,behind=false) {
+  const progress=smoothstep(Math.min(1,(3-f.safetyHold)/.28));
+  drawSafetyHelix(frame,progress,behind,(stats[f.kind].width+17)*FIGHTER_SCALE);
+  if(behind)return;
+  ctx.save();ctx.textAlign='center';ctx.font='bold 12px Arial';ctx.lineWidth=3;ctx.strokeStyle='#291e25';ctx.fillStyle='#fff5df';
+  const label=Math.ceil(f.safetyHold)+' s',y=frame.y-stats[f.kind].height*FIGHTER_SCALE-10;
+  ctx.strokeText(label,frame.x,y);ctx.fillText(label,frame.x,y);ctx.restore();
 }
 function drawSafetyCinematic(c) {
   const t=c.elapsed,age=t-c.impactAt,x=c.impactX-cameraX;
   const fade=Math.min(1,t/.15,Math.max(0,(c.duration-t)/.30));
   ctx.save();ctx.globalAlpha=fade;ctx.fillStyle='rgba(12,4,8,.48)';ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
   drawSuperAtmosphere(c);
-  // Safety beacons pulse on their own clock, so pause freezes every light.
+  // Ground-mounted beacons and a closing exclusion chain follow the STOP signal.
+  const lightRise=smoothstep(Math.max(0,Math.min(1,(t-.25)/.35)));
   for(const side of [-1,1]){
-    const bx=Math.max(48,Math.min(912,x+side*144));
-    ctx.fillStyle='#424e58';ctx.fillRect(bx-10,FLOOR-94,20,94);ctx.fillRect(bx-23,FLOOR-10,46,10);
+    const bx=Math.max(48,Math.min(912,x+side*154)),by=FLOOR+(1-lightRise)*112;
+    ctx.save();ctx.globalAlpha*=lightRise;
+    ctx.fillStyle='#424e58';ctx.fillRect(bx-8,by-106,16,106);ctx.fillRect(bx-23,by-10,46,10);
     const lit=Math.sin(t*13+side)>0;
     ctx.fillStyle=lit?'#ff4148':'#7c1925';ctx.shadowColor='#ff4148';ctx.shadowBlur=lit?28:0;
-    ctx.beginPath();ctx.arc(bx,FLOOR-103,15,Math.PI,0);ctx.lineTo(bx+15,FLOOR-91);ctx.lineTo(bx-15,FLOOR-91);ctx.closePath();ctx.fill();ctx.shadowBlur=0;
-    ctx.fillStyle='#ffd451';ctx.beginPath();ctx.moveTo(bx,FLOOR-84);ctx.lineTo(bx-29,FLOOR-38);ctx.lineTo(bx+29,FLOOR-38);ctx.closePath();ctx.fill();
-    ctx.fillStyle='#181a20';ctx.font='bold 29px Arial';ctx.textAlign='center';ctx.fillText('!',bx,FLOOR-46);
+    ctx.beginPath();ctx.roundRect(bx-16,by-126,32,26,7);ctx.fill();ctx.shadowBlur=0;
+    ctx.fillStyle='#fff5df';ctx.fillRect(bx-31,by-85,62,46);
+    ctx.strokeStyle='#cf253d';ctx.lineWidth=4;ctx.strokeRect(bx-31,by-85,62,46);
+    ctx.fillStyle='#b81f32';ctx.textAlign='center';ctx.font='bold 12px Arial';ctx.fillText('PELIGRO',bx,by-66);
+    ctx.fillStyle='#211b21';ctx.font='bold 20px Arial';ctx.fillText('!',bx,by-44);ctx.restore();
   }
-  ctx.fillStyle='rgba(130,13,25,.12)';ctx.fillRect(x-146,FLOOR-65,292,65);
-  ctx.strokeStyle='#ef4750';ctx.lineWidth=3;ctx.setLineDash([12,9]);ctx.beginPath();ctx.ellipse(x,FLOOR,146,26,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
-  const gateY=t<c.impactAt?lerp(-85,FLOOR-110,smoothstep(Math.max(0,(t-.75)/(c.impactAt-.75)))):FLOOR-110+Math.sin(Math.min(.4,age)*Math.PI/.4)*10;
-  if(t>.65){
-    ctx.save();ctx.translate(x,gateY);ctx.fillStyle='#f4f2eb';ctx.fillRect(-118,-15,236,30);
-    ctx.save();ctx.beginPath();ctx.rect(-118,-15,236,30);ctx.clip();ctx.fillStyle='#cf253d';
-    for(let i=-145;i<145;i+=40){ctx.beginPath();ctx.moveTo(i,-15);ctx.lineTo(i+24,-15);ctx.lineTo(i+4,15);ctx.lineTo(i-20,15);ctx.closePath();ctx.fill();}ctx.restore();
-    ctx.strokeStyle='#27222b';ctx.lineWidth=4;ctx.strokeRect(-118,-15,236,30);ctx.restore();
+  const closure=smoothstep(Math.max(0,Math.min(1,(t-1.15)/(c.impactAt-1.15))));
+  const bodyRadius=(stats[c.target.kind].width+17)*FIGHTER_SCALE;
+  const radius=lerp(140,bodyRadius,closure);
+  const wrap=smoothstep(Math.max(0,Math.min(1,(t-.50)/.75)));
+  const chainFade=age<0?1:Math.max(0,1-age/.24);
+  ctx.fillStyle='rgba(130,13,25,.14)';ctx.beginPath();ctx.ellipse(x,FLOOR,radius+16,24,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#ef4750';ctx.lineWidth=3;ctx.setLineDash([12,9]);ctx.beginPath();ctx.ellipse(x,FLOOR,radius+16,24,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+  if(wrap>0 && chainFade>0){
+    const frame=renderedFighter(c.target);frame.x-=cameraX;
+    ctx.save();ctx.globalAlpha*=chainFade;
+    drawSafetyHelix(frame,wrap,true,radius);
+    // Redraw the silhouette between the back and front turns to make a real enclosure.
+    drawSpriteFrame(frame,fade);
+    drawSafetyHelix(frame,wrap,false,radius);ctx.restore();
   }
+  // Germán holds STOP at his outstretched hand; no unrelated objects fall from the sky.
   if(t<2.45){
-    const sy=170,signX=Math.max(100,Math.min(860,x));
-    ctx.save();ctx.translate(signX,sy);ctx.fillStyle='#d52b40';ctx.strokeStyle='#fff5df';ctx.lineWidth=5;ctx.beginPath();
-    for(let i=0;i<8;i++){const a=Math.PI/8+i*Math.PI/4;const px=Math.cos(a)*45,py=Math.sin(a)*45;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.textAlign='center';ctx.font='bold 24px Arial';ctx.fillStyle='#fff';ctx.fillText('STOP',0,8);ctx.restore();
+    const signX=c.owner.x-cameraX+c.direction*92,signY=c.owner.y-139;
+    ctx.save();ctx.translate(signX,signY);ctx.fillStyle='#d52b40';ctx.strokeStyle='#fff5df';ctx.lineWidth=3;ctx.beginPath();
+    for(let i=0;i<8;i++){const a=Math.PI/8+i*Math.PI/4;const px=Math.cos(a)*29,py=Math.sin(a)*29;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.textAlign='center';ctx.font='bold 15px Arial';ctx.fillStyle='#fff';ctx.fillText('STOP',0,5);ctx.restore();
   }
+  drawSuperImpact(c);
   ctx.fillStyle='rgba(21,7,13,.88)';ctx.fillRect(245,46,470,67);
   ctx.textAlign='center';ctx.font='italic bold 32px Arial';ctx.fillStyle='#fff0d3';ctx.fillText('PARADA TOTAL',480,80);
-  ctx.font='bold 14px Arial';ctx.fillStyle='#ff7279';ctx.fillText(t<.65?'¡ALTO!':t<c.impactAt?'PELIGRO · ZONA DE EXCLUSIÓN':c.blocked?'GUARDIA · IMPACTO REDUCIDO':'SECTOR CLAUSURADO',480,102);
+  ctx.font='bold 14px Arial';ctx.fillStyle='#ff7279';ctx.fillText(t<.50?'¡ALTO!':t<c.impactAt?'ZONA DE EXCLUSIÓN · CIERRE':c.blocked?'GUARDIA · IMPACTO REDUCIDO':'SECTOR CLAUSURADO',480,102);
   ctx.restore();
 }
 function updateCable(p,dt) {

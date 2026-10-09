@@ -42,3 +42,29 @@ test('CPU defense uses one difficulty-based decision and pause freezes the cinem
  assert.equal(g.run('target.guarding'),true);g.run('togglePause()');const time=g.run('workCinematic.elapsed');g.tick(.8);
  assert.equal(g.run('workCinematic.elapsed'),time);g.run('togglePause()');g.tick(1.8);assert.equal(g.run('workCinematic.blocked'),true);
 });
+function enableMusic(g){
+ const sources=[];
+ g.sandbox.testAudio={state:'running',currentTime:10,destination:{},
+  createGain:()=>({gain:{value:0},connect(){return this},disconnect(){}}),
+  createBufferSource:()=>{const source={connect(){return this},disconnect(){},start(when,offset){this.offset=offset;this.started=true;},stop(){this.stopped=true;}};sources.push(source);return source;}
+ };
+ g.run('tone=()=>{};audioCtx=testAudio;muted=false;musicTrack={usage:"fight",buffer:{duration:90,music:true}};musicElapsed=12.25;for(const cue of Object.values(COMBAT_AUDIO))cue.buffer={duration:8};syncMusic();audioCtx.currentTime=11.5');
+ return sources;
+}
+test('all eight supers silence only background music and resume the same track and position',()=>{
+ for(const kind of kinds)for(const slot of [1,2]){
+  const g=setup(kind,slot),sources=enableMusic(g),first=sources.find(s=>s.buffer.music);
+  g.run("(owner===player?held:held2).down=true;attack(owner,'special')");const track=g.run('musicTrack');
+  assert.equal(first.stopped,true,kind);assert.equal(g.run('musicSource'),null);assert.equal(g.run('musicElapsed'),13.75);
+  g.tick(.4);g.run('syncMusic();togglePause()');g.tick(.7);g.run('togglePause();syncMusic()');
+  assert.equal(g.run('musicSource'),null);assert.equal(sources.filter(s=>s.buffer?.music&&s.started).length,1);
+  if(kind==='german')assert.ok(g.run('workCinematic.sound.source'), 'power sound continues while music is silent');
+  g.run('audioCtx.currentTime=18');g.tick(g.run('workCinematic.duration')+.2);
+  assert.equal(g.run('workCinematic'),null);assert.equal(g.run('musicTrack'),track);assert.ok(g.run('musicSource'));
+  assert.equal(sources.filter(s=>s.buffer?.music&&s.started).length,2);assert.equal(g.run('musicSource.offset'),13.75);
+ }
+});
+test('common powers keep music and a muted super never re-enables it at the end',()=>{
+ const common=setup('german'),sources=enableMusic(common);common.run("attack(owner,'special')");common.tick(.5);assert.equal(sources[0].stopped,undefined);assert.ok(common.run('musicSource'));
+ const muted=setup('german');enableMusic(muted);muted.run("held.down=true;attack(owner,'special');toggleSound()");muted.tick(3.5);assert.equal(muted.run('workCinematic'),null);assert.equal(muted.run('musicSource'),null);assert.equal(muted.run('muted'),true);
+});
