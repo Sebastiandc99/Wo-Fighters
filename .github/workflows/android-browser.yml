@@ -25,7 +25,7 @@ jobs:
           import assert from 'node:assert/strict';
           const browser=await chromium.launch({headless:true});
           const context=await browser.newContext({viewport:{width:960,height:540},deviceScaleFactor:2,hasTouch:true,isMobile:true});
-          await context.addInitScript(()=>{window.WoNative={isOnline:()=>false};});
+          await context.addInitScript(()=>{window.WoNative={isOnline:()=>false,getVersionCode:()=>2,openUpdateUrl:()=>{throw new Error('Offline download');}};});
           const errors=[],external=[];
           const page=await context.newPage();
           page.on('pageerror',e=>errors.push(e.message));
@@ -65,5 +65,22 @@ jobs:
           assert.equal(external.length,0,'Offline launch must make zero external requests');
           assert.deepEqual(errors,[]);
           console.log('PASS: offline first boot, tournament with Germán, original resolution, active audio, score form, restart persistence; zero external requests and zero JS errors');
+          const online=await browser.newContext({viewport:{width:960,height:540}});
+          await online.addInitScript(()=>{window.WoNative={isOnline:()=>true,getVersionCode:()=>2,openUpdateUrl:url=>window.openedUpdate=url};});
+          await online.route('**/*',route=>{
+            const url=route.request().url();
+            if(url.startsWith('http://127.0.0.1:8765/'))return route.continue();
+            if(url.endsWith('/wo-apk-updates/latest.json'))return route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify({versionCode:3,versionName:'1.2.0',url:'https://paidalaojrkplnkucmwl.supabase.co/storage/v1/object/public/wo-apk-updates/WO-Fighters-1.2.0.apk',sha256:'a'.repeat(64)})});
+            return route.abort();
+          });
+          const updatePage=await online.newPage();
+          await updatePage.goto('http://127.0.0.1:8765/');
+          await updatePage.getByText('Hay una actualización disponible: 1.2.0',{exact:true}).waitFor();
+          await updatePage.getByRole('button',{name:'DESCARGAR',exact:true}).click();
+          assert.equal(await updatePage.evaluate(()=>window.openedUpdate),'https://paidalaojrkplnkucmwl.supabase.co/storage/v1/object/public/wo-apk-updates/WO-Fighters-1.2.0.apk');
+          await updatePage.getByRole('button',{name:'MÁS TARDE',exact:true}).click();
+          assert.equal(await updatePage.getByText('Hay una actualización disponible: 1.2.0',{exact:true}).isVisible(),false);
+          console.log('PASS: future update notice, trusted download bridge and dismissal');
           await browser.close();
           JS
+
