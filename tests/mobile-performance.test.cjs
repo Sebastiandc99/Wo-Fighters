@@ -212,3 +212,53 @@ test('joystick movement measures layout once per gesture and refreshes after rot
   stick.listeners.pointerup(event);assert.equal(g.run('held.right'),false);
   stick.listeners.pointerdown(event);assert.equal(measurements,3);
 });
+
+test('multitouch attacks do not invalidate an active joystick layout',()=>{
+ const g=game(),stick=g.joysticks[0];let measurements=0;
+ g.run('navigator.maxTouchPoints=1;syncViewport()');
+ stick.getBoundingClientRect=()=>{measurements++;return {left:0,top:0,width:120,height:120};};
+ const event={pointerId:1,pointerType:'touch',clientX:100,clientY:60,preventDefault(){}};
+ g.nodes.get('document').listeners.pointerdown(event);stick.listeners.pointerdown(event);
+ for(let n=0;n<20;n++){
+  g.nodes.get('document').listeners.pointerdown({...event,pointerId:2});
+  stick.listeners.pointermove(event);
+ }
+ assert.equal(measurements,1);assert.equal(g.run('held.right'),true);
+ g.nodes.get('window').listeners.resize();stick.listeners.pointermove(event);
+ assert.equal(measurements,2);
+});
+test('repeated pose blends reuse their exact pixels while changed blend amounts redraw',()=>{
+ const g=game(),create=g.sandbox.document.createElement;let clears=0;
+ g.sandbox.document.createElement=tag=>{
+  const surface=create(tag);if(tag!=='canvas')return surface;
+  const paint=surface.getContext('2d');
+  surface.getContext=()=>new Proxy(paint,{get:(target,key)=>key==='clearRect'?()=>{clears++;}:target[key],set:()=>true});
+  return surface;
+ };
+ g.run('var blend={kind:"german",pose:1,fromPose:0,mix:.375};var blended=blendedSprite(blend);for(let n=0;n<120;n++)blendedSprite(blend)');
+ assert.equal(clears,1);assert.equal(g.run('blendedSprite(blend)===blended'),true);
+ g.run('blend.mix=.3750001;blendedSprite(blend)');assert.equal(clears,2);
+ g.run('blend.pose=2;blendedSprite(blend)');assert.equal(clears,3);
+});
+test('chain links keep both original vector shapes and reuse them at every animation phase',()=>{
+ const g=game(),shapes=[];
+ g.sandbox.Path2D=class {constructor(){shapes.push(this);}ellipse(...args){this.geometry=args;}};
+ g.run('var frame={kind:"german",x:240.375,y:448};for(let n=0;n<120;n++){drawSafetyHelix(frame,n/119,true,45);drawSafetyHelix(frame,n/119,false,45)}');
+ assert.equal(shapes.length,2);
+ assert.deepEqual(shapes.map(p=>p.geometry),[[0,0,8,5,0,0,Math.PI*2],[0,0,8,3,0,0,Math.PI*2]]);
+ assert.equal(g.run('safetyHelices.size'),1);
+ g.run('for(let n=0;n<60;n++)drawSafetyHelix(frame,1,false,45+n*.123456789)');
+ assert.ok(g.run('safetyHelices.size<=4'));
+});
+test('gray arena remains eligible for GPU rendering after its one-time pixel conversion',()=>{
+ const g=game(),create=g.sandbox.document.createElement,options=[];
+ g.sandbox.document.createElement=tag=>{
+  const surface=create(tag);if(tag!=='canvas')return surface;
+  const get=surface.getContext;
+  surface.getContext=(type,settings)=>{options.push(settings);return get(type,settings);};
+  return surface;
+ };
+ g.run('drawStage(stageImages[stageChoice],0);workCinematic={};drawStage(stageImages[stageChoice],0)');
+ assert.ok(options.every(setting=>!setting?.willReadFrequently));
+ assert.equal(g.run('stageRaster.graySurface.width'),g.run('stageRaster.surface.width'));
+});

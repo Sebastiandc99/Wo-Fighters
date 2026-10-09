@@ -14,6 +14,9 @@ const VIEW_HEIGHT = 540;
 const FIGHTER_SCALE = .9;
 const spriteFrames = new Map();
 const poseBlendSurfaces = new Map();
+const poseBlendFrames = new WeakMap();
+const safetyHelices = new Map();
+const safetyLinkPaths = [];
 let drawingScale = 1;
 let mobileRendering = false;
 // Reuse raster work at the existing resolution; animation clocks and effect counts stay intact.
@@ -414,6 +417,8 @@ let muted = false;
 const synthVoices = new Set();
 let soundGeneration = 0;
 let audioCtx = null;
+let audioUnlocked = false;
+let audioResumePending = null;
 let roundVoiceSource = null;
 let roundVoiceStarted = false;
 let accumulator = 0;
@@ -2195,7 +2200,8 @@ function drawStage(image, parallaxX) {
     // Prepare the gray arena once during presentation, never filter the live fight.
     const graySurface=document.createElement("canvas");
     graySurface.width=surface.width;graySurface.height=surface.height;
-    const grayPaint=graySurface.getContext("2d",{alpha:false,willReadFrequently:true});
+    // Read once, then keep this frequently drawn surface eligible for GPU rendering.
+    const grayPaint=graySurface.getContext("2d",{alpha:false});
     grayPaint.drawImage(surface,0,0);
     // Canvas filters can be ignored by some mobile browsers. Bake neutral pixels instead.
     const grayPixels=grayPaint.getImageData(0,0,graySurface.width,graySurface.height);
@@ -2663,6 +2669,8 @@ function blendedSprite(frame) {
     poseBlendSurfaces.set(frame.kind, surface);
   }
   const paint = surface.getContext("2d");
+  const saved = poseBlendFrames.get(surface);
+  if (saved?.current === current && saved.previous === previous && saved.mix === frame.mix) return surface;
   paint.clearRect(0, 0, 270, 270);
   paint.globalCompositeOperation = "source-over";
   paint.globalAlpha = 1 - frame.mix;
@@ -2673,6 +2681,7 @@ function blendedSprite(frame) {
   paint.drawImage(current, 0, 0);
   paint.globalAlpha = 1;
   paint.globalCompositeOperation = "source-over";
+  poseBlendFrames.set(surface, {current, previous, mix:frame.mix});
   return surface;
 }
 
@@ -3195,11 +3204,89 @@ function pumpAudioDecodes() {
     setTimeout(()=>{audioDecodeBusy=false;pumpAudioDecodes();},16);
   });
 }
-function ensureAudio() {
+function syncGameAudio() {
+  if (document.hidden || muted || audioCtx?.state !== "running") return;
+  syncRoundVoice();
+  syncKOAudio();
+  syncCombatSounds();
+  syncMusic();
+}
+
+function detachGameAudio() {
+  // Preserve the music offset and active attack clocks before replacing their sources.
+  pauseMusic();
+  stopRoundVoice();
+  suspendCombatSounds();
+}
+
+function resumeGameAudio(fromGesture = false) {
+  const context = audioCtx;
+  if (!context || muted || document.hidden || context.state === "closed") return;
+  if (fromGesture && !audioUnlocked && context.createBuffer && context.createBufferSource) {
+    // Start inside the tap itself, rather than a fetch/decode promise. Older iOS needs this.
+    const source = context.createBufferSource();
+    source.buffer = context.createBuffer(1, 1, context.sampleRate || 44100);
+    source.connect(context.destination);
+    source.onended = () => source.disconnect();
+    source.start(0);
+  }
+  if (context.state === "running") {
+    if (fromGesture) audioUnlocked = true;
+    syncGameAudio();
+    return;
+  }
+  // A new tap must retry even if Safari left an earlier resume unresolved.
+  if (!context.resume || (audioResumePending && !fromGesture)) return;
+  if (context.state === "interrupted" && context.suspend) {
+    // Queue both synchronously so resume still belongs to the user's gesture.
+    try { Promise.resolve(context.suspend()).catch(() => {}); } catch (_) {}
+  }
+  try {
+    const pending = Promise.resolve(context.resume());
+    audioResumePending = pending;
+    pending.then(() => {
+      if (audioCtx !== context || context.state !== "running") return;
+      audioUnlocked = true;
+      syncGameAudio();
+    }).catch(() => {}).finally(() => {
+      if (audioResumePending === pending) audioResumePending = null;
+    });
+  } catch (_) { /* The next explicit tap retries without blocking gameplay. */ }
+}
+
+function unlockGameAudio() {
+  if (muted || (audioUnlocked && audioCtx?.state === "running")) return;
+  ensureAudio(true);
+}
+
+function syncAudioVisibility() {
+  if (!audioCtx) return;
+  if (document.hidden) {
+    detachGameAudio();
+    audioResumePending = null;
+    try { Promise.resolve(audioCtx.suspend?.()).catch(() => {}); } catch (_) {}
+  } else resumeGameAudio();
+}
+
+function ensureAudio(fromGesture = false) {
   const Audio = window.AudioContext || window.webkitAudioContext;
   if (!Audio) return;
-  if (!audioCtx) audioCtx = new Audio();
-  if (audioCtx.state === "suspended") audioCtx.resume().then(() => { syncKOAudio(); syncMusic(); }).catch(() => {});
+  if (!audioCtx || audioCtx.state === "closed") {
+    try {
+      // Request media playback where available instead of iOS's ambient audio category.
+      if (navigator.audioSession) navigator.audioSession.type = "playback";
+    } catch (_) { /* Audio Session is optional; Web Audio works without it. */ }
+    audioCtx = new Audio();
+    audioUnlocked = false;
+    audioResumePending = null;
+    const context = audioCtx;
+    context.onstatechange = () => {
+      if (audioCtx !== context) return;
+      if (context.state === "running") syncGameAudio();
+      else detachGameAudio();
+    };
+  }
+  resumeGameAudio(fromGesture);
   if (["intro", "playing", "roundOver", "finished"].includes(state)) {
     loadKOAudio();
     loadRoundVoice(match.round);
@@ -3536,7 +3623,7 @@ function toggleSound() {
   if (muted) { stopRoundVoice(); suspendCombatSounds(); pauseMusic(); }
   ui.soundBtn.textContent = muted ? "🔇" : "🔊";
   ui.soundBtn.setAttribute("aria-label", muted ? "Activar sonido" : "Desactivar sonido");
-  if (!muted) { ensureAudio(); syncRoundVoice(); syncCombatSounds(); syncKOAudio(); syncMusic(); }
+  if (!muted) { ensureAudio(true); syncRoundVoice(); syncCombatSounds(); syncKOAudio(); syncMusic(); }
 }
 ui.soundBtn.addEventListener("click", toggleSound);
 
@@ -3579,7 +3666,7 @@ function performAction(action, slot = 1, remote = false) {
   else attack(f, action);
 }
 window.addEventListener("keydown", event => {
-  if (["title", "mode"].includes(state)) ensureAudio();
+  if (!event.repeat) unlockGameAudio();
   // Name entry and native buttons keep their own keyboard behavior.
   if (event.target?.tagName === "INPUT" || event.target?.tagName === "TEXTAREA" || state === "ranking") return;
   const code = event.code || (event.key === " " ? "Space" : event.key.length === 1 ? "Key" + event.key.toUpperCase() : event.key);
@@ -3655,7 +3742,10 @@ function resumeTowerOnReturn() {
   tower.paused=false;lastTime=performance.now();accumulator=0;syncMusic();
 }
 window.addEventListener("focus",resumeTowerOnReturn);
-document.addEventListener("visibilitychange", () => { if (document.hidden) pauseOnLeave(); else resumeTowerOnReturn(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) pauseOnLeave(); else resumeTowerOnReturn();
+  syncAudioVisibility();
+});
 // A captured pointer controls each stick. Holding down also works with action buttons.
 function moveJoystick(stick, event) {
   let geometry=joystickGeometry.get(stick);
@@ -3742,12 +3832,17 @@ document.querySelectorAll("[data-tap]").forEach(btn => {
 });
 
 document.addEventListener("pointerdown", event => {
-  if (["title", "mode"].includes(state)) ensureAudio();
-  if (event.pointerType === "touch") {
+  unlockGameAudio();
+  if (event.pointerType === "touch" && !mobileRendering) {
     document.body.classList.add("touch-device");
     syncViewport();
   }
-}, { passive: true });
+}, { passive: true, capture: true });
+// Safari can require the release/click rather than the start of a touch gesture.
+for (const name of ["pointerup", "touchend", "click"]) {
+  document.addEventListener(name, unlockGameAudio, {passive:true, capture:true});
+}
+window.addEventListener("pageshow", () => resumeGameAudio());
 
 document.addEventListener("contextmenu", event => {
   if (state !== "title" && state !== "select") event.preventDefault();
@@ -4610,9 +4705,17 @@ function tickSafetyHold(f,dt) {
   if(!f.safetyHold){f.action='idle';f.actionTime=f.actionDuration=0;f.moveSpec=null;f.queuedAction=null;f.queueTime=0;}
 }
 function safetyLink(x,y,angle,index,scale=1) {
+  const parity=index%2;
+  let path=safetyLinkPaths[parity];
+  if(!path && typeof Path2D!=="undefined") {
+    path=new Path2D();path.ellipse(0,0,8,parity?3:5,0,0,Math.PI*2);
+    safetyLinkPaths[parity]=path;
+  }
+  // Reuse the original vector paths with exactly the same transform and stroke order.
   ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(scale,scale);
-  ctx.lineWidth=7;ctx.strokeStyle='#291e25';ctx.beginPath();ctx.ellipse(0,0,8,index%2?3:5,0,0,Math.PI*2);ctx.stroke();
-  ctx.lineWidth=4;ctx.strokeStyle=index%2?'#f5f5ef':'#e83d43';ctx.stroke();
+  if(!path){ctx.beginPath();ctx.ellipse(0,0,8,parity?3:5,0,0,Math.PI*2);}
+  ctx.lineWidth=7;ctx.strokeStyle='#291e25';if(path)ctx.stroke(path);else ctx.stroke();
+  ctx.lineWidth=4;ctx.strokeStyle=parity?'#f5f5ef':'#e83d43';if(path)ctx.stroke(path);else ctx.stroke();
   ctx.restore();
 }
 function drawSafetyChain(p) {
@@ -4627,15 +4730,27 @@ function drawSafetyChain(p) {
 }
 function drawSafetyHelix(frame,progress,behind,radius) {
   const height=stats[frame.kind].height*FIGHTER_SCALE;
-  const span=height*.44,top=frame.y-height*.74,depth=10*FIGHTER_SCALE;
-  const total=Math.ceil(3*Math.PI*2*radius/12);
+  const key=height+':'+radius;
+  let helix=safetyHelices.get(key);
+  if(!helix){
+    const span=height*.44,depth=10*FIGHTER_SCALE,total=Math.ceil(3*Math.PI*2*radius/12);
+    helix={total,links:[]};
+    for(let i=0;i<=total;i++){
+      const q=i/total,a=-Math.PI/2+q*Math.PI*6;
+      helix.links.push({x:Math.cos(a)*radius,y:q*span,depth:Math.sin(a)*depth,behind:Math.sin(a)<0,
+        angle:Math.atan2(span+Math.cos(a)*Math.PI*6*depth,-Math.sin(a)*Math.PI*6*radius)});
+    }
+    // Changing radii stay exact; retain a few geometries without rounding phases.
+    if(safetyHelices.size>=4)safetyHelices.delete(safetyHelices.keys().next().value);
+    safetyHelices.set(key,helix);
+  }
+  const top=frame.y-height*.74;
   ctx.save();
   ctx.globalAlpha*=behind?.55:1;
-  for(let i=0;i<=Math.floor(total*progress);i++){
-    const q=i/total,a=-Math.PI/2+q*Math.PI*6;
-    if((Math.sin(a)<0)!==behind)continue;
-    const angle=Math.atan2(span+Math.cos(a)*Math.PI*6*depth,-Math.sin(a)*Math.PI*6*radius);
-    safetyLink(frame.x+Math.cos(a)*radius,top+q*span+Math.sin(a)*depth,angle,i,.8);
+  for(let i=0;i<=Math.floor(helix.total*progress);i++){
+    const link=helix.links[i];
+    if(link.behind!==behind)continue;
+    safetyLink(frame.x+link.x,top+link.y+link.depth,link.angle,i,.8);
   }
   ctx.restore();
 }
