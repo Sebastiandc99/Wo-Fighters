@@ -112,7 +112,7 @@ async function showRanking(highlight=null) {
     if (ok && state==="ranking") {
       renderApkRanking();
       const data=apkRanking.list();
-      document.getElementById("rankingStatus").textContent=data.entries.length+" RESULTADOS · GLOBAL + LOCAL"+(data.pending?" · "+data.pending+" POR SINCRONCRONIZAR":"");
+      document.getElementById("rankingStatus").textContent=data.entries.length+" RESULTADOS · GLOBAL + LOCAL"+(data.pending?" · "+data.pending+" POR SINCRONIZAR":"");
     }
   }).catch(() => {});
 }
@@ -120,3 +120,4 @@ window.addEventListener("online", () => apkRanking.reconnect().catch(() => {}));
 window.addEventListener("focus", () => { if(apkOnline()) apkRanking.refresh().catch(() => {}); });
 setInterval(() => { if(!document.hidden && apkOnline()) apkRanking.flush().catch(() => {}); },30000);
 setTimeout(() => { if(apkOnline()) apkRanking.flush().catch(() => {}); },0);
+

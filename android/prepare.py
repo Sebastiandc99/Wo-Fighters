@@ -12,7 +12,7 @@ end = game.index('function isLocked(f)',start)
 game = game[:start] + (root/'android/ranking-adapter.js').read_text() + '\n' + game[end:]
 (dest/'game.js').write_text(game)
 html = (dest/'index.html').read_text()
-html = html.replace('  <script src="game.js', '  <script src="hybrid-ranking.js"></script>\n  <script src="game.js')
+html = html.replace('  <script src="game.js', '  <script src="hybrid-ranking.js"></script>\n  <script src="apk-updates.js" defer></script>\n  <script src="game.js')
 (dest/'index.html').write_text(html)
 shutil.copy2(root/'android/hybrid-ranking.js',dest/'hybrid-ranking.js')
 # Every runtime asset reference must exist locally; no recompression/resizing.
@@ -31,3 +31,6 @@ for path in (root/'assets').rglob('*'):
         hashes[relative]=original
 (dest/'bundled-assets.json').write_text(json.dumps(hashes,sort_keys=True))
 print(f'Included {len(hashes)} original assets with identical SHA-256 hashes')
+
+
+shutil.copy2(root/'android/apk-updates.js',dest/'apk-updates.js')

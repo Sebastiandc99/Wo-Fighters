@@ -31,11 +31,15 @@ jobs:
       - name: Verify hybrid ranking and original game
         run: node --test android/tests/*.test.cjs tests/wo.test.cjs tests/german.test.cjs tests/mobile-audio.test.cjs tests/mobile-performance.test.cjs tests/ranking.test.cjs
       - name: Build APK
-        run: gradle -p android assembleDebug --no-daemon
-      - name: Verify signing and complete assets
-        run: python3 android/verify-apk.py
+        run: gradle -p android assembleRelease --no-daemon
+      - name: Package unsigned release and signing tool
+        run: |
+          mkdir -p android/release
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk android/release/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" android/release/
       - uses: actions/upload-artifact@v4
         with:
           name: WO-Fighters-Android
-          path: android/app/build/outputs/apk/debug/WO-Fighters-1.0.0.apk
+          path: android/release/
           retention-days: 90
+

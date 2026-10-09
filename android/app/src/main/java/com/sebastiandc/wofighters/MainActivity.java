@@ -1,5 +1,7 @@
 package com.sebastiandc.wofighters;
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.app.AlertDialog;
 import android.os.Bundle;
 import android.os.Build;
@@ -29,6 +31,17 @@ public class MainActivity extends Activity {
     };
     public final class NetworkBridge {
         @JavascriptInterface public boolean isOnline() { return connected(); }
+        @JavascriptInterface public int getVersionCode() { return 2; }
+        @JavascriptInterface public String getVersionName() { return "1.1.0"; }
+        @JavascriptInterface public void openUpdateUrl(String url) {
+            if (url == null || !url.matches("https://paidalaojrkplnkucmwl\\.supabase\\.co/storage/v1/object/public/wo-apk-updates/WO-Fighters-[0-9]+\\.[0-9]+\\.[0-9]+\\.apk")) return;
+            runOnUiThread(() -> {
+                try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
+                catch (android.content.ActivityNotFoundException ignored) {
+                    new AlertDialog.Builder(MainActivity.this).setMessage("No hay un navegador disponible para descargar la actualización.").setPositiveButton("OK", null).show();
+                }
+            });
+        }
     }
     private void notifyNetwork() {
         runOnUiThread(() -> { if (web != null && foreground) web.evaluateJavascript(
@@ -106,3 +119,4 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 }
+
