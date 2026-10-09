@@ -1,15 +1,17 @@
 # WO Fighters Android
-APK independiente, Android 8 o posterior, pantalla horizontal. Todo el contenido de la versión web de 09/10/2026 está incluido sin reducción ni recompresión. La web de main permanece independiente.
 
-Los resultados se guardan primero en localStorage del WebView y se sincronizan mientras la aplicación está abierta, al recuperar una conexión validada, al volver a la app y con reintentos limitados a 30 segundos. No se consulta el servidor sin conexión. El ranking se muestra inmediatamente desde datos locales y la última copia global. Los reintentos mantienen el ID de partida. No se requiere login.
+Bundled offline game; rankings synchronize when online. Original image/audio bytes remain identical.
 
-Validación de datos en cliente y restricciones/RLS en wo_scores; solo lectura e inserción pública, sin modificar resultados existentes. Esto evita duplicados y entradas fuera de límites; el juego offline no puede garantizar que un usuario avanzado no fabrique un resultado. Para antitrampas fuerte, un futuro modo online necesita validación del combate en servidor.
+## Permanent signed releases
 
-Preparación: python3 android/prepare.py
-Pruebas: node --test android/tests/*.test.cjs
-Compilación: Gradle 8.11.1 y JDK 17; gradle -p android assembleDebug
-Verificación: python3 android/verify-apk.py
+The private signing backup is kept outside this public repository. Never commit its keystore, password or publisher token. The installed debug 1.0.0 requires one uninstall before installing permanent release 1.1.0. Later signed releases can update in place, retaining local data.
 
-Primera versión de distribución privada, firmada con una clave de desarrollo generada por el entorno de compilación. Nunca se publica una clave privada. Antes de distribuir actualizaciones con instalación sobre una versión anterior, configurar una clave de firma permanente mediante secretos de GitHub. No generar otra clave y afirmar que permite actualizar sin reinstalar. Esta entrega no incorpora combate online.
+For each release keep applicationId `com.sebastiandc.wofighters`, increase versionCode and versionName in app/build.gradle, prepare assets and run tests. Push android-hybrid to build the unsigned release in Actions. Download and extract the artifact (unsigned APK and official apksigner.jar), extract the private backup to a separate directory, then run:
 
-Desinstalar o borrar los datos elimina los puntajes locales pendientes. Los puntajes sincronizados siguen en el ranking global.
+```sh
+python3 android/sign-publish.py /absolute/release /absolute/private-backup /absolute/output
+```
+
+This signs with the same permanent key, verifies every original asset, uploads the APK to its immutable public URL, verifies its SHA-256 from that URL and only then advances latest.json. The update notice checks in the background when online, appears only on the title screen, and opens the trusted download in the browser. Android asks the player to install. The APK does not install itself silently.
+
+Do not publish an unsigned APK or generate a replacement key. Keep the private backup safe: losing it prevents future updates to this installed application.

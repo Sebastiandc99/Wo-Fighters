@@ -31,8 +31,14 @@ public class MainActivity extends Activity {
     };
     public final class NetworkBridge {
         @JavascriptInterface public boolean isOnline() { return connected(); }
-        @JavascriptInterface public int getVersionCode() { return 2; }
-        @JavascriptInterface public String getVersionName() { return "1.1.0"; }
+        @JavascriptInterface public int getVersionCode() {
+            try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode; }
+            catch (android.content.pm.PackageManager.NameNotFoundException ignored) { return 0; }
+        }
+        @JavascriptInterface public String getVersionName() {
+            try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; }
+            catch (android.content.pm.PackageManager.NameNotFoundException ignored) { return ""; }
+        }
         @JavascriptInterface public void openUpdateUrl(String url) {
             if (url == null || !url.matches("https://paidalaojrkplnkucmwl\\.supabase\\.co/storage/v1/object/public/wo-apk-updates/WO-Fighters-[0-9]+\\.[0-9]+\\.[0-9]+\\.apk")) return;
             runOnUiThread(() -> {
