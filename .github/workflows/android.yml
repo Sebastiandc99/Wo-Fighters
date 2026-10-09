@@ -1,0 +1,35 @@
+name: Android APK
+on:
+  push:
+    branches: [android-hybrid]
+    paths: ['android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Prepare bundled game and validate
+        run: python3 android/prepare.py
+      - name: Verify hybrid ranking
+        run: node --test android/tests/*.test.cjs
+      - name: Build APK
+        run: gradle -p android assembleDebug --no-daemon
+      - name: Verify signing and complete assets
+        run: python3 android/verify-apk.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WO-Fighters-Android
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 90
