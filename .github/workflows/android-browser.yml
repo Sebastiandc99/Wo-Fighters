@@ -1,0 +1,69 @@
+name: Android offline browser verification
+on:
+  push:
+    branches: [android-hybrid]
+    paths: ['.github/workflows/android-browser.yml']
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare exact APK web content
+        run: python3 android/prepare.py
+      - name: Install browser test tools
+        run: |
+          npm install --prefix /tmp/wo-browser --no-audit --no-fund playwright@1.56.1
+          /tmp/wo-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Test offline game and durable scores
+        run: |
+          python3 -m http.server 8765 --directory android/app/src/main/assets >/tmp/wo-http.log 2>&1 &
+          node --input-type=module <<'JS'
+          import {chromium} from '/tmp/wo-browser/node_modules/playwright/index.mjs';
+          import assert from 'node:assert/strict';
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:960,height:540},deviceScaleFactor:2,hasTouch:true,isMobile:true});
+          await context.addInitScript(()=>{window.WoNative={isOnline:()=>false};});
+          const errors=[],external=[];
+          const page=await context.newPage();
+          page.on('pageerror',e=>errors.push(e.message));
+          await context.route('**/*',route=>{
+            const url=route.request().url();
+            if(url.startsWith('http://127.0.0.1:8765/'))return route.continue();
+            external.push(url);return route.abort();
+          });
+          await page.goto('http://127.0.0.1:8765/',{waitUntil:'networkidle'});
+          assert.equal(await page.locator('#startBtn').isVisible(),true);
+          await page.locator('#titleRankingBtn').click();
+          assert.equal(await page.locator('#rankingScreen').isVisible(),true);
+          assert.equal(external.length,0);
+          await page.locator('#rankingMenuBtn').click();
+          await page.locator('#startBtn').click();
+          await page.locator('#soloBtn').click();
+          await page.locator('[data-pick="german"]').click();
+          await page.locator('#confirmBtn').click();
+          await page.locator('#stageConfirmBtn').click();
+          await page.waitForFunction(()=>state==='playing',{timeout:45000});
+          assert.equal(await page.evaluate(()=>canvas.width),960);
+          assert.equal(await page.evaluate(()=>canvas.height),540);
+          await page.waitForFunction(()=>audioCtx?.state==='running');
+          await page.evaluate(()=>{
+            match.complete=true;match.winner=0;match.endShown=true;
+            match.recordSlot=0;match.scores[0]=171817;state='finished';
+            showGameOver();ui.resultPanel.hidden=false;
+          });
+          await page.locator('#winnerName').fill('Seba offline');
+          await page.locator('#saveScoreBtn').click();
+          await page.waitForFunction(()=>state==='ranking');
+          assert.match(await page.locator('#rankingRows').innerText(),/Seba offline/);
+          assert.match(await page.locator('#rankingStatus').innerText(),/POR SINCRONIZAR/);
+          await page.reload({waitUntil:'networkidle'});
+          await page.locator('#titleRankingBtn').click();
+          assert.match(await page.locator('#rankingRows').innerText(),/171817/);
+          assert.equal(external.length,0,'Offline launch must make zero external requests');
+          assert.deepEqual(errors,[]);
+          console.log('PASS: offline first boot, tournament with Germán, original resolution, active audio, score form, restart persistence; zero external requests and zero JS errors');
+          await browser.close();
+          JS
