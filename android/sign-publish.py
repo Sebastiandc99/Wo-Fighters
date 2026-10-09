@@ -14,7 +14,7 @@ code = int(re.search(r'versionCode (\d+)', config)[1])
 output.mkdir(parents=True, exist_ok=True)
 apk = output/f'WO-Fighters-{version}.apk'
 signer = ['java', '-jar', str(release/'apksigner.jar')]
-subprocess.run(signer+['sign', '--ks', str(private/'wo-fighters.jks'), '--ks-key-alias', 'wofighters', '--ks-pass', 'file:'+str(private/'password.txt'), '--key-pass', 'file:'+str(private/'password.txt'), '--out', str(apk), str(release/'app-release-unsigned.apk')], check=True)
+subprocess.run(signer+['sign', '--ks', str(private/'wo-fighters.jks'), '--ks-key-alias', 'wofighters', '--ks-pass', 'file:'+str(private/'password.txt'), '--out', str(apk), str(release/'app-release-unsigned.apk')], check=True)
 subprocess.run(signer+['verify', '--verbose', '--print-certs', str(apk)], check=True)
 with zipfile.ZipFile(apk) as archive:
     hashes=json.loads(archive.read('assets/bundled-assets.json'))
