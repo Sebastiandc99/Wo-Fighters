@@ -1,0 +1,66 @@
+name: Construir APK WO Fighters
+on:
+  push:
+    branches: [wo-android-apk]
+    paths: ['android/**', '.github/workflows/android-apk.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: wo-android-apk
+  cancel-in-progress: false
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Preparar recursos completos
+        run: python3 android/prepare-assets.py
+      - name: Verificar juego y sincronización
+        run: |
+          node --test tests/*.test.cjs android/hybrid.test.cjs
+          node --check android/app/src/main/assets/www/game.js
+          node --check android/hybrid.js
+      - name: Preparar firma privada
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 android/recover-signing.py
+      - name: Conservar identidad de firma para actualizaciones
+        uses: actions/upload-artifact@v4
+        with:
+          name: wo-fighters-signing-backup
+          path: |
+            android/signing/wo-fighters.jks
+            android/signing/password.txt
+          retention-days: 90
+      - name: Compilar APK firmado
+        env:
+          APK_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          export WO_KEYSTORE="$GITHUB_WORKSPACE/android/signing/wo-fighters.jks"
+          export WO_SIGNING_PASSWORD="$(cat android/signing/password.txt)"
+          gradle -p android assembleRelease --no-daemon
+      - name: Verificar firma y recursos del APK
+        run: |
+          python3 android/verify-apk.py
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android/app/build/outputs/apk/release/app-release.apk
+          mkdir -p android/deliverable
+          cp android/app/build/outputs/apk/release/app-release.apk android/deliverable/WO-Fighters.apk
+          cp android/assets-manifest.json android/deliverable/recursos-verificados.json
+          sha256sum android/deliverable/WO-Fighters.apk > android/deliverable/SHA256.txt
+      - name: Entregar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WO-Fighters-Android
+          path: android/deliverable/
+          retention-days: 90
+          if-no-files-found: error

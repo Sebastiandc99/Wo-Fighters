@@ -1,0 +1,24 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.sebastiandc.wofighters'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.sebastiandc.wofighters'
+        minSdk 26
+        targetSdk 35
+        versionCode Integer.parseInt(System.getenv('APK_VERSION_CODE') ?: '1')
+        versionName '1.0.' + (System.getenv('APK_VERSION_CODE') ?: '1')
+    }
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('WO_KEYSTORE') ?: '../signing/wo-fighters.jks')
+            storePassword System.getenv('WO_SIGNING_PASSWORD')
+            keyAlias 'wofighters'
+            keyPassword System.getenv('WO_SIGNING_PASSWORD')
+        }
+    }
+    buildTypes { release { signingConfig signingConfigs.release; minifyEnabled false } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    androidResources { noCompress += ['mp3','ogg','wav','webp','png','jpg','woff'] }
+}
+dependencies { implementation 'androidx.webkit:webkit:1.12.1' }

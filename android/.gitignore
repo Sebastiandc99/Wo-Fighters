@@ -1,0 +1,6 @@
+signing/
+.gradle/
+**/build/
+app/src/main/assets/
+assets-manifest.json
+local.properties
