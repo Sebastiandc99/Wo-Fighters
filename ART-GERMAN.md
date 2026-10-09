@@ -33,7 +33,10 @@ La cadena del poder se dibuja además como eslabones rojos/blancos, con extensi�
 retracción y tres vueltas helicoidales sobre el rival durante los 3 s de
 inmovilización. Las vueltas pasan por detrás y delante de su silueta. La
 cinemática usa las poses STOP, cartel octogonal en la mano, sirena, balizas,
-señales y un cerco helicoidal que se cierra y remata al tensarse.
+señales y un cerco helicoidal. Tres conos naranjas con bandas blancas y tres
+cascos blancos caen desde arriba del rival, golpean al mismo tiempo que se
+aplica el daño y después rebotan hacia el suelo. Son figuras dibujadas en Canvas,
+con aceleración, giro y dispersión regidos por el reloj de la cinemática.
 Todos los efectos se rigen por el reloj de combate y se detienen al pausar.
 
 ## Verificación
@@ -43,5 +46,6 @@ los ocho cuerpos en ambos sentidos, defensa/salto/evasión, energía, alcance,
 daño único, inmovilización, pausa, súper de ambos jugadores, CPU, táctil,
 sprites móviles y limpieza tras K.O. o regreso al menú. Las capturas del motor
 se revisaron con Canvas real para comprobar poses, cadena, súper y final de torre.
-La suite actual de Wo Fighters terminó con 123 pruebas aprobadas, incluyendo
-inmovilización exacta, golpes posteriores y música de los ocho súper.
+La suite actual de Wo Fighters terminó con 124 pruebas aprobadas, incluyendo
+inmovilización exacta, golpes posteriores, música de los ocho súper y la caída
+de conos/cascos sincronizada con el daño para ambos jugadores y sentidos.

@@ -61,3 +61,18 @@ test('three-second chain hold freezes pose and position through hits, pressure a
 test('selection and pause explain the complete three-second immobilization',()=>{
  const g=setup();g.run('updateSelectionGuide("german");updatePauseGuide()');assert.match(g.nodes.get('selectionGuide').innerHTML,/INMÓVIL · 3 s/);assert.match(g.nodes.get('pausePowers1').innerHTML,/helicoidal.*inmoviliza 3 s/);
 });
+test('three cones and three hardhats fall from above and strike at the damage cue for both players',()=>{
+ for(const dir of [-1,1])for(const slot of [1,2]){
+  const g=setup('primitivo',dir,slot);g.run("(owner===player?held:held2).down=true;attack(owner,'special')");
+  assert.equal(g.run('SAFETY_RAIN.filter(p=>p.type==="cone").length'),3);assert.equal(g.run('SAFETY_RAIN.filter(p=>p.type==="helmet").length'),3);
+  frames(g,1.9);assert.equal(g.run('target.health'),100);
+  const falling=g.run('SAFETY_RAIN.map((_,i)=>safetyRainFrame(workCinematic,i))');assert.equal(falling.length,6);assert.ok(falling.every(p=>p&&!p.landed&&p.y>0));
+  assert.ok(falling.every(p=>p.y<g.run('safetyRainImpactY(workCinematic)')));
+  const frozen=g.run('JSON.stringify(SAFETY_RAIN.map((_,i)=>safetyRainFrame(workCinematic,i)))');g.run('togglePause()');frames(g,.6);assert.equal(g.run('JSON.stringify(SAFETY_RAIN.map((_,i)=>safetyRainFrame(workCinematic,i)))'),frozen);g.run('togglePause()');
+  frames(g,.1);assert.equal(g.run('target.health'),100);
+  const contacts=g.run('SAFETY_RAIN.map((_,i)=>safetyRainFrame({...workCinematic,elapsed:workCinematic.impactAt},i))');assert.ok(contacts.every(p=>p.landed&&Math.abs(p.y-g.run('safetyRainImpactY(workCinematic)'))<.001));
+  frames(g,.12);assert.equal(g.run('workCinematic.impact'),true);const hp=g.run('target.health');assert.equal(hp,g.run('Math.round((100-damageTaken(target,34))*1000)/1000'));
+  const snapshot=g.run('JSON.stringify([target.health,workCinematic.elapsed])');g.run('draw();draw()');assert.equal(g.run('JSON.stringify([target.health,workCinematic.elapsed])'),snapshot);
+  frames(g,1.4);assert.equal(g.run('target.health'),hp);assert.equal(g.run('workCinematic'),null);
+ }
+});

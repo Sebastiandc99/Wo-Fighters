@@ -4119,7 +4119,7 @@ function hitWorkCinematic(c,damage,knock,lift) {
   updateWorkGuard(c);
   t.action=t.guarding?"block":"idle";t.actionTime=0;t.invuln=0;
   hit(t,damage,c.direction*knock,lift,c.owner,
-    {sourceX:c.originX,direction:c.direction,projectile:true,super:true,x:t.x,y:t.y-95});
+    {sourceX:c.originX,direction:c.direction,projectile:true,super:true,x:t.x,y:c.owner.kind==="german"?c.safetyImpactY:t.y-95});
   c.blocked=t.action==="block";
   if(!c.blocked)c.defenseBroken=true;
 }
@@ -4137,9 +4137,10 @@ function updateWorkCinematic(dt) {
   if(c.owner.kind==="gabriel") updateGanttCinematic(c);
   if(c.owner.kind!=="gabriel" && !c.impact && c.elapsed>=c.impactAt) {
     const t=c.target,o=c.owner;
+    if(o.kind==="german")c.safetyImpactY=safetyRainImpactY(c);
     hitWorkCinematic(c,fighterPowers[o.kind].superDamage,240,-140);
     c.impact=true;
-    burst(t.x,t.y-95,c.owner.kind==="peluche"?"#e5eadb":"#ffdc62",44);dustBurst(t.x,FLOOR,32);
+    burst(t.x,o.kind==="german"?c.safetyImpactY:t.y-95,c.owner.kind==="peluche"?"#e5eadb":"#ffdc62",44);dustBurst(t.x,FLOOR,32);
     if(o.kind==="fernando"){
       smokeBurst(t.x,t.y-85,18);burst(t.x,t.y-95,"#ff6032",40);
       if(!c.blocked){t.fernandoBurn=1.45;c.scream=startCombatSound("fireScream");}
@@ -4646,6 +4647,54 @@ function drawSafetyRestraint(f,frame,behind=false) {
   const label=Math.ceil(f.safetyHold)+' s',y=frame.y-stats[f.kind].height*FIGHTER_SCALE-10;
   ctx.strokeText(label,frame.x,y);ctx.fillText(label,frame.x,y);ctx.restore();
 }
+// Every cone and hardhat reaches the rival at the cinematic's damaging impact.
+const SAFETY_RAIN=[
+  {type:'cone',start:.65,from:-110,to:-32,spin:-.75,scale:1},
+  {type:'helmet',start:.82,from:104,to:30,spin:.85,scale:1.1},
+  {type:'cone',start:1.02,from:-64,to:-12,spin:.55,scale:.9},
+  {type:'helmet',start:1.16,from:68,to:14,spin:-.65,scale:1},
+  {type:'cone',start:1.34,from:22,to:3,spin:-.4,scale:1.08},
+  {type:'helmet',start:1.48,from:-24,to:-2,spin:.5,scale:.95}
+];
+function safetyRainImpactY(c) {
+  return c.impact?c.safetyImpactY:c.target.y-stats[c.target.kind].height*FIGHTER_SCALE*(c.target.crouching?.60:1)+16;
+}
+function safetyRainFrame(c,index) {
+  const p=SAFETY_RAIN[index],t=c.elapsed;
+  if(t<p.start || t>c.duration)return null;
+  const q=Math.min(1,(t-p.start)/(c.impactAt-p.start)),age=Math.max(0,t-c.impactAt);
+  const side=p.to<0?-1:1,landingY=safetyRainImpactY(c);
+  return {type:p.type,scale:p.scale,landed:t>=c.impactAt,
+    x:c.impactX+lerp(p.from,p.to,smoothstep(q))+side*age*(120+index*16),
+    y:age>0?Math.min(FLOOR-3,landingY-140*age+700*age*age):lerp(-100,landingY,q*q),
+    angle:p.spin*q+side*age*3.6};
+}
+function drawSafetyCone() {
+  ctx.lineWidth=3;ctx.strokeStyle='#29202a';ctx.lineJoin='round';
+  ctx.fillStyle='#b8521b';ctx.beginPath();ctx.roundRect(-30,-10,60,12,3);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-23,-10);ctx.lineTo(-7,-63);ctx.lineTo(7,-63);ctx.lineTo(23,-10);ctx.closePath();
+  ctx.fillStyle='#f47b29';ctx.fill();ctx.save();ctx.clip();
+  ctx.fillStyle='#fff5e6';ctx.fillRect(-30,-49,60,12);ctx.fillRect(-30,-27,60,10);
+  ctx.fillStyle='rgba(112,40,12,.25)';ctx.fillRect(7,-65,26,60);ctx.restore();ctx.stroke();
+  ctx.strokeStyle='#ffc48b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-16,-16);ctx.lineTo(-4,-57);ctx.stroke();
+}
+function drawSafetyHelmet() {
+  ctx.lineWidth=3;ctx.lineJoin='round';ctx.strokeStyle='#29202a';ctx.fillStyle='#fff5e6';
+  ctx.beginPath();ctx.moveTo(-24,-6);ctx.bezierCurveTo(-25,-43,25,-43,24,-6);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle='#c8cbd0';ctx.beginPath();ctx.moveTo(15,-28);ctx.quadraticCurveTo(25,-20,24,-6);ctx.lineTo(9,-6);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#a3a8b2';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-8,-8);ctx.lineTo(-6,-31);ctx.moveTo(7,-8);ctx.lineTo(6,-31);ctx.stroke();
+  ctx.strokeStyle='#29202a';ctx.lineWidth=3;ctx.fillStyle='#fffaf0';ctx.beginPath();ctx.roundRect(-32,-9,64,11,4);ctx.fill();ctx.stroke();
+}
+function drawSafetyRain(c) {
+  for(let i=0;i<SAFETY_RAIN.length;i++){
+    const frame=safetyRainFrame(c,i);if(!frame)continue;
+    ctx.save();ctx.translate(frame.x-cameraX,frame.y);ctx.rotate(frame.angle);ctx.scale(frame.scale,frame.scale);
+    if(!frame.landed){
+      ctx.strokeStyle='rgba(255,245,230,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-14,-74);ctx.lineTo(-14,-100);ctx.moveTo(14,-64);ctx.lineTo(14,-87);ctx.stroke();
+    }
+    if(frame.type==='cone')drawSafetyCone();else drawSafetyHelmet();ctx.restore();
+  }
+}
 function drawSafetyCinematic(c) {
   const t=c.elapsed,age=t-c.impactAt,x=c.impactX-cameraX;
   const fade=Math.min(1,t/.15,Math.max(0,(c.duration-t)/.30));
@@ -4680,17 +4729,18 @@ function drawSafetyCinematic(c) {
     drawSpriteFrame(frame,fade);
     drawSafetyHelix(frame,wrap,false,radius);ctx.restore();
   }
-  // Germán holds STOP at his outstretched hand; no unrelated objects fall from the sky.
+  // The STOP order triggers a shower of cones and hardhats inside the exclusion zone.
   if(t<2.45){
     const signX=c.owner.x-cameraX+c.direction*92,signY=c.owner.y-139;
     ctx.save();ctx.translate(signX,signY);ctx.fillStyle='#d52b40';ctx.strokeStyle='#fff5df';ctx.lineWidth=3;ctx.beginPath();
     for(let i=0;i<8;i++){const a=Math.PI/8+i*Math.PI/4;const px=Math.cos(a)*29,py=Math.sin(a)*29;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.fill();ctx.stroke();
     ctx.textAlign='center';ctx.font='bold 15px Arial';ctx.fillStyle='#fff';ctx.fillText('STOP',0,5);ctx.restore();
   }
+  drawSafetyRain(c);
   drawSuperImpact(c);
   ctx.fillStyle='rgba(21,7,13,.88)';ctx.fillRect(245,46,470,67);
   ctx.textAlign='center';ctx.font='italic bold 32px Arial';ctx.fillStyle='#fff0d3';ctx.fillText('PARADA TOTAL',480,80);
-  ctx.font='bold 14px Arial';ctx.fillStyle='#ff7279';ctx.fillText(t<.50?'¡ALTO!':t<c.impactAt?'ZONA DE EXCLUSIÓN · CIERRE':c.blocked?'GUARDIA · IMPACTO REDUCIDO':'SECTOR CLAUSURADO',480,102);
+  ctx.font='bold 14px Arial';ctx.fillStyle='#ff7279';ctx.fillText(t<.50?'¡ALTO!':t<c.impactAt?'¡CUIDADO! · CONOS Y CASCOS':c.blocked?'GUARDIA · IMPACTO REDUCIDO':'SECTOR CLAUSURADO',480,102);
   ctx.restore();
 }
 function updateCable(p,dt) {
