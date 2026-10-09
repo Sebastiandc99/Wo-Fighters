@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: android-build
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,13 +20,16 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
       - name: Prepare bundled game and validate
         run: python3 android/prepare.py
-      - name: Verify hybrid ranking
-        run: node --test android/tests/*.test.cjs
+      - name: Verify hybrid ranking and original game
+        run: node --test android/tests/*.test.cjs tests/wo.test.cjs tests/german.test.cjs tests/mobile-audio.test.cjs tests/mobile-performance.test.cjs tests/ranking.test.cjs
       - name: Build APK
         run: gradle -p android assembleDebug --no-daemon
       - name: Verify signing and complete assets
@@ -31,5 +37,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: WO-Fighters-Android
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/debug/WO-Fighters-1.0.0.apk
           retention-days: 90
