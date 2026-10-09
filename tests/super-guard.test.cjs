@@ -1,5 +1,5 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const {game}=require('./engine-harness.cjs');
-const kinds=['angel','primitivo','peluche','tren','linares','gabriel','fernando'];
+const kinds=['angel','primitivo','peluche','tren','linares','gabriel','fernando','german'];
 function setup(kind,slot=1){
  const g=game();g.run(`gameMode='versus';startGame('${slot===1?kind:'linares'}','${slot===2?kind:'linares'}');state='playing';const owner=${slot===1?'player':'cpu'},target=${slot===1?'cpu':'player'};owner.power=100;`);return g;
 }

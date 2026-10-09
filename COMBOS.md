@@ -31,6 +31,8 @@ En teclado: J/K para 1P y 7/8 para 2P. En celular: los botones actuales A/B.
 | Gabriel | Ruta crítica | P → G → ↓P → ←P | 4 | 10,5% | Barrida y volea |
 | Heraldo Fichero | Golpe de obra | G → G → ←P | 3 | 8,8% | Volea con empuje |
 | Heraldo Fichero | Remate civil | G → ↓P → G → P | 4 | 11,7% | Patada con empuje |
+| Germán | Inspección de choque | G → G → P | 3 | 10,2% | Patada pesada |
+| Germán | Cierre de sector | P → ↓P → ↓G | 3 | 13,2% | Gancho tras barrida |
 
 Los porcentajes son la suma de impactos sin cubrirse, redondeada a una cifra.
 La pausa calcula el daño contra la resistencia del rival concreto. Los combos
@@ -56,7 +58,7 @@ no gastan energía; los poderes conservan sus costos y daño.
   iniciar otra cadena. La recuperación y la separación permiten defenderse;
   no se enlazan cadenas infinitas contra una esquina.
 - La CPU puede ejecutar sus propias cadenas. La probabilidad por apertura en
-  los seis niveles del torneo es 0%, 12%, 22%, 36%, 48% y 62%; se mantiene el
+  los siete niveles del torneo es 0%, 12%, 22%, 36%, 48%, 62% y 62%; se mantiene el
   primer rival y se exige confirmar los impactos para continuar.
 - Pausa congela entradas, relojes y animaciones. K.O., cinemáticas y nuevas
   rondas limpian las continuaciones pendientes.
@@ -65,8 +67,8 @@ no gastan energía; los poderes conservan sus costos y daño.
 
 ## Validación
 
-`tests/combos.test.cjs` usa el motor y los controles reales. Comprueba las 14
-secuencias contra los siete cuerpos, ambos lados y jugadores; teclado y táctil;
+`tests/combos.test.cjs` usa el motor y los controles reales. Comprueba las 16
+secuencias contra los ocho cuerpos, ambos lados y jugadores; teclado y táctil;
 entradas rápidas y espaciadas; modificadores; daño anunciado; pausas; errores;
 interrupciones; bloqueos; esquinas; K.O.; balance y CPU progresiva.
 La regresión de Wo también conserva la paridad de los golpes aislados de Ángel

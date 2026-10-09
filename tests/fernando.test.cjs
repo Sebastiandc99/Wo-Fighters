@@ -20,14 +20,14 @@ test('common flame impacts persist briefly without repeated damage and clear on 
  g.run("player.power=100;attack(player,'special')");frames(g,.19);g.run('mainMenu()');
  assert.equal(g.run('projectiles.length'),0);assert.equal(g.run('combatSounds.size'),0);
 });
-test('Fernando stats, stature, selection and six-rival tournament',()=>{
+test('Fernando stats, stature, selection and seven-rival tournament',()=>{
  const g=setup();assert.deepEqual(Array.from(g.run('[stats.fernando.normalDamage,stats.fernando.resistance,stats.fernando.agility,stats.fernando.meleeReach,stats.fernando.recovery,stats.fernando.powerDamage,stats.fernando.superDamage]')),[9,98,6,5,.60,21,33]);assert.equal(g.run('stats.fernando.height'),g.run('stats.linares.height'));
  g.run("openModeSelection();gameMode='solo';openSelection()");g.nodes.get('pick-fernando').listeners.click();assert.equal(g.run('playerChoice'),'fernando');assert.match(g.nodes.get('selectionGuide').innerHTML,/Lluvia de Cigarrillos/);assert.match(g.nodes.get('selectionGuide').innerHTML,/Incendio de Obra/);
- g.run('beginGame()');g.tick(g.run('tower.duration')+.05);assert.equal(g.run('campaign.opponents.length'),6);assert.equal(g.run("campaign.opponents.includes('fernando')"),false);
+ g.run('beginGame()');g.tick(g.run('tower.duration')+.05);assert.equal(g.run('campaign.opponents.length'),7);assert.equal(g.run("campaign.opponents.includes('fernando')"),false);
  assert.doesNotThrow(()=>g.run('for(let pose=0;pose<=19;pose++)drawSpriteFrame({...renderedFighter(player),pose,fromPose:pose,mix:1})'));
 });
 test('three consecutive cigarettes cost30, total21 damage, are fast and do not hit twice',()=>{
- for(const rival of ['angel','primitivo','peluche','tren','linares','gabriel','fernando'])for(const d of [-1,1]){
+ for(const rival of ['angel','primitivo','peluche','tren','linares','gabriel','fernando','german'])for(const d of [-1,1]){
   const g=setup(rival,d);assert.equal(g.run("attack(player,'special')"),true);assert.equal(g.run('player.power'),70);assert.equal(g.run('player.moveSpec.startup'),.14);assert.equal(g.run('player.moveSpec.recovery'),.60);
   frames(g,.18);assert.equal(g.run('projectiles[0].cigarettes.length'),3);assert.equal(g.run('projectiles[0].sound.name'),'cigarettes');frames(g,1.1);
   assert.ok(Math.abs(g.run('cpu.health')-g.run('100-damageTaken(cpu,21)'))<.003,`${rival} direction ${d}`);

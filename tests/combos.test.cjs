@@ -1,7 +1,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {game}=require('./engine-harness.cjs');
-const roster=['angel','primitivo','peluche','tren','linares','gabriel','fernando'];
+const roster=['angel','primitivo','peluche','tren','linares','gabriel','fernando','german'];
 const routes=JSON.parse(game().run('JSON.stringify(MELEE_COMBOS)'));
 function setup(kind='angel',rival='primitivo',slot=1,dir=1,corner=false){
   const g=game();
@@ -36,7 +36,7 @@ function press(g,token,slot=1,dir=1,touch=false,repeat=false){
 function enter(g,route,slot=1,dir=1,touch=false,spacing=.035){
   for(const token of route.tokens){press(g,token,slot,dir,touch);g.tick(spacing);}
 }
-test('fourteen strings connect once per press against every stature on both player slots and sides',()=>{
+test('sixteen strings connect once per press against every stature on both player slots and sides',()=>{
   let cases=0;
   for(const kind of roster)for(const [i,route] of routes[kind].entries())for(const rival of roster){
     const slot=cases%2+1,dir=cases++%3===0?-1:1;

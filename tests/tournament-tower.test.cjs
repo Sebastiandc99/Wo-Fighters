@@ -4,10 +4,10 @@ function tournament(kind='angel') {
  const g=game();g.run(`gameMode='solo';playerChoice='${kind}';beginGame()`);return g;
 }
 function win(g) {g.run(`state='playing';match.playerWins=1;finishRound(player,'TIEMPO')`);}
-test('all seven fighters get a fixed tower of six unique rivals, excluding themselves',()=>{
- for(const kind of ['angel','primitivo','peluche','tren','linares','gabriel','fernando']) {
+test('all eight fighters get a fixed tower of seven unique rivals, excluding themselves',()=>{
+ for(const kind of ['angel','primitivo','peluche','tren','linares','gabriel','fernando','german']) {
   const g=tournament(kind),rivals=Array.from(g.run('campaign.opponents'));
-  assert.equal(rivals.length,6);assert.equal(new Set(rivals).size,6);assert.ok(!rivals.includes(kind));
+  assert.equal(rivals.length,7);assert.equal(new Set(rivals).size,7);assert.ok(!rivals.includes(kind));
   assert.equal(g.run('state'),'tower');assert.equal(g.run('musicTrack.usage'),'tower');
   g.key('Enter');g.nodes.get('towerScreen').listeners.pointerdown({target:{tagName:'CANVAS'}});
   assert.equal(g.run('tower.skip'),null);g.tick(6.2);assert.equal(g.run('state'),'tower');
@@ -28,12 +28,12 @@ test('camera visibly traverses upper and intermediate floors before settling at 
  g.tick(1.99);assert.equal(g.run('state'),'tower');assert.equal(g.run('towerCameraAt(tower.elapsed).y'),1127);
  g.tick(.4);assert.equal(g.run('state'),'intro');
 });
-test('only full match victories advance, preserving all six difficulty names, score and opponent order',()=>{
+test('only full match victories advance, preserving all seven difficulty names, score and opponent order',()=>{
  const g=tournament('linares');g.tick(g.run('tower.duration')+.05);
  const rivals=Array.from(g.run('campaign.opponents'));let score=0;
- for(let i=0;i<6;i++) {
+ for(let i=0;i<7;i++) {
   assert.equal(g.run('cpu.kind'),rivals[i]);assert.equal(g.run('campaign.index'),i);
-  assert.equal(g.run('difficulty().name'),['NORMAL','MEDIA','AVANZADA','DIFÍCIL','EXPERTO','MAESTRO'][i]);
+  assert.equal(g.run('difficulty().name'),['NORMAL','MEDIA','AVANZADA','DIFÍCIL','EXPERTO','MAESTRO','LEYENDA'][i]);
   assert.equal(g.run('match.scores[0]'),score);
   g.run(`state='playing';finishRound(player,'TIEMPO')`);g.tick(2.7);
   assert.equal(g.run('state'),'intro');assert.equal(g.run('campaign.index'),i);assert.equal(g.run('campaign.defeated.length'),i);
@@ -42,7 +42,7 @@ test('only full match victories advance, preserving all six difficulty names, sc
   assert.equal(g.run('campaign.defeated.length'),i+1);g.tick(1.8);
   assert.equal(g.run('state'),'tower');assert.deepEqual(Array.from(g.run('campaign.opponents')),rivals);
   assert.doesNotThrow(()=>g.run('drawTournamentTower()'));
-  if(i<5) {
+  if(i<6) {
    const before=g.run('towerCameraAt(0).y');g.tick(1);
    assert.ok(g.run('towerCameraAt(tower.elapsed).y')<before);
    g.tick(g.run('tower.duration-tower.elapsed')+.05);assert.equal(g.run('state'),'intro');
@@ -70,7 +70,7 @@ test('Enter, mobile touch and controller Start shorten later presentations but h
 });
 test('final presentation is slower and an exhausted life keeps the usual score-entry flow',()=>{
  const g=tournament();g.tick(g.run('tower.duration')+.05);
- g.run(`campaign.index=5;showTournamentTower()`);
+ g.run(`campaign.index=6;showTournamentTower()`);
  assert.equal(g.run('tower.final'),true);assert.equal(g.run('tower.duration'),g.run('towerSettleAt()+.25+2+.35'));
  g.tick(g.run('tower.duration')+.05);g.run(`campaign.extraLives=0;state='playing';addScore(player,100);match.cpuWins=1;finishRound(cpu,'TIEMPO')`);
  const score=g.run('match.scores[0]');assert.equal(g.run('campaign'),null);
@@ -97,7 +97,7 @@ test('mobile landscape retains camera timing and uses the new tournament difficu
  assert.equal(g.run('state'),'tower');assert.ok(Math.abs(g.run('tower.elapsed')-3)<.03);
  assert.doesNotThrow(()=>g.run('drawTournamentTower()'));
  assert.deepEqual(Array.from(g.run('DIFFICULTIES.slice(0,6).map(d=>d.reaction)')),[.23,.19,.15,.12,.09,.08]);
- assert.deepEqual(Array.from(g.run('TOURNAMENT_DIFFICULTIES.map(d=>d.reaction)')),[.23,.18,.135,.095,.065,.04]);
+ assert.deepEqual(Array.from(g.run('TOURNAMENT_DIFFICULTIES.map(d=>d.reaction)')),[.23,.18,.135,.095,.065,.04,.035]);
  g.run('for(let n=181;n<=480;n++)advanceGameClock(n*1000/60)');assert.equal(g.run('state'),'intro');
 });
 

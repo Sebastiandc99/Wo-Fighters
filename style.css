@@ -1205,6 +1205,12 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
 .choice-tile[data-pick="fernando"] img {object-fit:contain;object-position:center;background:#142341;}
 .selection-guide[data-kind="fernando"] {--skill-accent:#ffb763;--skill-fill:#ef6539;}
 
+/* Eight fighters use the same four-column selection grid. */
+.portrait-german {left:7%;border:0;background:transparent;box-shadow:none;}
+.portrait-german img {height:90%;object-fit:contain;object-position:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
+.choice-tile[data-pick="german"] img {object-fit:contain;object-position:center;background:#142341;}
+.selection-guide[data-kind="german"] {--skill-accent:#ff8388;--skill-fill:#e54151;}
+
 /* Character strings share the existing punch/kick controls. */
 .selection-guide {top:34%;max-height:58%;overflow-y:auto;touch-action:pan-y;scrollbar-width:thin;scrollbar-color:#c1a458 #0a152b;}
 .combo-guide {margin-top:.9em;padding-top:.65em;border-top:1px solid #8bafd340;}

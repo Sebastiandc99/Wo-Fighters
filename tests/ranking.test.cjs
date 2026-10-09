@@ -39,8 +39,8 @@ test('a rejected score is reported as a server validation error and preserves th
  await g.run('saveWinner({preventDefault(){}})');assert.equal(g.run('match.saved'),true);
 });
 
-test('all seven characters keep their names and scores and retries use insert-only deduplication',async()=>{
- for(const kind of ['angel','primitivo','peluche','tren','linares','gabriel','fernando']){
+test('all eight characters keep their names and scores and retries use insert-only deduplication',async()=>{
+ for(const kind of ['angel','primitivo','peluche','tren','linares','gabriel','fernando','german']){
   const g=game();g.run(`gameMode='solo';startGame('${kind}','peluche');state='finished';match.complete=true;match.winner=0;match.campaignRun=true;match.recordSlot=0;match.scores=[171817,0];showGameOver()`);
   g.nodes.get('winnerName').value='Seba';const calls=[];
   g.sandbox.fetch=async(url,options={})=>{calls.push({url,options});return {ok:true,status:200,async json(){return []}}};

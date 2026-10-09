@@ -1,7 +1,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {game}=require('./engine-harness.cjs');
-const roster=['angel','primitivo','peluche','tren','linares','gabriel','fernando'];
+const roster=['angel','primitivo','peluche','tren','linares','gabriel','fernando','german'];
 function setup(kind,rival,slot,dir){
  const g=game();
  g.run(`gameMode='versus';startGame('${slot===1?kind:rival}','${slot===1?rival:kind}');state='playing';var owner=${slot===1?'player':'cpu'},target=${slot===1?'cpu':'player'};owner.x=480;target.x=480+${dir}*65;owner.facing=${dir};target.facing=${-dir};target.guarding=true;`);

@@ -1,11 +1,11 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {game}=require('./engine-harness.cjs');
-const fighters=['angel','primitivo','peluche','tren','linares','gabriel','fernando'];
+const fighters=['angel','primitivo','peluche','tren','linares','gabriel','fernando','german'];
 function setup(kind,slot=1){
  const g=game();g.run(`gameMode='versus';startGame('${slot===1?kind:'angel'}','${slot===2?kind:'angel'}');state='playing';player.x=300;cpu.x=900;player.facing=1;cpu.facing=-1;const subject=${slot===1?'player':'cpu'};const input=${slot===1?'held':'held2'};`);return g;
 }
-test('all seven fighters recover promptly from every melee variant for both players',()=>{
+test('all eight fighters recover promptly from every melee variant for both players',()=>{
  for(const kind of fighters)for(const slot of [1,2])for(const [variant,type,limit,prepare] of [
   ['punch','punch',.40,''],['kick','kick',.54,''],
   ['uppercut','punch',.57,'input.down=true;'],['lowKick','kick',.51,'input.down=true;'],

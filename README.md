@@ -27,7 +27,7 @@ GitHub Pages: https://sebastiandc99.github.io/Wo-Fighters/
 
 ## Combos de golpes y patadas
 
-Cada uno de los siete personajes tiene dos cadenas de 3–5 golpes con los
+Cada uno de los ocho personajes tiene dos cadenas de 3–5 golpes con los
 botones actuales. La selección y la pausa enseñan las secuencias; el combate
 muestra el número de golpes, el daño real y el nombre del combo completado.
 Los personajes fuertes usan enlaces pesados y los ágiles combinaciones más
@@ -141,3 +141,23 @@ del daño que causarían sin defensa, después de aplicar la resistencia del riv
 El desgaste no inicia combos ni provoca derribo; sólo ocurre si el golpe conecta
 con una guardia válida. Puede terminar la ronda si la vida restante es mínima.
 Los poderes conservan su daño reducido al bloquearlos.
+
+## Germán — Seguridad e Higiene
+
+Octavo luchador, con casco blanco, camisa amarilla de manga corta, pantalón azul,
+radio y anteojos colgados. Daño normal 10, resistencia 116, velocidad 4/10,
+alcance físico 6/10 y recuperación de 0,70 s. Conserva la vida normalizada al
+100% y el ajuste general de daño ×0,70.
+
+**Zona de Exclusión** lanza una cadena plástica roja y blanca: daño base 22,
+costo 30%, alcance 8/10 (608 unidades) e inmovilización de 0,65 s. Saltar,
+evadir o bloquear evita la inmovilización. **Parada Total** requiere la barra
+completa y alcance 8/10; dura 3,25 s, activa STOP, sirena, balizas y perímetro
+de exclusión, y aplica un único impacto de daño base 34 a los 2,10 s.
+La defensa reduce el daño del súper al 30%; la pausa congela efectos y audio.
+
+La selección, las guías, los dos combos, el ranking y los controles táctiles
+incluyen a Germán. La torre adapta sus pisos a siete rivales, con dificultad
+LEYENDA en la final. Se verificaron 112 pruebas de los ocho luchadores, poderes,
+combos, defensa, torre, continuaciones, ranking y rendimiento móvil.
+Arte y audio reproducibles: [ART-GERMAN.md](ART-GERMAN.md).
