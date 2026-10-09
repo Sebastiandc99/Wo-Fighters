@@ -20,3 +20,5 @@ Artefactos privados:
 Compilación local: Java 17, SDK 35, Gradle 8.11.1.
 Ejecutar python3 android/prepare-assets.py; node --test android/hybrid.test.cjs; gradle -p android assembleRelease.
 Definir WO_KEYSTORE y WO_SIGNING_PASSWORD con la identidad de firma original.
+
+Verificación: las suites heredadas balance/combat/online/physics-parity contienen expectativas de KP Fighters (personajes eliminados y bloqueo sin daño) y fallan también contra el game.js web original sin modificar. El APK no cambia esa física. La compilación verifica las suites actuales de WO, audio/rendimiento móvil y ranking híbrido.

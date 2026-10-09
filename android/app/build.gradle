@@ -8,6 +8,7 @@ android {
         targetSdk 35
         versionCode Integer.parseInt(System.getenv('APK_VERSION_CODE') ?: '1')
         versionName '1.0.' + (System.getenv('APK_VERSION_CODE') ?: '1')
+        testInstrumentationRunner 'com.sebastiandc.wofighters.SmokeRunner'
     }
     signingConfigs {
         release {
@@ -17,6 +18,7 @@ android {
             keyPassword System.getenv('WO_SIGNING_PASSWORD')
         }
     }
+    testBuildType 'release'
     buildTypes { release { signingConfig signingConfigs.release; minifyEnabled false } }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     androidResources { noCompress += ['mp3','ogg','wav','webp','png','jpg','woff'] }

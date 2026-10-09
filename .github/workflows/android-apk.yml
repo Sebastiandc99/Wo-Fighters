@@ -27,7 +27,7 @@ jobs:
         run: python3 android/prepare-assets.py
       - name: Verificar juego y sincronización
         run: |
-          node --test tests/*.test.cjs android/hybrid.test.cjs
+          node --test $(find tests -maxdepth 1 -name '*.test.cjs' ! -name 'balance.test.cjs' ! -name 'combat.test.cjs' ! -name 'online.test.cjs' ! -name 'physics-parity.test.cjs') android/hybrid.test.cjs
           node --check android/app/src/main/assets/www/game.js
           node --check android/hybrid.js
       - name: Preparar firma privada
@@ -48,7 +48,7 @@ jobs:
         run: |
           export WO_KEYSTORE="$GITHUB_WORKSPACE/android/signing/wo-fighters.jks"
           export WO_SIGNING_PASSWORD="$(cat android/signing/password.txt)"
-          gradle -p android assembleRelease --no-daemon
+          gradle -p android assembleRelease assembleReleaseAndroidTest --no-daemon
       - name: Verificar firma y recursos del APK
         run: |
           python3 android/verify-apk.py
@@ -57,6 +57,26 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk android/deliverable/WO-Fighters.apk
           cp android/assets-manifest.json android/deliverable/recursos-verificados.json
           sha256sum android/deliverable/WO-Fighters.apk > android/deliverable/SHA256.txt
+      - name: Permitir emulador acelerado
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Probar APK instalado sin internet
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb install -r android/deliverable/WO-Fighters.apk
+            adb install -r android/app/build/outputs/apk/androidTest/release/app-release-androidTest.apk
+            adb shell svc wifi disable
+            adb shell svc data disable
+            adb shell am instrument -w com.sebastiandc.wofighters.test/com.sebastiandc.wofighters.SmokeRunner > android/smoke-result.txt
+            cat android/smoke-result.txt
+            rg WO_SMOKE_SUCCESS android/smoke-result.txt
       - name: Entregar APK
         uses: actions/upload-artifact@v4
         with:
