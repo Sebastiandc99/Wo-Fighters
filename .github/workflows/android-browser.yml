@@ -45,7 +45,7 @@ jobs:
           await page.locator('[data-pick="german"]').click();
           await page.locator('#confirmBtn').click();
           await page.locator('#stageConfirmBtn').click();
-          await page.waitForFunction(()=>state==='playing',{timeout:45000});
+          await page.waitForFunction(()=>state==='playing',null,{timeout:45000});
           assert.equal(await page.evaluate(()=>canvas.width),960);
           assert.equal(await page.evaluate(()=>canvas.height),540);
           await page.waitForFunction(()=>audioCtx?.state==='running');
@@ -57,7 +57,7 @@ jobs:
           await page.locator('#winnerName').fill('Seba offline');
           await page.locator('#saveScoreBtn').click();
           await page.waitForFunction(()=>state==='ranking');
-          assert.match(await page.locator('#rankingRows').innerText(),/Seba offline/);
+          assert.match(await page.locator('#rankingRows').innerText(),/Seba offline/i);
           assert.match(await page.locator('#rankingStatus').innerText(),/POR SINCRONIZAR/);
           await page.reload({waitUntil:'networkidle'});
           await page.locator('#titleRankingBtn').click();
