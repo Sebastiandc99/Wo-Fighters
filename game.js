@@ -686,7 +686,7 @@ const towerPortraits = Object.fromEntries(Object.entries({
   angel:"assets/angel-cutout-v2.webp", primitivo:"assets/primitivo-cutout-v4.webp",
   peluche:"assets/peluche-presentation-v3.webp", tren:"assets/tren-presentation-v3.webp",
   linares:"assets/linares-portrait-v1.webp", gabriel:"assets/gabriel-portrait-v1.webp",
-  fernando:"assets/fernando-portrait-v1.webp", german:"assets/german-portrait-v1.webp",matias:"assets/matias-presentation-v2.webp"
+  fernando:"assets/fernando-portrait-v1.webp", german:"assets/german-portrait-v1.webp",matias:"assets/matias-presentation-v3.webp"
 }).map(([kind,src])=>[kind,loadImage(src)]));
 const TOWER_FLOORS = Array.from({length:roster.length-1},(_,i)=>1127-i*855/(roster.length-2));
 const TOWER_TIMING_SCALE = 1.8; // More time to follow the camera and read the rival.
@@ -5168,31 +5168,54 @@ function drawFireCinematic(c) {
   ctx.restore();
 }
 
-// Matías: one swept collision for the whole burst; readable objects are visual only.
+// Matías: a spaced horizontal stream. Types and rotation are sampled only at cast time.
+// The whole attack deals 22 once; later objects continue visually to the contact point.
 const ENVIRONMENTAL_DEBRIS = ['bottle','can','paper','wrapper','bag','leaf'];
 function spawnResidues(owner) {
   const direction=owner.facing,x=owner.x+direction*52,y=FLOOR-102;
   const sound=owner.attackSound||startCombatSound('residues');owner.attackSound=null;
+  const types=[...ENVIRONMENTAL_DEBRIS];
+  for(let i=types.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[types[i],types[j]]=[types[j],types[i]];}
+  const items=Array.from({length:8},(_,i)=>({
+    type:i<types.length?types[i]:ENVIRONMENTAL_DEBRIS[Math.floor(Math.random()*ENVIRONMENTAL_DEBRIS.length)],
+    delay:i*.05,size:19+Math.random()*4,angle:Math.random()*Math.PI*2,
+    spin:(Math.random()<.5?-1:1)*(3+Math.random()*3),phase:Math.random()*Math.PI*2
+  }));
   projectiles.push({owner,style:'residues',sound,direction,originX:owner.x,x,y,prevX:x,prevY:y,
-    vx:direction*720,age:0,life:1.4,radius:42,damage:powerDamage(owner),contactDone:false,impactAge:0});
+    vx:direction*720,age:0,prevAge:0,life:1.4,radius:14,damage:powerDamage(owner),items,contactDone:false,impactAge:0});
+}
+function residueItemFrame(p,item,age=p.age) {
+  const flight=age-item.delay;if(flight<0)return null;
+  const distance=52+Math.abs(p.vx)*flight;
+  const limit=p.stopDistance??stats[p.owner.kind].powerRange;
+  if(distance>limit)return null;
+  return {x:p.originX+p.direction*distance,y:p.y+Math.sin(flight*15+item.phase)*2.5,
+    distance,angle:item.angle+flight*item.spin,alpha:Math.min(1,Math.max(0,(limit-distance)/20))};
 }
 function updateResidues(p,dt) {
-  p.prevX=p.x;p.prevY=p.y;p.age+=dt;p.life-=dt;
+  p.prevX=p.x;p.prevY=p.y;p.prevAge=p.age;p.age+=dt;p.life-=dt;
+  p.x=p.originX+p.direction*(52+Math.abs(p.vx)*p.age);
   if(p.contactDone)p.impactAge+=dt;
   else {
-    const range=stats[p.owner.kind].powerRange;
-    p.x=p.originX+p.direction*Math.min(range,Math.abs(p.x-p.originX)+Math.abs(p.vx)*dt);
-    const target=p.owner===player?cpu:player;
-    const box={left:Math.min(p.prevX,p.x)-p.radius,right:Math.max(p.prevX,p.x)+p.radius,top:p.y-48,bottom:p.y+48};
-    if(Math.abs(target.x-p.originX)<=range && target.invuln<=0 && !isVanished(target) && overlaps(box,hurtBox(target))) {
-      p.contactDone=true;stopCombatSound(p.sound);p.sound=null;
-      const struck=hit(target,p.damage,p.direction*230,-75,p.owner,{sourceX:p.originX,direction:p.direction,projectile:true,x:p.x,y:p.y});
-      if(struck)startCombatSound('residuesImpact');
-      dustBurst(p.x,FLOOR,7);
+    const target=p.owner===player?cpu:player,range=stats[p.owner.kind].powerRange;
+    if(Math.abs(target.x-p.originX)<=range && target.invuln<=0 && !isVanished(target)) {
+      for(const item of p.items) {
+        const current=residueItemFrame(p,item);if(!current)continue;
+        const previous=residueItemFrame(p,item,Math.max(item.delay,p.prevAge))||current;
+        const radius=item.size*.58;
+        const box={left:Math.min(previous.x,current.x)-radius,right:Math.max(previous.x,current.x)+radius,
+          top:Math.min(previous.y,current.y)-radius,bottom:Math.max(previous.y,current.y)+radius};
+        if(!overlaps(box,hurtBox(target)))continue;
+        p.contactDone=true;p.stopDistance=current.distance;stopCombatSound(p.sound);p.sound=null;
+        const struck=hit(target,p.damage,p.direction*230,-75,p.owner,{sourceX:p.originX,direction:p.direction,projectile:true,x:current.x,y:current.y});
+        if(struck)startCombatSound('residuesImpact');
+        dustBurst(current.x,FLOOR,7);break;
+      }
     }
-    if(Math.abs(p.x-p.originX)>=range)p.life=0;
   }
-  if(p.life<=0 || p.impactAge>.24) {
+  const last=p.items[p.items.length-1];
+  const tailDistance=52+Math.abs(p.vx)*(p.age-last.delay);
+  if(p.life<=0 || tailDistance>=(p.stopDistance??stats[p.owner.kind].powerRange)) {
     stopCombatSound(p.sound);const at=projectiles.indexOf(p);if(at>=0)projectiles.splice(at,1);
   }
 }
@@ -5216,12 +5239,10 @@ function drawEnvironmentalDebris(type,x,y,angle,size,alpha=1) {
   ctx.restore();
 }
 function drawResidues(p) {
-  const x=lerp(p.prevX,p.x,renderAlpha),y=lerp(p.prevY,p.y,renderAlpha);
-  const fade=p.contactDone?1-p.impactAge/.24:1;
-  for(let i=0;i<18;i++) {
-    const spread=p.contactDone?1+p.impactAge*5:1;
-    const dx=((i%6)*13-35)*p.direction*spread,dy=(Math.sin(i*2.4)*34+Math.cos(p.age*13+i)*8)*spread;
-    drawEnvironmentalDebris(ENVIRONMENTAL_DEBRIS[i%6],x+dx,y+dy,p.age*(i%2?7:-6)+i,15+i%3*3,fade);
+  const age=lerp(p.prevAge,p.age,renderAlpha);
+  for(const item of p.items) {
+    const frame=residueItemFrame(p,item,age);if(!frame)continue;
+    drawEnvironmentalDebris(item.type,frame.x,frame.y,frame.angle,item.size,frame.alpha);
   }
 }
 function environmentalLift(c) {

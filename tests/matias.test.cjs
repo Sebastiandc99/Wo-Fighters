@@ -15,11 +15,11 @@ test('residue burst costs 30 and hits every worker stature only once in either d
   assert.equal(g.run('target.health'),g.run('Math.round((100-damageTaken(target,22))*1000)/1000'));const hp=g.run('target.health');frames(g,.8);assert.equal(g.run('target.health'),hp);assert.equal(g.run('projectiles.length'),0);
  }
 });
-test('common power enforces energy and range, lets jumps evade, and guard takes normal projectile chip',()=>{
+test('common power enforces energy and range, lets well-timed jumps evade, and guard takes normal projectile chip',()=>{
  let g=setup();g.run('owner.power=29');assert.equal(g.run("attack(owner,'special')"),false);
  g=setup();g.run("owner.x=100;target.x=780;attack(owner,'special')");frames(g,1.4);assert.equal(g.run('target.health'),100);
  g=setup();g.run("held2.guard=true;attack(owner,'special')");frames(g,.9);assert.equal(g.run('target.health'),g.run('Math.round((100-damageTaken(target,1))*1000)/1000'));
- g=setup('angel');g.run("jump(target);attack(owner,'special')");frames(g,.8);assert.equal(g.run('target.health'),100);
+ g=setup('angel');g.run("attack(owner,'special')");frames(g,.24);g.run("jump(target)");frames(g,1.1);assert.equal(g.run('target.health'),100);
 });
 test('whirlwind needs 100 energy and range 8, lifts and spins before one ground-impact damage event',()=>{
  for(const d of [-1,1])for(const slot of [1,2]){
@@ -44,4 +44,20 @@ test('CPU super, mobile controls, all sprite poses, KO and menu cancellation rec
  const touch=setup();touch.taps[3].listeners.pointerdown({pointerId:22,preventDefault(){}});assert.equal(touch.run('owner.specialStyle'),'residues');frames(touch,.9);
  touch.run('navigator.maxTouchPoints=1;syncViewport();for(let pose=0;pose<=19;pose++)spriteFrame({kind:"matias",pose});');assert.equal(touch.run('mobileRendering'),true);
  const ko=setup();ko.run("target.health=1;held.down=true;attack(owner,'special')");frames(ko,3.02);assert.equal(ko.run('state'),'roundOver');assert.equal(ko.run('workCinematic'),null);frames(ko,3);assert.equal(ko.run('cpu.health'),100);
+});
+test('common attack emits a separated horizontal row with a new random sequence per cast',()=>{
+ const g=setup();g.run(`let seed=971;Math.random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};owner.x=100;target.x=800;spawnResidues(owner);const shot=projectiles[0];`);
+ assert.equal(g.run('shot.items.length'),8);assert.equal(g.run('new Set(shot.items.map(i=>i.type)).size'),6);
+ const first=g.run('JSON.stringify(shot.items)');g.run('spawnResidues(owner)');assert.notEqual(g.run('JSON.stringify(projectiles[1].items)'),first);
+ g.run('shot.age=.5;shot.prevAge=.49');const positions=g.run('shot.items.map(i=>residueItemFrame(shot,i))');
+ assert.ok(positions.every(Boolean));assert.ok(Math.max(...positions.map(p=>p.y))-Math.min(...positions.map(p=>p.y))<=5);
+ for(let i=1;i<positions.length;i++)assert.ok(Math.abs(positions[i-1].x-positions[i].x)>=35.9,'objects must remain separated in one row');
+ const frozen=g.run('JSON.stringify(shot)');g.run('renderAlpha=.5;drawResidues(shot);drawResidues(shot)');assert.equal(g.run('JSON.stringify(shot)'),frozen,'drawing must not reshuffle debris or advance the row');
+ assert.equal(g.run('residueItemFrame(shot,shot.items[7],.10)'),null,'later objects launch progressively');
+});
+test('the tail continues after first contact but cannot deal another hit or pass through the target',()=>{
+ const g=setup('german');g.run("attack(owner,'special')");frames(g,.52);
+ const hp=g.run('target.health');assert.ok(hp<100);assert.equal(g.run('projectiles[0].contactDone'),true);
+ assert.equal(g.run('projectiles[0].items.filter(i=>residueItemFrame(projectiles[0],i)).length>0'),true);
+ frames(g,.65);assert.equal(g.run('target.health'),hp);assert.equal(g.run('projectiles.length'),0);
 });
