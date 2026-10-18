@@ -5168,20 +5168,21 @@ function drawFireCinematic(c) {
   ctx.restore();
 }
 
-// Matías: a spaced horizontal stream. Types and rotation are sampled only at cast time.
+// Matías: one randomly selected kind of litter per cast, in a spaced horizontal row.
 // The whole attack deals 22 once; later objects continue visually to the contact point.
 const ENVIRONMENTAL_DEBRIS = ['bottle','can','paper','wrapper','bag','leaf'];
+const RESIDUE_VARIANTS = ['bottle','leaf','can','paper'];
 function spawnResidues(owner) {
   const direction=owner.facing,x=owner.x+direction*52,y=FLOOR-102;
   const sound=owner.attackSound||startCombatSound('residues');owner.attackSound=null;
-  const types=[...ENVIRONMENTAL_DEBRIS];
-  for(let i=types.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[types[i],types[j]]=[types[j],types[i]];}
-  const items=Array.from({length:8},(_,i)=>({
-    type:i<types.length?types[i]:ENVIRONMENTAL_DEBRIS[Math.floor(Math.random()*ENVIRONMENTAL_DEBRIS.length)],
-    delay:i*.05,size:19+Math.random()*4,angle:Math.random()*Math.PI*2,
-    spin:(Math.random()<.5?-1:1)*(3+Math.random()*3),phase:Math.random()*Math.PI*2
+  const choices=RESIDUE_VARIANTS.filter(type=>type!==owner.lastResidueVariant);
+  const variant=choices[Math.floor(Math.random()*choices.length)];
+  owner.lastResidueVariant=variant;
+  const items=Array.from({length:4},(_,i)=>({
+    type:variant,delay:i*.085,size:26+Math.random()*3,angle:(Math.random()-.5)*.5,
+    spin:(Math.random()<.5?-1:1)*(1+Math.random()*.8),phase:Math.random()*Math.PI*2
   }));
-  projectiles.push({owner,style:'residues',sound,direction,originX:owner.x,x,y,prevX:x,prevY:y,
+  projectiles.push({owner,style:'residues',variant,sound,direction,originX:owner.x,x,y,prevX:x,prevY:y,
     vx:direction*720,age:0,prevAge:0,life:1.4,radius:14,damage:powerDamage(owner),items,contactDone:false,impactAge:0});
 }
 function residueItemFrame(p,item,age=p.age) {
@@ -5189,7 +5190,7 @@ function residueItemFrame(p,item,age=p.age) {
   const distance=52+Math.abs(p.vx)*flight;
   const limit=p.stopDistance??stats[p.owner.kind].powerRange;
   if(distance>limit)return null;
-  return {x:p.originX+p.direction*distance,y:p.y+Math.sin(flight*15+item.phase)*2.5,
+  return {x:p.originX+p.direction*distance,y:p.y+Math.sin(flight*15+item.phase)*1.5,
     distance,angle:item.angle+flight*item.spin,alpha:Math.min(1,Math.max(0,(limit-distance)/20))};
 }
 function updateResidues(p,dt) {
