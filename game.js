@@ -152,7 +152,7 @@ const POSES = {
 };
 
 const stats = {
-  matias: {name:"MATÍAS",normalDamage:8,resistance:92,powerDamage:22,superDamage:34,agility:7,speed:274,jump:615,defaultFace:1,size:267,height:205,width:23,bodyWidth:.94,recovery:.54,meleeReach:6,powerRange:608,superRange:608,description:"DESCARGA DE RESIDUOS (30%) · ↓ + PODER: TORBELLINO AMBIENTAL (100%)",ability:null},
+  matias: {name:"MATÍAS",normalDamage:8,resistance:92,powerDamage:22,superDamage:34,agility:7,speed:274,jump:615,defaultFace:1,size:280,height:210,width:25,bodyWidth:1.05,recovery:.54,meleeReach:6,powerRange:608,superRange:608,description:"DESCARGA DE RESIDUOS (30%) · ↓ + PODER: TORBELLINO AMBIENTAL (100%)",ability:null},
   german: {name:"GERMÁN", normalDamage:10, resistance:116, powerDamage:22, superDamage:34, agility:4, speed:238, jump:595, defaultFace:1, size:296, height:210, width:33, bodyWidth:1.03, recovery:.70, meleeReach:6, powerRange:608, superRange:608, description:"ZONA DE EXCLUSIÓN (30%) · ↓ + PODER: PARADA TOTAL (100%)", ability:null},
   fernando: {name:"HERALDO FICHERO", normalDamage:9, resistance:98, powerDamage:21, superDamage:33, agility:6, speed:262, jump:605, defaultFace:1, size:254, height:200, width:24, bodyWidth:.99, recovery:.60, meleeReach:5, powerRange:532, superRange:608, description:"LLUVIA DE CIGARRILLOS (30%) · ↓ + PODER: INCENDIO DE OBRA (100%)", ability:null},
   gabriel: {name:"GABRIEL", normalDamage:8, resistance:94, powerDamage:23, superDamage:34, agility:7, speed:274, jump:615, defaultFace:1, size:249, height:196, width:23, bodyWidth:.94, recovery:.56, meleeReach:5, powerRange:608, superRange:684, description:"CAMINO CRÍTICO (30%) · ↓ + PODER: GANTT IMPACTO (100%)", ability:null},
@@ -686,7 +686,7 @@ const towerPortraits = Object.fromEntries(Object.entries({
   angel:"assets/angel-cutout-v2.webp", primitivo:"assets/primitivo-cutout-v4.webp",
   peluche:"assets/peluche-presentation-v3.webp", tren:"assets/tren-presentation-v3.webp",
   linares:"assets/linares-portrait-v1.webp", gabriel:"assets/gabriel-portrait-v1.webp",
-  fernando:"assets/fernando-portrait-v1.webp", german:"assets/german-portrait-v1.webp",matias:"assets/matias-portrait-v1.webp"
+  fernando:"assets/fernando-portrait-v1.webp", german:"assets/german-portrait-v1.webp",matias:"assets/matias-presentation-v2.webp"
 }).map(([kind,src])=>[kind,loadImage(src)]));
 const TOWER_FLOORS = Array.from({length:roster.length-1},(_,i)=>1127-i*855/(roster.length-2));
 const TOWER_TIMING_SCALE = 1.8; // More time to follow the camera and read the rival.
