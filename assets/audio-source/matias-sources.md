@@ -1,0 +1,14 @@
+# Matías: sonidos reales y reproducibles
+
+Todas estas grabaciones están publicadas bajo CC0 1.0 Universal. Se consultó su licencia el 18 de octubre de 2026.
+
+| Capa | Grabación y autor | Fuente |
+| --- | --- | --- |
+| Viento | Wind blowing and howling in a plastic bottle, in the desert of Chile — felix.blume | https://freesound.org/people/felix.blume/sounds/147512/ |
+| Hojas | Leaves By The Store — Leo_Da_Slowly_Movin | https://freesound.org/people/Leo_Da_Slowly_Movin/sounds/613428/ |
+| Papel | rustling paper.wav — keweldog | https://freesound.org/people/keweldog/sounds/181774/ |
+| Envoltorios | Crumpling Plastic — OwlStorm | https://freesound.org/people/OwlStorm/sounds/151216/ |
+| Botellas | Plastic Bottle falling — WarcakeStudios | https://freesound.org/people/WarcakeStudios/sounds/173597/ |
+| Latas | Empty can falling — Rvgerxini | https://freesound.org/people/Rvgerxini/sounds/455130/ |
+
+Se descargaron las preescuchas públicas de alta calidad. Viento: extracto de 8 a 18 s, convertido a mono PCM 16 kHz. Hojas: extracto de 5 a 11 s, igual conversión. Los demás archivos se conservan como preescuchas MP3. `scripts/build-matias-audio.py` mezcla recortes con fundidos y filtrado; no usa osciladores ni tonos de caricatura. El golpe final usa el sonido de caída existente del juego. El grito reutiliza un recorte breve de la interpretación humana CC0 documentada en README.md, sin efectos de fuego.

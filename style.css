@@ -1254,3 +1254,13 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
 .continue-menu {font-size:clamp(10px,1.4cqw,18px);padding:.4em .8em;}
 @media (max-width:740px) {.continue-panel {gap:10px;}.continue-actions {gap:12px;}.continue-actions button {min-height:40px;}.continue-mode #finalScore {font-size:clamp(10px,1.8cqw,17px);}}
 @keyframes towerFightReveal {from {opacity:0;} to {opacity:1;}}
+
+/* Nine fighters: three equal rows, aligned with keyboard navigation. */
+.choice-row {grid-template-columns:repeat(3,minmax(0,1fr));}
+.portrait-matias {left:7%;border:0;background:transparent;box-shadow:none;}
+.portrait-matias img {height:89%;object-fit:contain;object-position:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
+.choice-tile[data-pick="matias"] img {object-fit:contain;object-position:center;background:#142341;}
+.selection-guide[data-kind="matias"] {--skill-accent:#badf8e;--skill-fill:#78ad54;}
+/* Three rows leave room for random selection and confirmation on 16:9 phones. */
+.select-screen .choice-dock,.phone-portrait .select-screen .choice-dock {top:29%;}
+.select-screen .choice-tile img {aspect-ratio:1.55;}

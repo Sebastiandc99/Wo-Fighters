@@ -5,12 +5,12 @@ function setup(rival='angel',dir=1,slot=1){
  const g=game();g.run(`gameMode='versus';startGame('${slot===1?'german':rival}','${slot===2?'german':rival}');state='playing';const owner=${slot===1?'player':'cpu'},target=${slot===1?'cpu':'player'};owner.x=480;target.x=480+${dir}*260;owner.facing=${dir};target.facing=${-dir};owner.power=100;`);return g;
 }
 function frames(g,t){g.run(`for(let i=0;i<${Math.round(t*120)};i++){update(STEP);draw();updateHud();}`);}
-test('Germán attributes, selection, portraits and seven-rival tower are integrated',()=>{
+test('Germán attributes, selection, portraits and eight-rival tower are integrated',()=>{
  const g=setup();assert.deepEqual(Array.from(g.run('[stats.german.normalDamage,stats.german.resistance,stats.german.agility,stats.german.meleeReach,stats.german.recovery,stats.german.powerDamage,stats.german.superDamage,stats.german.powerRange,stats.german.superRange]')),[10,116,4,6,.7,22,34,608,608]);
  g.run("gameMode='solo';openSelection()");g.nodes.get('pick-german').listeners.click();assert.equal(g.run('playerChoice'),'german');assert.match(g.nodes.get('selectionGuide').innerHTML,/german-stop.svg/);
- g.run('beginGame()');assert.equal(g.run('campaign.opponents.length'),7);assert.equal(g.run('new Set(campaign.opponents).size'),7);assert.equal(g.run("campaign.opponents.includes('german')"),false);
- for(let i=0;i<7;i++)g.run(`campaign.index=${i};showTournamentTower();drawTournamentTower();`);
- assert.equal(g.run('tower.final'),true);assert.equal(g.run('difficulty().name'),'LEYENDA');assert.equal(g.run('TOWER_FLOORS.every(Number.isFinite)'),true);
+ g.run('beginGame()');assert.equal(g.run('campaign.opponents.length'),8);assert.equal(g.run('new Set(campaign.opponents).size'),8);assert.equal(g.run("campaign.opponents.includes('german')"),false);
+ for(let i=0;i<8;i++)g.run(`campaign.index=${i};showTournamentTower();drawTournamentTower();`);
+ assert.equal(g.run('tower.final'),true);assert.equal(g.run('difficulty().name'),'ÉLITE');assert.equal(g.run('TOWER_FLOORS.every(Number.isFinite)'),true);
 });
 test('chain costs 30, reaches every stature both ways once and releases the restrained target',()=>{
  for(const rival of ['angel','primitivo','peluche','tren','linares','gabriel','fernando','german'])for(const dir of [-1,1])for(const slot of [1,2]){
