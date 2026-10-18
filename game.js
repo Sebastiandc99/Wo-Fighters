@@ -346,8 +346,8 @@ const KO_AUDIO_BASE64 = "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
 let koVoice = null;
 
 const COMBAT_AUDIO = {
-  residues:{src:"assets/wo-residues-v1.mp3",volume:.85,start:0,loop:false},
-  residuesImpact:{src:"assets/wo-residuesImpact-v1.mp3",volume:.85,start:0,loop:false},
+  residues:{src:"assets/wo-residues-v2.mp3",volume:.85,start:0,loop:false},
+  residuesImpact:{src:"assets/wo-residuesImpact-v2.mp3",volume:.85,start:0,loop:false},
   environmentalSuper:{src:"assets/wo-environmentalSuper-v1.mp3",volume:.88,start:0,loop:false},
   environmentalCry:{src:"assets/wo-environmentalCry-v1.mp3",volume:.62,start:0,loop:false},
   safetyChain:{src:"assets/wo-safetyChain-v1.wav",volume:.9,start:0,loop:false},
@@ -2314,6 +2314,7 @@ function poseFor(f) {
   if(["linares","gabriel","fernando"].includes(f.kind) && f.action==="special")return f.specialSpawned?16:4;
   if (workCinematic?.owner === f) return ["peluche","tren"].includes(f.kind) ? 17 : POSES[f.kind].power;
   if(f.kind==="angel" && f.action==="special")return 18+Math.floor((f.actionDuration-f.actionTime)*12)%2;
+  if(f.kind==="matias" && f.action==="special")return f.specialSpawned?POSES.matias.power:POSES.matias.idle;
   if(f.kind==="peluche" && f.action==="roll")return 18;
   if(f.kind==="tren" && f.action==="roll")return POSES.tren.idle;
   if(["peluche","tren"].includes(f.kind) && f.action==="special") return f.specialSpawned ? 16 : 4;
@@ -3380,6 +3381,14 @@ function stopCombatSound(voice, immediate = false) {
   combatSounds.delete(voice);
   const minAudible = voice.name === "cigarettes" ? .65 : ["critical", "crash"].includes(voice.name) ? .4 : voice.name === "water" ? .4 : voice.name === "dog" ? .5 : ["lightning", "voltaic", "cable", "meat", "flowers", "boomerang", "hockey", "whip"].includes(voice.name) ? .08 : 0;
   const heard = voice.audibleAt === null ? 0 : Math.max(0, (audioCtx?.currentTime ?? voice.elapsed) - voice.audibleAt);
+  if(voice.name==="residues" && !immediate && voice.source && !muted && state==="playing") {
+    const now=audioCtx.currentTime ?? 0;
+    soundTails.add(voice);
+    voice.gain?.gain.setValueAtTime?.(voice.gain.gain.value,now);
+    voice.gain?.gain.linearRampToValueAtTime?.(0,now+.045);
+    voice.source.onended=()=>{soundTails.delete(voice);disconnectCombatVoice(voice);};
+    voice.source.stop(now+.045);return;
+  }
   if (voice.name === "water" && !immediate && voice.source && !muted && state === "playing") {
     const now=audioCtx.currentTime ?? 0,fadeStart=now+Math.max(0,.4-heard),end=fadeStart+.18;
     soundTails.add(voice);voice.source.loop=false;
@@ -5168,30 +5177,41 @@ function drawFireCinematic(c) {
   ctx.restore();
 }
 
-// Matías: one randomly selected kind of litter per cast, in a spaced horizontal row.
-// The whole attack deals 22 once; later objects continue visually to the contact point.
+// Matías: four dense horizontal waste mixtures, sampled once per cast.
+// Decorative density never multiplies the single 22-damage contact.
 const ENVIRONMENTAL_DEBRIS = ['bottle','can','paper','wrapper','bag','leaf'];
-const RESIDUE_VARIANTS = ['bottle','leaf','can','paper'];
+const RESIDUE_VARIANTS = ['plasticsPaper','leavesWrappers','cansEarth','mixed'];
+const RESIDUE_MIXES = {
+  plasticsPaper:['bottle','paper','bag','wrapper','bottle','paper','bottle','paper'],
+  leavesWrappers:['leaf','wrapper','twig','paper','leaf','leaf','wrapper','clod'],
+  cansEarth:['can','clod','paper','clod','can','clod','can','clod'],
+  mixed:['bottle','leaf','can','paper','wrapper','bag','twig','clod']
+};
+const residueSprites = new Map();
 function spawnResidues(owner) {
   const direction=owner.facing,x=owner.x+direction*52,y=FLOOR-102;
   const sound=owner.attackSound||startCombatSound('residues');owner.attackSound=null;
   const choices=RESIDUE_VARIANTS.filter(type=>type!==owner.lastResidueVariant);
-  const variant=choices[Math.floor(Math.random()*choices.length)];
+  const variant=choices[Math.floor(Math.random()*choices.length)],mix=RESIDUE_MIXES[variant];
   owner.lastResidueVariant=variant;
-  const items=Array.from({length:4},(_,i)=>({
-    type:variant,delay:i*.085,size:26+Math.random()*3,angle:(Math.random()-.5)*.5,
-    spin:(Math.random()<.5?-1:1)*(1+Math.random()*.8),phase:Math.random()*Math.PI*2
-  }));
+  const items=Array.from({length:64},(_,i)=>{
+    const type=i<mix.length?mix[i]:mix[Math.floor(Math.random()*mix.length)];
+    return {type,delay:i*.6/63,size:(type==='clod'?10:type==='twig'?30:type==='leaf'?18:type==='paper'?18:24)+Math.random()*5,
+      offsetY:((i%3)-1)*16+(Math.random()-.5)*8,tone:Math.floor(Math.random()*4),
+      angle:Math.random()*Math.PI*2,spin:(Math.random()<.5?-1:1)*(1.5+Math.random()*2),phase:Math.random()*Math.PI*2};
+  });
+  const motes=Array.from({length:52},(_,i)=>({delay:i*.6/51,size:2+Math.random()*3,
+    offsetY:(Math.random()-.5)*56,phase:Math.random()*Math.PI*2,tone:Math.floor(Math.random()*4),angle:0,spin:0}));
   projectiles.push({owner,style:'residues',variant,sound,direction,originX:owner.x,x,y,prevX:x,prevY:y,
-    vx:direction*720,age:0,prevAge:0,life:1.4,radius:14,damage:powerDamage(owner),items,contactDone:false,impactAge:0});
+    vx:direction*720,age:0,prevAge:0,life:1.5,radius:14,damage:powerDamage(owner),items,motes,contactDone:false,impactAge:0});
 }
 function residueItemFrame(p,item,age=p.age) {
   const flight=age-item.delay;if(flight<0)return null;
   const distance=52+Math.abs(p.vx)*flight;
   const limit=p.stopDistance??stats[p.owner.kind].powerRange;
   if(distance>limit)return null;
-  return {x:p.originX+p.direction*distance,y:p.y+Math.sin(flight*15+item.phase)*1.5,
-    distance,angle:item.angle+flight*item.spin,alpha:Math.min(1,Math.max(0,(limit-distance)/20))};
+  return {x:p.originX+p.direction*distance,y:p.y+item.offsetY+Math.sin(flight*16+item.phase)*2,
+    distance,angle:item.angle+flight*item.spin,alpha:Math.min(1,flight/.025)*Math.min(1,Math.max(0,(limit-distance)/22))};
 }
 function updateResidues(p,dt) {
   p.prevX=p.x;p.prevY=p.y;p.prevAge=p.age;p.age+=dt;p.life-=dt;
@@ -5200,17 +5220,17 @@ function updateResidues(p,dt) {
   else {
     const target=p.owner===player?cpu:player,range=stats[p.owner.kind].powerRange;
     if(Math.abs(target.x-p.originX)<=range && target.invuln<=0 && !isVanished(target)) {
-      for(const item of p.items) {
-        const current=residueItemFrame(p,item);if(!current)continue;
-        const previous=residueItemFrame(p,item,Math.max(item.delay,p.prevAge))||current;
-        const radius=item.size*.58;
-        const box={left:Math.min(previous.x,current.x)-radius,right:Math.max(previous.x,current.x)+radius,
-          top:Math.min(previous.y,current.y)-radius,bottom:Math.max(previous.y,current.y)+radius};
-        if(!overlaps(box,hurtBox(target)))continue;
-        p.contactDone=true;p.stopDistance=current.distance;stopCombatSound(p.sound);p.sound=null;
-        const struck=hit(target,p.damage,p.direction*230,-75,p.owner,{sourceX:p.originX,direction:p.direction,projectile:true,x:current.x,y:current.y});
+      // A single travelling front determines contact, like the other ranged powers.
+      // The dense visual tail cannot catch a landing fighter for an extra hit.
+      const front=Math.min(stats[p.owner.kind].powerRange,52+Math.abs(p.vx)*p.age);
+      const previous=Math.min(stats[p.owner.kind].powerRange,52+Math.abs(p.vx)*p.prevAge);
+      const x=p.originX+p.direction*front,prevX=p.originX+p.direction*previous;
+      const box={left:Math.min(prevX,x)-14,right:Math.max(prevX,x)+14,top:p.y-20,bottom:p.y+20};
+      if(p.age<= (range-52)/Math.abs(p.vx) && overlaps(box,hurtBox(target))) {
+        p.contactDone=true;p.stopDistance=front;
+        const struck=hit(target,p.damage,p.direction*230,-75,p.owner,{sourceX:p.originX,direction:p.direction,projectile:true,x,y:p.y});
         if(struck)startCombatSound('residuesImpact');
-        dustBurst(current.x,FLOOR,7);break;
+        dustBurst(x,FLOOR,7);
       }
     }
   }
@@ -5239,12 +5259,74 @@ function drawEnvironmentalDebris(type,x,y,angle,size,alpha=1) {
   }
   ctx.restore();
 }
+// Small reusable pixel sprites keep a dense wave inexpensive on phones.
+function residueSprite(type,tone) {
+  const key=type+':'+tone;
+  if(residueSprites.has(key))return residueSprites.get(key);
+  const surface=document.createElement('canvas');surface.width=surface.height=48;
+  const b=surface.getContext('2d');b.translate(24,24);
+  const colors=(type==='bottle'?[["#228fe0","#8adeff","#15529d"],["#42ac2c","#a5e862","#226223"],["#147ed1","#8acfff","#164a8a"],["#31a768","#90e3a5","#1c624b"]]:type==='wrapper'?[["#d93825","#ffb64a","#8b211d"],["#e6b82f","#fff07c","#b16a20"],["#247ac4","#93d8f2","#153d77"],["#c82d22","#f37f39","#811f1e"]]:[['#277cc0','#70c9ed','#124966'],['#45992b','#9adf60','#245523'],['#c84526','#f4a449','#78281d'],['#a6acb0','#eef3e4','#4c5b64']])[tone];
+  const poly=(color,points)=>{b.fillStyle=color;b.beginPath();b.moveTo(...points[0]);for(const point of points.slice(1))b.lineTo(...point);b.closePath();b.fill();};
+  const rect=(color,x,y,w,h)=>{b.fillStyle=color;b.fillRect(x,y,w,h);};
+  if(type==='bottle') {
+    poly('#182e34',[[-4,-20],[5,-20],[5,-12],[9,-8],[9,15],[6,18],[-7,18],[-10,15],[-10,-8],[-4,-12]]);
+    poly(colors[0],[[-3,-17],[4,-17],[4,-10],[7,-6],[7,14],[4,16],[-6,16],[-8,13],[-8,-6],[-3,-10]]);
+    rect(colors[2],-8,9,15,3);rect(colors[1],-6,-5,3,12);rect('#e7f0d4',-8,-1,15,7);
+    rect(colors[0],-4,1,7,3);rect('#edf8ee',-6,-11,2,5);rect('#233d5b',-5,-20,11,4);rect('#7abbd9',-4,-20,7,1);
+  } else if(type==='can') {
+    poly('#233238',[[-9,-15],[8,-15],[11,-12],[11,12],[7,16],[-8,16],[-11,12],[-11,-11]]);
+    rect('#a3b2b5',-9,-13,18,27);rect(colors[2],5,-10,4,22);rect(colors[0],-9,-8,15,18);rect(colors[1],-7,-7,2,14);
+    rect('#e4ebe8',-7,-14,14,3);rect('#40505a',-4,-12,7,2);rect('#e7eddb',-4,-2,8,3);rect('#d1d9d4',-8,11,16,3);rect('#75898e',-6,14,12,2);
+  } else if(type==='paper') {
+    poly('#534e40',[[-15,-16],[10,-14],[15,-8],[12,17],[-13,15],[-17,7]]);
+    poly('#e9e5cf',[[-13,-14],[8,-12],[13,-7],[10,15],[-11,13],[-15,6]]);
+    poly('#faf7e8',[[0,-13],[8,-12],[13,-7],[3,-7]]);poly('#c4c1af',[[-15,6],[-1,2],[10,15],[-11,13]]);
+    for(let n=0;n<4;n++){rect('#6f7c7a',-10,-7+n*4,8,1);rect('#a0aaa0',1,-5+n*4,6,1);}
+  } else if(type==='wrapper') {
+    poly('#4b3523',[[-18,-11],[-11,-9],[-9,-14],[15,-12],[18,-5],[15,13],[8,11],[4,15],[-16,12]]);
+    poly(colors[0],[[-16,-9],[-9,-7],[-8,-12],[13,-10],[16,-4],[13,11],[7,9],[3,13],[-14,10]]);
+    rect(colors[1],-12,-7,3,15);rect('#f4d991',-5,-4,13,8);rect(colors[2],-3,-2,9,3);rect('#e3e3b9',-13,9,23,2);
+    rect('#fff0c8',-9,-11,20,2);
+  } else if(type==='bag') {
+    poly('#45515c',[[-17,-17],[-7,-19],[-4,-8],[5,-8],[7,-20],[15,-17],[18,15],[7,19],[-14,16]]);
+    poly('#e5e6dd',[[-14,-15],[-9,-16],[-6,-5],[8,-5],[10,-17],[13,-15],[15,13],[6,16],[-12,13]]);
+    poly('#b6c8ce',[[-12,-2],[-2,6],[-9,13],[-12,13]]);poly('#a1b7c0',[[2,-3],[9,4],[6,16],[0,12]]);
+    rect('#faf9ef',-11,-2,3,10);rect('#f9f9ef',8,-1,3,8);
+  } else if(type==='leaf') {
+    poly('#324722',[[-19,2],[-12,-7],[-4,-9],[1,-13],[6,-11],[18,-4],[14,6],[5,11],[-4,10],[-10,7]]);
+    poly(tone===2?'#b57924':'#72af30',[[-17,2],[-10,-5],[-2,-7],[2,-10],[7,-8],[15,-3],[11,5],[4,8],[-4,7]]);
+    poly(tone===2?'#e3b746':'#b8d951',[[-17,2],[14,-3],[3,3],[-5,6]]);
+    b.strokeStyle='#3b5c22';b.lineWidth=1;b.beginPath();b.moveTo(-18,3);b.lineTo(13,-3);
+    for(let n=0;n<4;n++){b.moveTo(-7+n*5,1-n);b.lineTo(-8+n*5,-4-n*.6);}b.stroke();
+  } else if(type==='twig') {
+    poly('#342a21',[[-23,2],[-3,-3],[21,-7],[23,-3],[5,1],[-19,7]]);
+    poly('#a17b42',[[-22,3],[-3,-1],[21,-6],[20,-3],[-19,5]]);
+    poly('#54422a',[[-3,0],[3,-10],[6,-11],[2,0]]);rect('#cbab70',-16,2,5,1);
+  } else {
+    poly('#3e3628',[[-12,-5],[-6,-11],[6,-10],[13,-2],[8,10],[-4,13],[-12,5]]);
+    poly('#927044',[[-10,-4],[-5,-9],[5,-8],[10,-1],[6,8],[-4,10],[-10,4]]);
+    rect('#bb9a63',-5,-7,6,3);rect('#c9ad79',-9,-3,3,3);rect('#695333',2,4,6,3);rect('#4c412e',-5,6,3,3);
+  }
+  residueSprites.set(key,surface);return surface;
+}
 function drawResidues(p) {
   const age=lerp(p.prevAge,p.age,renderAlpha);
-  for(const item of p.items) {
-    const frame=residueItemFrame(p,item,age);if(!frame)continue;
-    drawEnvironmentalDebris(item.type,frame.x,frame.y,frame.angle,item.size,frame.alpha);
+  ctx.save();ctx.imageSmoothingEnabled=false;
+  // Thin dust streaks connect the moving debris without a glowing or spherical core.
+  for(const item of p.motes) {
+    const f=residueItemFrame(p,item,age);if(!f)continue;
+    ctx.globalAlpha=f.alpha*.65;ctx.fillStyle=['#bca77e','#eeead4','#807253','#d5cca3'][item.tone];
+    ctx.fillRect(Math.round(f.x-p.direction*12),Math.round(f.y),p.direction*9,1);
+    ctx.globalAlpha=f.alpha;ctx.fillRect(Math.round(f.x),Math.round(f.y),item.size,item.size);
   }
+  for(let n=p.items.length-1;n>=0;n--) {
+    const item=p.items[n],f=residueItemFrame(p,item,age);if(!f)continue;
+    ctx.save();ctx.globalAlpha=f.alpha;ctx.translate(Math.round(f.x),Math.round(f.y));
+    ctx.rotate(Math.round(f.angle*12)/12);
+    const size=Math.round(item.size*1.6);
+    ctx.drawImage(residueSprite(item.type,item.tone),-size/2,-size/2,size,size);ctx.restore();
+  }
+  ctx.restore();
 }
 function environmentalLift(c) {
   if(!c.windCaught || c.elapsed<=.55 || c.elapsed>=c.impactAt)return 0;

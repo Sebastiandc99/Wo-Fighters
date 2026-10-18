@@ -45,26 +45,58 @@ test('CPU super, mobile controls, all sprite poses, KO and menu cancellation rec
  touch.run('navigator.maxTouchPoints=1;syncViewport();for(let pose=0;pose<=19;pose++)spriteFrame({kind:"matias",pose});');assert.equal(touch.run('mobileRendering'),true);
  const ko=setup();ko.run("target.health=1;held.down=true;attack(owner,'special')");frames(ko,3.02);assert.equal(ko.run('state'),'roundOver');assert.equal(ko.run('workCinematic'),null);frames(ko,3);assert.equal(ko.run('cpu.health'),100);
 });
-test('common attack randomly chooses one of four distinct rows per cast without immediate repetition',()=>{
+test('common attack chooses four reference mixtures and renders a dense horizontal wave deterministically',()=>{
  const g=setup();g.run(`let seed=971;Math.random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};owner.x=100;target.x=800;spawnResidues(owner);const shot=projectiles[0];`);
- assert.equal(g.run('shot.items.length'),4);assert.equal(g.run('shot.items.every(i=>i.type===shot.variant)'),true);
+ assert.equal(g.run('shot.items.length'),64);assert.equal(g.run('shot.motes.length'),52);
  g.run('for(let n=0;n<100;n++)spawnResidues(owner)');
- assert.deepEqual(Array.from(g.run('[...new Set(projectiles.map(p=>p.variant))].sort()')),['bottle','can','leaf','paper']);
+ assert.deepEqual(Array.from(g.run('[...new Set(projectiles.map(p=>p.variant))].sort()')),['cansEarth','leavesWrappers','mixed','plasticsPaper']);
  assert.equal(g.run('projectiles.every((p,i)=>i===0||p.variant!==projectiles[i-1].variant)'),true);
- assert.equal(g.run('projectiles.every(p=>p.items.length===4&&p.items.every(i=>i.type===p.variant))'),true);
- for(const random of [0,.3,.6,.9]){
-  const sample=setup();sample.run(`Math.random=()=>${random};spawnResidues(owner)`);
-  assert.equal(sample.run('projectiles[0].variant'),['bottle','leaf','can','paper'][Math.floor(random*4)]);
+ assert.equal(g.run('projectiles.every(p=>p.items.every(i=>RESIDUE_MIXES[p.variant].includes(i.type)))'),true);
+ for(const [n,expected] of [['bottle','paper','bag','wrapper'],['leaf','wrapper','twig','paper','clod'],['can','clod','paper'],['bottle','leaf','can','paper','wrapper','bag','twig','clod']].entries()){
+  const sample=setup();sample.run(`Math.random=()=>${(n+.25)/4};spawnResidues(owner)`);
+  assert.deepEqual(Array.from(sample.run('[...new Set(projectiles[0].items.map(i=>i.type))].sort()')),expected.sort());
  }
- g.run('shot.age=.5;shot.prevAge=.49');const positions=g.run('shot.items.map(i=>residueItemFrame(shot,i))');
- assert.ok(positions.every(Boolean));assert.ok(Math.max(...positions.map(p=>p.y))-Math.min(...positions.map(p=>p.y))<=3);
- for(let i=1;i<positions.length;i++)assert.ok(Math.abs(positions[i-1].x-positions[i].x)>=61,'objects must remain separated in one row');
- const frozen=g.run('JSON.stringify(shot)');g.run('renderAlpha=.5;drawResidues(shot);drawResidues(shot)');assert.equal(g.run('JSON.stringify(shot)'),frozen,'drawing must not reshuffle debris or advance the row');
- assert.equal(g.run('residueItemFrame(shot,shot.items[3],.10)'),null,'later objects launch progressively');
+ g.run('shot.age=.65;shot.prevAge=.64');const positions=g.run('shot.items.map(i=>residueItemFrame(shot,i))');
+ assert.ok(positions.every(Boolean));
+ const width=Math.max(...positions.map(p=>p.x))-Math.min(...positions.map(p=>p.x));
+ const height=Math.max(...positions.map(p=>p.y))-Math.min(...positions.map(p=>p.y));
+ assert.ok(width>=430&&width/height>7,'the silhouette must be a long horizontal wave, never a ball');
+ assert.ok(height>30&&height<45,'several narrow lanes make a dense but readable current');
+ const frozen=g.run('JSON.stringify(shot)');g.run('renderAlpha=.5;drawResidues(shot);drawResidues(shot)');assert.equal(g.run('JSON.stringify(shot)'),frozen,'drawing must not reshuffle debris or advance the wave');
+ assert.equal(g.run('residueItemFrame(shot,shot.items[63],.10)'),null,'debris is emitted progressively');
+ const cached=g.run('residueSprites.size');g.run('drawResidues(shot)');assert.equal(g.run('residueSprites.size'),cached);assert.ok(cached<=32);
 });
 test('the tail continues after first contact but cannot deal another hit or pass through the target',()=>{
  const g=setup('german');g.run("attack(owner,'special')");frames(g,.52);
  const hp=g.run('target.health');assert.ok(hp<100);assert.equal(g.run('projectiles[0].contactDone'),true);
  assert.equal(g.run('projectiles[0].items.filter(i=>residueItemFrame(projectiles[0],i)).length>0'),true);
  frames(g,.65);assert.equal(g.run('target.health'),hp);assert.equal(g.run('projectiles.length'),0);
+});
+test('all four mixtures keep the same damage and range at mobile timing for both fighters and directions',()=>{
+ for(const choice of [.05,.30,.55,.80])for(const direction of [-1,1])for(const slot of [1,2]){
+  const g=setup('angel',direction,slot);g.run(`Math.random=()=>${choice};navigator.maxTouchPoints=1;syncViewport();attack(owner,'special')`);
+  assert.equal(g.run('owner.power'),70);g.run('for(let n=0;n<48;n++){update(STEP*2);draw()}');
+  assert.equal(g.run('target.health'),g.run('Math.round((100-damageTaken(target,22))*1000)/1000'));
+  const hp=g.run('target.health');frames(g,.8);assert.equal(g.run('target.health'),hp);assert.equal(g.run('projectiles.length'),0);
+ }
+});
+test('the throwing pose and travelling sound last through the visual emission and pause together',()=>{
+ const g=setup();g.run("attack(owner,'special')");frames(g,.60);
+ assert.equal(g.run('poseFor(owner)'),g.run('POSES.matias.power'));
+ assert.equal(g.run('projectiles[0].contactDone'),true);
+ g.run('const waveSound=projectiles[0].sound;const waveAge=projectiles[0].age;const soundAge=waveSound.elapsed;togglePause()');
+ assert.equal(g.run('combatSounds.has(waveSound)'),true);frames(g,.5);
+ assert.equal(g.run('projectiles[0].age===waveAge&&waveSound.elapsed===soundAge'),true);
+ g.run('togglePause()');frames(g,.7);assert.equal(g.run('projectiles.length'),0);assert.equal(g.run('combatSounds.has(waveSound)'),false);
+});
+test('stopping the litter sound fades briefly, and immediate cancellation clears that tail',()=>{
+ const g=setup(),events=[];
+ g.sandbox.recordFade=(...values)=>events.push(values);
+ g.run(`muted=false;audioCtx={currentTime:2};const voice={name:'residues',netId:77,elapsed:.8,audibleAt:1.2,
+  source:{stop:t=>recordFade('stop',t),disconnect:()=>recordFade('disconnect')},
+  gain:{gain:{value:.85,setValueAtTime:(...a)=>recordFade('start',...a),linearRampToValueAtTime:(...a)=>recordFade('fade',...a)},disconnect(){}}};
+  combatSounds.add(voice);stopCombatSound(voice)`);
+ assert.ok(events.some(e=>e[0]==='fade'&&e[1]===0&&Math.abs(e[2]-2.045)<1e-9));
+ assert.equal(g.run('combatSounds.has(voice)'),false);assert.equal(g.run('soundTails.has(voice)'),true);
+ g.run('stopCombatSound(voice,true)');assert.equal(g.run('soundTails.has(voice)'),false);assert.equal(g.run('voice.source'),null);
 });
