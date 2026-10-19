@@ -78,7 +78,7 @@ const stageRoster = Object.keys(stages);
 const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(stages[key].src)]));
 
 const assets = {
-  matias: loadImage("assets/matias-atlas-v1.webp"),
+  matias: loadImage("assets/matias-atlas-v2.png"),
   german: loadImage("assets/german-atlas-v1.webp"),
   germanSignals: loadImage("assets/german-signals-v1.webp"),
   primitivoIntro: loadImage("assets/primitivo-intro-v1.webp"),
@@ -686,7 +686,7 @@ const towerPortraits = Object.fromEntries(Object.entries({
   angel:"assets/angel-cutout-v2.webp", primitivo:"assets/primitivo-cutout-v4.webp",
   peluche:"assets/peluche-presentation-v3.webp", tren:"assets/tren-presentation-v3.webp",
   linares:"assets/linares-portrait-v1.webp", gabriel:"assets/gabriel-portrait-v1.webp",
-  fernando:"assets/fernando-portrait-v1.webp", german:"assets/german-portrait-v1.webp",matias:"assets/matias-presentation-v3.webp"
+  fernando:"assets/fernando-portrait-v1.webp", german:"assets/german-portrait-v1.webp",matias:"assets/matias-presentation-v4.png"
 }).map(([kind,src])=>[kind,loadImage(src)]));
 const TOWER_FLOORS = Array.from({length:roster.length-1},(_,i)=>1127-i*855/(roster.length-2));
 const TOWER_TIMING_SCALE = 1.8; // More time to follow the camera and read the rival.
