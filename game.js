@@ -78,6 +78,7 @@ const stageRoster = Object.keys(stages);
 const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(stages[key].src)]));
 
 const assets = {
+  cornerCameo: loadImage("assets/corner-cameo-v1.webp"),
   matias: loadImage("assets/matias-atlas-v2.png"),
   matiasLizards: loadImage("assets/matias-lizards-v1.webp"),
   german: loadImage("assets/german-atlas-v1.webp"),
@@ -347,6 +348,7 @@ const KO_AUDIO_BASE64 = "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
 let koVoice = null;
 
 const COMBAT_AUDIO = {
+  cornerCameo:{src:"assets/wo-corner-cameo-v1.mp3",volume:.92,start:0,end:.73,loop:false},
   residues:{src:"assets/wo-residues-v2.mp3",volume:.85,start:0,loop:false},
   residuesImpact:{src:"assets/wo-residuesImpact-v2.mp3",volume:.85,start:0,loop:false},
   lizardRain:{src:"assets/wo-lizardRain-v1.mp3",volume:.8,start:0,loop:false},
@@ -413,6 +415,9 @@ let cpu = null;
 let fighters = [];
 let projectiles = [];
 let workCinematic = null;
+// Cosmetic corner cameo: its own clock never locks fighters or changes combat stats.
+const CORNER_CAMEO={duration:1.45,enter:.12,exit:.16,voiceAt:.10,cooldown:14,uppercutChance:.20,finisherChance:.06};
+let cornerCameo=null,cornerCameoCooldown=0;
 let particles = [];
 let afterimages = [];
 let effects = [];
@@ -1086,6 +1091,7 @@ function update(dt) {
   }
 
   advanceCombatSounds(dt);
+  updateCornerCameo(dt);
 
   roundTime = Math.max(0, roundTime - dt);
   if (roundTime <= 0) {
@@ -1836,6 +1842,7 @@ function hit(target, damage, knockX, knockY, attacker, contact = {}) {
       addEffect("ring",contact.x??target.x,contact.y??target.y-104,powerColor(attacker.kind),62,.32);
       screenShake=Math.max(screenShake,4);
     }
+    if(target.health>0)maybeCornerCameo(contact);
     if (navigator.vibrate) navigator.vibrate(15);
   }
   suspendCombatSounds(false);
@@ -2284,6 +2291,7 @@ function draw() {
   ctx.restore();
   if (workCinematic) drawWorkCinematic();
   fighters.forEach(drawComboHud);
+  drawCornerCameo();
 }
 
 function drawComboHud(f) {
@@ -3310,7 +3318,7 @@ function ensureAudio(fromGesture = false) {
     loadKOAudio();
     loadRoundVoice(match.round);
     if(!fightAudioKinds.has("common")) {
-      for(const name of ["punchHit","kickHit","uppercutHit","bodyFall","meleeSwing"])loadCombatAudio(name);
+      for(const name of ["punchHit","kickHit","uppercutHit","bodyFall","meleeSwing","cornerCameo"])loadCombatAudio(name);
       fightAudioKinds.add("common");
     }
     for(const fighter of fighters)if(!fightAudioKinds.has(fighter.kind)) {
@@ -3357,8 +3365,8 @@ function loadCombatAudio(name) {
     .finally(()=>{cue.loading=null;});
 }
 
-function startCombatSound(name) {
-  const voice = { name, elapsed: 0, source: null, gain: null, audibleAt: null };
+function startCombatSound(name, elapsed = 0) {
+  const voice = { name, elapsed, source: null, gain: null, audibleAt: null };
   voice.netId = ++onlineSoundId;
   online?.audio("combat", name, voice.netId);
   combatSounds.add(voice);
@@ -3418,6 +3426,7 @@ function stopFighterSound(f) {
 }
 
 function stopAllCombatSounds() {
+  cornerCameo=null;cornerCameoCooldown=0;
   stopKOAudio();
   stopSynthSounds();
   projectiles = projectiles.filter(p => p.style !== "boomerang");
@@ -4204,6 +4213,7 @@ function workHookLift(t) {
   return 0;
 }
 function startWorkCinematic(owner) {
+  clearCornerCameo();
   const target=owner===player?cpu:player;
   const duration=owner.kind==="matias"?4.15:owner.kind==="german"?3.25:owner.kind==="fernando"?4.9:owner.kind==="gabriel"?2.85:owner.kind==="linares"?3.1:owner.kind==="tren"?2.8:owner.kind==="peluche"?2.65:1.85;
   const impactAt=owner.kind==="matias"?3.30:owner.kind==="german"?2.10:owner.kind==="fernando"?3.35:owner.kind==="gabriel"?2.05:owner.kind==="linares"?2.05:owner.kind==="tren"?1.95:owner.kind==="peluche"?1.90:1.12;
@@ -5445,6 +5455,60 @@ function drawLizardRain(c) {
       ctx.beginPath();ctx.moveTo(before.x-cameraX,before.y);ctx.lineTo(item.x-cameraX,item.y);ctx.stroke();ctx.restore();
     }
     drawLizard(item.x-cameraX,item.y,c.direction,item.angle,c.lizards[i].length,Math.floor(time*14+i)%2,item.alpha);
+  }
+  ctx.restore();
+}
+
+// An occasional photo slides in from the lower-right after a connected uppercut or combo finisher.
+function maybeCornerCameo(contact) {
+  if(state!=="playing" || workCinematic || cornerCameo || cornerCameoCooldown>0 || contact.projectile || !contact.attackType)return false;
+  const chance=contact.attackType==="uppercut"?CORNER_CAMEO.uppercutChance:contact.chainFinisher?CORNER_CAMEO.finisherChance:0;
+  const photo=assets.cornerCameo;
+  if(!chance || !photo.complete || !photo.naturalWidth || Math.random()>=chance)return false;
+  cornerCameo={elapsed:0,voiceStarted:false,sound:null};cornerCameoCooldown=CORNER_CAMEO.cooldown;
+  return true;
+}
+function clearCornerCameo() {
+  if(cornerCameo?.sound)stopCombatSound(cornerCameo.sound,true);
+  cornerCameo=null;
+}
+function updateCornerCameo(dt) {
+  if(state!=="playing")return;
+  cornerCameoCooldown=Math.max(0,cornerCameoCooldown-dt);
+  const cameo=cornerCameo;if(!cameo)return;
+  cameo.elapsed+=dt;
+  if(cameo.elapsed>=CORNER_CAMEO.duration){clearCornerCameo();return;}
+  if(!cameo.voiceStarted && cameo.elapsed>=CORNER_CAMEO.voiceAt) {
+    cameo.voiceStarted=true;
+    cameo.sound=startCombatSound("cornerCameo",Math.max(0,cameo.elapsed-CORNER_CAMEO.voiceAt));
+  }
+}
+function cornerCameoFrame(elapsed) {
+  const enter=Math.max(0,Math.min(1,elapsed/CORNER_CAMEO.enter));
+  const exit=Math.max(0,Math.min(1,(CORNER_CAMEO.duration-elapsed)/CORNER_CAMEO.exit));
+  const visible=Math.min(1-(1-enter)**3,exit);
+  return {slide:(1-visible)*400,drop:(1-visible)*18,visible:elapsed>=0 && elapsed<CORNER_CAMEO.duration};
+}
+function drawCornerCameo() {
+  const cameo=cornerCameo,photo=assets.cornerCameo;
+  if(!cameo || !photo.complete || !photo.naturalWidth)return;
+  if(!["playing","paused"].includes(state))return;
+  const frame=cornerCameoFrame(cameo.elapsed);if(!frame.visible)return;
+  const height=190,width=height*photo.naturalWidth/photo.naturalHeight;
+  ctx.save();
+  // Screen coordinates keep the cameo anchored even while the arena pans or shakes.
+  ctx.beginPath();ctx.rect(0,0,VIEW_WIDTH,VIEW_HEIGHT);ctx.clip();
+  ctx.translate(VIEW_WIDTH-width+frame.slide,VIEW_HEIGHT-height+8+frame.drop);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+  ctx.drawImage(photo,0,0,width,height);
+  if(cameo.elapsed>=CORNER_CAMEO.voiceAt) {
+    const x=-154,y=10,w=176,h=58;
+    ctx.fillStyle="#fffdf2";ctx.strokeStyle="#24221e";ctx.lineWidth=2.5;ctx.lineJoin="round";
+    ctx.beginPath();ctx.roundRect(x,y,w,h,12);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x+w-22,y+h-1);ctx.lineTo(x+w+22,y+h+17);ctx.lineTo(x+w-5,y+h-1);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.strokeStyle="#fffdf2";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x+w-20,y+h-1);ctx.lineTo(x+w-6,y+h-1);ctx.stroke();
+    ctx.fillStyle="#24221e";ctx.textAlign="center";ctx.textBaseline="middle";ctx.font="bold 17px Arial, sans-serif";
+    ctx.fillText("Chicos, no se",x+w/2,y+20);ctx.fillText("lastimen",x+w/2,y+41);
   }
   ctx.restore();
 }
