@@ -7,9 +7,9 @@ Referencia del usuario: https://www.youtube.com/shorts/Vty1fRzEhiQ
 
 ## Adaptación a WO Fighters
 
-- Se prueba una aparición después de un gancho conectado sin cobertura (20 %) o un remate de combo conectado (6 %). No se activa con golpes fallidos, cubiertos, proyectiles, especiales cinematográficos ni K.O.
+- La primera aparición de cada round está garantizada con el primer gancho o remate de combo conectado sin cobertura. También puede salir con golpes comunes. Tras la espera, las probabilidades por golpe válido son: gancho 40 %, remate 25 %, patada 15 % y puño 8 %. Un límite de seis impactos válidos sin aparición evita rachas largas de mala suerte. Los golpes durante la espera no se acumulan. No se activa con golpes fallidos, cubiertos, proyectiles, especiales cinematográficos ni K.O.
 - Dura 1,45 s: entrada lateral de 0,12 s, pausa breve y salida de 0,16 s. Hay 14 s de espera entre apariciones.
-- La foto y el globo se dibujan en coordenadas de pantalla, después de la arena y sus sacudidas. El texto exacto es «Chicos, no se lastimen», en dos líneas.
+- La foto tiene 150 px de altura en el escenario de referencia (antes 190 px, aproximadamente 21 % más pequeña). La foto y el globo se dibujan en coordenadas de pantalla, después de la arena y sus sacudidas. El texto exacto es «Chicos, no se lastimen», en dos líneas.
 - No cambia daño, recuperación, controles, cámara ni música. La pausa congela imagen y sonido. Menús, nuevo round y especiales cinematográficos limpian el cameo.
 
 ## Imagen y audio

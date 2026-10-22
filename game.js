@@ -416,8 +416,8 @@ let fighters = [];
 let projectiles = [];
 let workCinematic = null;
 // Cosmetic corner cameo: its own clock never locks fighters or changes combat stats.
-const CORNER_CAMEO={duration:1.45,enter:.12,exit:.16,voiceAt:.10,cooldown:14,uppercutChance:.20,finisherChance:.06};
-let cornerCameo=null,cornerCameoCooldown=0;
+const CORNER_CAMEO={duration:1.45,enter:.12,exit:.16,voiceAt:.10,cooldown:14,uppercutChance:.40,finisherChance:.25,kickChance:.15,punchChance:.08,maxMisses:6};
+let cornerCameo=null,cornerCameoCooldown=0,cornerCameoHits=0,cornerCameoShown=false;
 let particles = [];
 let afterimages = [];
 let effects = [];
@@ -3426,7 +3426,7 @@ function stopFighterSound(f) {
 }
 
 function stopAllCombatSounds() {
-  cornerCameo=null;cornerCameoCooldown=0;
+  cornerCameo=null;cornerCameoCooldown=0;cornerCameoHits=0;cornerCameoShown=false;
   stopKOAudio();
   stopSynthSounds();
   projectiles = projectiles.filter(p => p.style !== "boomerang");
@@ -5459,13 +5459,19 @@ function drawLizardRain(c) {
   ctx.restore();
 }
 
-// An occasional photo slides in from the lower-right after a connected uppercut or combo finisher.
+// The first uppercut/finisher reveals the photo; ordinary melee hits can reveal it too.
 function maybeCornerCameo(contact) {
-  if(state!=="playing" || workCinematic || cornerCameo || cornerCameoCooldown>0 || contact.projectile || !contact.attackType)return false;
-  const chance=contact.attackType==="uppercut"?CORNER_CAMEO.uppercutChance:contact.chainFinisher?CORNER_CAMEO.finisherChance:0;
+  if(state!=="playing" || workCinematic || cornerCameo || cornerCameoCooldown>0 || contact.projectile || !["punch","kick","uppercut"].includes(contact.attackType))return false;
   const photo=assets.cornerCameo;
-  if(!chance || !photo.complete || !photo.naturalWidth || Math.random()>=chance)return false;
+  if(!photo.complete || !photo.naturalWidth)return false;
+  const uppercut=contact.attackType==="uppercut",finisher=!!contact.chainFinisher;
+  const chance=uppercut?CORNER_CAMEO.uppercutChance:finisher?CORNER_CAMEO.finisherChance:contact.attackType==="kick"?CORNER_CAMEO.kickChance:CORNER_CAMEO.punchChance;
+  cornerCameoHits++;
+  // Bound unlucky streaks so normal play cannot hide the feature indefinitely.
+  const reveal=(!cornerCameoShown && (uppercut || finisher)) || cornerCameoHits>=CORNER_CAMEO.maxMisses;
+  if(!reveal && Math.random()>=chance)return false;
   cornerCameo={elapsed:0,voiceStarted:false,sound:null};cornerCameoCooldown=CORNER_CAMEO.cooldown;
+  cornerCameoHits=0;cornerCameoShown=true;
   return true;
 }
 function clearCornerCameo() {
@@ -5494,7 +5500,7 @@ function drawCornerCameo() {
   if(!cameo || !photo.complete || !photo.naturalWidth)return;
   if(!["playing","paused"].includes(state))return;
   const frame=cornerCameoFrame(cameo.elapsed);if(!frame.visible)return;
-  const height=190,width=height*photo.naturalWidth/photo.naturalHeight;
+  const height=150,width=height*photo.naturalWidth/photo.naturalHeight;
   ctx.save();
   // Screen coordinates keep the cameo anchored even while the arena pans or shakes.
   ctx.beginPath();ctx.rect(0,0,VIEW_WIDTH,VIEW_HEIGHT);ctx.clip();
