@@ -61,6 +61,24 @@ test('lizard damage is independent of frame rate and fits all statures, includin
  g.run('updateWorkCinematic(.65)');assert.equal(g.run('workCinematic.biteCount'),6);
  const hp=g.run('target.health');g.run('updateWorkCinematic(.1)');assert.equal(g.run('target.health'),hp);
 });
+test('lizard rain releases the victim from hit or guard exactly when the cinematic ends',()=>{
+ for(const d of [-1,1])for(const slot of [1,2])for(const guarded of [false,true])for(const step of ['STEP','STEP*2']){
+  const g=setup('german',d,slot);
+  g.run(`(owner===player?held:held2).down=true;(target===player?held:held2).guard=${guarded};(target===player?held:held2).down=${guarded};attack(owner,'special');while(workCinematic.elapsed<3.9)update(${step})`);
+  assert.equal(g.run('target.action'),guarded?'block':'hit');assert.equal(g.run("attack(target,'punch')"),false);
+  g.run(`(target===player?held:held2).guard=false;(target===player?held:held2).down=false;while(workCinematic)update(${step})`);
+  assert.equal(g.run('target.action'),'idle','the cinematic must clear the reaction even when its timer is already zero');
+  assert.deepEqual(Array.from(g.run('[target.actionTime,target.actionDuration,target.guarding,target.crouching,isLocked(target)]')),[0,0,false,false,false]);
+  assert.equal(g.run('poseFor(target)'),g.run('POSES[target.kind].idle'));
+  frames(g,.2);assert.equal(g.run('target.animation.pose'),g.run('POSES[target.kind].idle'));
+  const x=g.run('target.x');g.run(`(target===player?held:held2).${d===1?'left':'right'}=true`);frames(g,.2);
+  assert.ok((g.run('target.x')-x)*d<0,'the victim must walk again without first attacking');
+  g.run('(target===player?held:held2).left=false;(target===player?held:held2).right=false;(target===player?held:held2).guard=true');frames(g,.05);
+  assert.equal(g.run('target.guarding'),true);
+  g.run('(target===player?held:held2).guard=false');frames(g,.05);
+  assert.equal(g.run("attack(target,'punch')"),true);frames(g,.8);assert.equal(g.run('jump(target)'),true);
+ }
+});
 test('CPU super, mobile controls, all sprite poses, KO and menu cancellation recover cleanly',()=>{
  const cpu=setup('angel',1,2);cpu.run("gameMode='solo';Math.random=()=>0;attack(owner,'special')");assert.equal(cpu.run('workCinematic.owner===cpu'),true);frames(cpu,.8);cpu.run('mainMenu()');assert.equal(cpu.run('workCinematic'),null);assert.equal(cpu.run('combatSounds.size'),0);
  const touch=setup();touch.taps[3].listeners.pointerdown({pointerId:22,preventDefault(){}});assert.equal(touch.run('owner.specialStyle'),'residues');frames(touch,.9);

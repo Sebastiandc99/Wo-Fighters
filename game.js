@@ -4283,6 +4283,12 @@ function updateWorkCinematic(dt) {
     stopCombatSound(c.sound,true);
     if(state==="playing")stopCombatSound(c.scream,true);
     c.owner.action="idle";c.owner.actionTime=c.owner.actionDuration=0;c.owner.moveSpec=null;
+    if(c.owner.kind==="matias" && state==="playing") {
+      // Its reaction timer reaches zero inside the cinematic, so ordinary recovery cannot run.
+      const target=c.target;
+      target.action="idle";target.actionTime=target.actionDuration=0;target.moveSpec=null;
+      target.guarding=target.crouching=target.lowAttack=target.airAttack=false;target.kickStyle=null;
+    }
     if(c.target.action==="hit" && c.target.actionTime>0)c.target.actionTime=Math.min(c.target.actionTime,.25);
     if(c.target.action==="block"){c.target.action="idle";c.target.actionTime=c.target.actionDuration=0;}
     workCinematic=null;
