@@ -6,7 +6,7 @@ function setup(rival='primitivo',direction=1,slot=1){
 function frames(g,seconds){g.run(`for(let n=0;n<${Math.round(seconds*120)};n++){update(STEP);draw();}`);}
 test('Matías exact attributes, selection, artwork, eight-rival tower and keyboard grid',()=>{
  const g=setup();assert.deepEqual(Array.from(g.run('[stats.matias.normalDamage,stats.matias.resistance,stats.matias.agility,stats.matias.meleeReach,stats.matias.recovery,stats.matias.powerDamage,stats.matias.superDamage,stats.matias.powerRange,stats.matias.superRange]')),[8,92,7,6,.54,22,34,608,608]);
- g.run("gameMode='solo';openSelection()");g.nodes.get('pick-matias').listeners.click();assert.equal(g.run('playerChoice'),'matias');assert.match(g.nodes.get('selectionGuide').innerHTML,/matias-whirlwind.svg/);g.key('ArrowUp');assert.equal(g.run('playerChoice'),'gabriel');
+ g.run("gameMode='solo';openSelection()");g.nodes.get('pick-matias').listeners.click();assert.equal(g.run('playerChoice'),'matias');assert.match(g.nodes.get('selectionGuide').innerHTML,/matias-lizard-icon-v1.webp/);g.key('ArrowUp');assert.equal(g.run('playerChoice'),'gabriel');
  g.run("playerChoice='matias';beginGame()");assert.equal(g.run('campaign.opponents.length'),8);assert.equal(g.run('campaign.opponents.includes("matias")'),false);assert.equal(g.run('TOURNAMENT_DIFFICULTIES.every(d=>Object.values(d).every(v=>typeof v==="string"||Number.isFinite(v)))'),true);
 });
 test('residue burst costs 30 and hits every worker stature only once in either direction and player slot',()=>{
@@ -21,23 +21,45 @@ test('common power enforces energy and range, lets well-timed jumps evade, and g
  g=setup();g.run("held2.guard=true;attack(owner,'special')");frames(g,.9);assert.equal(g.run('target.health'),g.run('Math.round((100-damageTaken(target,1))*1000)/1000'));
  g=setup('angel');g.run("attack(owner,'special')");frames(g,.24);g.run("jump(target)");frames(g,1.1);assert.equal(g.run('target.health'),100);
 });
-test('whirlwind needs 100 energy and range 8, lifts and spins before one ground-impact damage event',()=>{
+test('lizard rain spends full energy, travels in arcs, clings, bites six times and releases on either side and slot',()=>{
  for(const d of [-1,1])for(const slot of [1,2]){
   const g=setup('primitivo',d,slot);g.run('(owner===player?held:held2).down=true;owner.power=99');assert.equal(g.run("attack(owner,'special')"),false);
-  g.run('owner.power=100');assert.equal(g.run("attack(owner,'special')"),true);assert.equal(g.run('owner.power'),0);assert.equal(g.run('poseFor(owner)'),16);
-  frames(g,1.6);assert.ok(g.run('environmentalLift(workCinematic)')>160);assert.equal(g.run('target.health'),100);assert.equal(g.run("attack(target,'punch')"),false);assert.equal(g.run('jump(target)'),false);
-  g.run('(target===player?held:held2).guard=true');frames(g,.3);assert.equal(g.run('target.guarding'),false);
+  g.run('owner.power=100');assert.equal(g.run("attack(owner,'special')"),true);assert.equal(g.run('owner.power'),0);assert.equal(g.run('owner.specialStyle'),'lizardRain');
+  frames(g,.60);assert.equal(g.run('lizardState(workCinematic,0).phase'),'flight');
+  assert.ok(g.run('lizardState(workCinematic,0).y<owner.y-160'),'lizards arc above the throwing hand');
+  frames(g,1);assert.equal(g.run('workCinematic.lizards.every((_,i)=>lizardState(workCinematic,i).phase==="attached")'),true);
+  assert.equal(g.run('target.health'),100);assert.equal(g.run('target.y'),g.run('FLOOR'));assert.equal(g.run("attack(target,'punch')"),false);assert.equal(g.run('jump(target)'),false);
+  g.run('(target===player?held:held2).guard=true');
   const snapshot=g.run('JSON.stringify([workCinematic.elapsed,target,owner,projectiles])');g.run('draw();draw()');assert.equal(g.run('JSON.stringify([workCinematic.elapsed,target,owner,projectiles])'),snapshot);
   g.run('togglePause()');const elapsed=g.run('workCinematic.elapsed');frames(g,.6);assert.equal(g.run('workCinematic.elapsed'),elapsed);g.run('togglePause()');
-  frames(g,.95);assert.equal(g.run('target.health'),100);frames(g,.10);assert.equal(g.run('target.y'),g.run('FLOOR'));assert.ok(g.run('target.knockdown'));
-  const hp=g.run('target.health');assert.equal(hp,g.run('Math.round((100-damageTaken(target,34))*1000)/1000'));frames(g,1.5);assert.equal(g.run('target.health'),hp);assert.equal(g.run('workCinematic'),null);
+  for(let bite=1;bite<=6;bite++){
+   g.run(`while(workCinematic.elapsed<LIZARD_BITE_TIMES[${bite-1}]+.015){update(STEP);draw()}`);assert.equal(g.run('workCinematic.biteCount'),bite);
+   const damage=[6,12,18,24,29,34][bite-1];
+   assert.ok(Math.abs(g.run('100-target.health')-g.run(`damageTaken(target,${damage})`))<.004);
+   assert.equal(g.run('target.guarding'),false);assert.equal(g.run('target.y'),g.run('FLOOR'));assert.equal(g.run('target.knockdown'),null);
+  }
+  const hp=g.run('target.health');frames(g,.3);assert.equal(g.run('lizardState(workCinematic,0).phase'),'leaving');
+  frames(g,.5);assert.equal(g.run('workCinematic.lizards.every((_,i)=>lizardState(workCinematic,i).phase==="gone")'),true);
+  frames(g,.6);assert.equal(g.run('target.health'),hp);assert.equal(g.run('workCinematic'),null);
   g.run('(owner===player?held:held2).down=false;(target===player?held:held2).guard=false');assert.equal(g.run("attack(owner,'punch')"),true);assert.equal(g.run("attack(target,'punch')"),true);
  }
  const far=setup();far.run('owner.x=100;target.x=800;held.down=true');assert.equal(far.run("attack(owner,'special')"),false);assert.equal(far.run('owner.power'),100);
 });
-test('guard before capture reduces super to 30 percent damage and prevents lift',()=>{
- const g=setup();g.run("held2.guard=true;held.down=true;attack(owner,'special')");frames(g,1.5);assert.equal(g.run('workCinematic.windCaught'),false);assert.equal(g.run('environmentalLift(workCinematic)'),0);
- frames(g,1.5);assert.equal(g.run('workCinematic.blocked'),true);assert.ok(Math.abs(g.run('100-target.health')-g.run('damageTaken(target,34)*.3'))<.004);frames(g,1);assert.equal(g.run('workCinematic'),null);
+test('guard before the lizards arrive reduces every bite to 30 percent damage and remains on the ground',()=>{
+ const g=setup();g.run("held2.guard=true;held2.down=true;held.down=true;attack(owner,'special')");frames(g,1.5);
+ assert.equal(g.run('workCinematic.blocked'),true);assert.equal(g.run('workCinematic.guardCrouched'),true);assert.equal(g.run('target.health'),100);
+ g.run('held2.guard=false');frames(g,1.85);assert.equal(g.run('workCinematic.biteCount'),6);assert.equal(g.run('target.y'),g.run('FLOOR'));
+ assert.ok(Math.abs(g.run('100-target.health')-g.run('damageTaken(target,34)*.3'))<.004);frames(g,1);assert.equal(g.run('workCinematic'),null);
+});
+test('lizard damage is independent of frame rate and fits all statures, including maximum range',()=>{
+ for(const rival of ['angel','german','matias'])for(const step of ['STEP','STEP*2']){
+  const g=setup(rival);g.run(`owner.x=100;target.x=708;held.down=true;attack(owner,'special');for(let i=0;i<Math.round(3.4/(${step}));i++)update(${step})`);
+  assert.equal(g.run('workCinematic.biteCount'),6);assert.ok(Math.abs(g.run('100-target.health')-g.run('damageTaken(target,34)'))<.004);
+  assert.equal(g.run('target.y'),g.run('FLOOR'));assert.equal(g.run('workCinematic.lizards.every((_,i)=>{const p=lizardState(workCinematic,i);return p.phase==="attached"&&Math.abs(p.x-target.x)<60&&p.y<target.y&&p.y>target.y-stats[target.kind].height})'),true);
+ }
+ const g=setup();g.run("held.down=true;attack(owner,'special');updateWorkCinematic(2.7)");assert.equal(g.run('workCinematic.biteCount'),4);
+ g.run('updateWorkCinematic(.65)');assert.equal(g.run('workCinematic.biteCount'),6);
+ const hp=g.run('target.health');g.run('updateWorkCinematic(.1)');assert.equal(g.run('target.health'),hp);
 });
 test('CPU super, mobile controls, all sprite poses, KO and menu cancellation recover cleanly',()=>{
  const cpu=setup('angel',1,2);cpu.run("gameMode='solo';Math.random=()=>0;attack(owner,'special')");assert.equal(cpu.run('workCinematic.owner===cpu'),true);frames(cpu,.8);cpu.run('mainMenu()');assert.equal(cpu.run('workCinematic'),null);assert.equal(cpu.run('combatSounds.size'),0);

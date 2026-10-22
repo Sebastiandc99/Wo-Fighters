@@ -79,6 +79,7 @@ const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(st
 
 const assets = {
   matias: loadImage("assets/matias-atlas-v2.png"),
+  matiasLizards: loadImage("assets/matias-lizards-v1.webp"),
   german: loadImage("assets/german-atlas-v1.webp"),
   germanSignals: loadImage("assets/german-signals-v1.webp"),
   primitivoIntro: loadImage("assets/primitivo-intro-v1.webp"),
@@ -152,7 +153,7 @@ const POSES = {
 };
 
 const stats = {
-  matias: {name:"MATÍAS",normalDamage:8,resistance:92,powerDamage:22,superDamage:34,agility:7,speed:274,jump:615,defaultFace:1,size:280,height:210,width:25,bodyWidth:1.05,recovery:.54,meleeReach:6,powerRange:608,superRange:608,description:"DESCARGA DE RESIDUOS (30%) · ↓ + PODER: TORBELLINO AMBIENTAL (100%)",ability:null},
+  matias: {name:"MATÍAS",normalDamage:8,resistance:92,powerDamage:22,superDamage:34,agility:7,speed:274,jump:615,defaultFace:1,size:280,height:210,width:25,bodyWidth:1.05,recovery:.54,meleeReach:6,powerRange:608,superRange:608,description:"DESCARGA DE RESIDUOS (30%) · ↓ + PODER: LLUVIA DE LAGARTIJAS (100%)",ability:null},
   german: {name:"GERMÁN", normalDamage:10, resistance:116, powerDamage:22, superDamage:34, agility:4, speed:238, jump:595, defaultFace:1, size:296, height:210, width:33, bodyWidth:1.03, recovery:.70, meleeReach:6, powerRange:608, superRange:608, description:"ZONA DE EXCLUSIÓN (30%) · ↓ + PODER: PARADA TOTAL (100%)", ability:null},
   fernando: {name:"HERALDO FICHERO", normalDamage:9, resistance:98, powerDamage:21, superDamage:33, agility:6, speed:262, jump:605, defaultFace:1, size:254, height:200, width:24, bodyWidth:.99, recovery:.60, meleeReach:5, powerRange:532, superRange:608, description:"LLUVIA DE CIGARRILLOS (30%) · ↓ + PODER: INCENDIO DE OBRA (100%)", ability:null},
   gabriel: {name:"GABRIEL", normalDamage:8, resistance:94, powerDamage:23, superDamage:34, agility:7, speed:274, jump:615, defaultFace:1, size:249, height:196, width:23, bodyWidth:.94, recovery:.56, meleeReach:5, powerRange:608, superRange:684, description:"CAMINO CRÍTICO (30%) · ↓ + PODER: GANTT IMPACTO (100%)", ability:null},
@@ -181,7 +182,7 @@ const ROUND_SECONDS = 90;
 const ENERGY_GAIN_SCALE = .75;
 const damageTaken = (f, damage) => Math.round(damage * DAMAGE_SCALE * 100000 / stats[f.kind].resistance) / 1000;
 const fighterPowers = {
-  matias: {common:"Descarga de Residuos",super:"Torbellino Ambiental",superDamage:34,profile:"Área Medio Ambiente · ágil, técnico y de media/larga distancia"},
+  matias: {common:"Descarga de Residuos",super:"Lluvia de Lagartijas",superDamage:34,profile:"Área Medio Ambiente · ágil, técnico y de media/larga distancia"},
   german: {common:"Zona de Exclusión", super:"Parada Total", superDamage:34, profile:"Inspector de Seguridad e Higiene · fuerte, resistente y de largo alcance"},
   fernando: {common:"Lluvia de Cigarrillos", super:"Incendio de Obra", superDamage:33, profile:"Ingeniero civil · media distancia, fuego y humo"},
   gabriel: {common:"Camino Crítico", super:"Gantt Impacto", superDamage:34, profile:"Control de Proyecto · técnico, de media/larga distancia"},
@@ -276,14 +277,14 @@ function powerGuide(kind, rivalKind) {
   const resistance=rivalKind ? stats[rivalKind].resistance : 100;
   const percent=damage=>(damage*DAMAGE_SCALE*100/resistance).toLocaleString("es-AR",{maximumFractionDigits:1})+"%";
   return `<div class="power-entry"><strong>${p.common}</strong><span>Daño <b>${percent(s.powerDamage)}</b> · Energía <b>30%</b></span>${kind==="peluche"?'<span class="hold-note">Inmoviliza 3 s · permite golpear al rival</span>':kind==="german"?'<span class="hold-note">Cadena helicoidal roja y blanca · inmoviliza 3 s</span>':''}</div>`
-    + `<div class="power-entry"><strong>${p.super}</strong><span>Daño <b>${percent(p.superDamage)}</b> · Energía <b>100%</b></span>${kind==="matias"?'<span class="hold-note">Eleva al rival · sin control hasta la caída</span>':''}</div>`;
+    + `<div class="power-entry"><strong>${p.super}</strong><span>Daño <b>${percent(p.superDamage)}</b> · Energía <b>100%</b></span>${kind==="matias"?'<span class="hold-note">Lagartijas adheridas · daño en varios ataques</span>':''}</div>`;
 }
 function updateSelectionGuide(kind) {
   const s=stats[kind],p=fighterPowers[kind];
   const panel=document.getElementById("selectionGuide");
   panel.dataset.kind=kind;
   if(!p){panel.innerHTML="";return;}
-  const art={matias:["matias-residues.svg","matias-whirlwind.svg"],german:["german-chain.svg","german-stop.svg"],fernando:["fernando-cigarettes.svg","fernando-fire.svg"],gabriel:["gabriel-critical.svg","gabriel-gantt.svg"],linares:["linares-cable.svg","linares-transformer-v1.webp"],tren:["tren-voltaic.svg","tren-storm.svg"],angel:["load-v4.webp","hook-v4.webp"],primitivo:["forklift-v4.webp","container-v4.webp"],peluche:["concrete-v1.webp","concrete-hose-v1.webp"]}[kind];
+  const art={matias:["matias-residues.svg","matias-lizard-icon-v1.webp"],german:["german-chain.svg","german-stop.svg"],fernando:["fernando-cigarettes.svg","fernando-fire.svg"],gabriel:["gabriel-critical.svg","gabriel-gantt.svg"],linares:["linares-cable.svg","linares-transformer-v1.webp"],tren:["tren-voltaic.svg","tren-storm.svg"],angel:["load-v4.webp","hook-v4.webp"],primitivo:["forklift-v4.webp","container-v4.webp"],peluche:["concrete-v1.webp","concrete-hose-v1.webp"]}[kind];
   const icon=name=>`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${{
     shield:"M12 2 21 6v6c0 5-9 10-9 10S3 17 3 12V6Z M12 6v11",
     bolt:"m14 2-9 12h6l-1 8 9-13h-6Z",
@@ -348,7 +349,8 @@ let koVoice = null;
 const COMBAT_AUDIO = {
   residues:{src:"assets/wo-residues-v2.mp3",volume:.85,start:0,loop:false},
   residuesImpact:{src:"assets/wo-residuesImpact-v2.mp3",volume:.85,start:0,loop:false},
-  environmentalSuper:{src:"assets/wo-environmentalSuper-v1.mp3",volume:.88,start:0,loop:false},
+  lizardRain:{src:"assets/wo-lizardRain-v1.mp3",volume:.8,start:0,loop:false},
+  lizardBite:{src:"assets/wo-lizardBite-v1.mp3",volume:.65,start:0,loop:false},
   environmentalCry:{src:"assets/wo-environmentalCry-v1.mp3",volume:.62,start:0,loop:false},
   safetyChain:{src:"assets/wo-safetyChain-v1.wav",volume:.9,start:0,loop:false},
   safetySuper:{src:"assets/wo-safetySuper-v1.wav",volume:.78,start:0,loop:false},
@@ -1645,7 +1647,7 @@ function attack(f, type, chainStep=null, forcedToken=null) {
   f.power -= cost;
   if(!chainStep&&["punch","kick"].includes(type)&&token)startMeleeChain(f,token);
   if (workSuper) {
-    f.specialStyle = f.kind === "matias" ? "environmentalSuper" : f.kind === "german" ? "safetySuper" : f.kind === "fernando" ? "fireSuper" : f.kind === "gabriel" ? "ganttSuper" : f.kind === "linares" ? "transformerSuper" : f.kind === "tren" ? "stormSuper" : f.kind === "peluche" ? "concreteSuper" : f.kind === "angel" ? "hookSuper" : "containerSuper";
+    f.specialStyle = f.kind === "matias" ? "lizardRain" : f.kind === "german" ? "safetySuper" : f.kind === "fernando" ? "fireSuper" : f.kind === "gabriel" ? "ganttSuper" : f.kind === "linares" ? "transformerSuper" : f.kind === "tren" ? "stormSuper" : f.kind === "peluche" ? "concreteSuper" : f.kind === "angel" ? "hookSuper" : "containerSuper";
     f.vx = 0;
     startWorkCinematic(f);
     return true;
@@ -2301,7 +2303,7 @@ function drawComboHud(f) {
 }
 
 function poseFor(f) {
-  if(f.kind==="matias" && workCinematic?.owner===f)return 16;
+  if(f.kind==="matias" && workCinematic?.owner===f)return workCinematic.elapsed<.22?12:workCinematic.elapsed<.70?15:workCinematic.elapsed<1.10?4:0;
   const introduction=roundIntroPose(f);
   if(introduction!==null)return introduction;
   if(f.safetyHold>0)return POSES[f.kind].hit;
@@ -2881,7 +2883,7 @@ function drawLowerLoadCue(f,frame) {
 
 function drawFighter(f) {
   const frame = renderedFighter(f);
-  if(workCinematic?.owner.kind==="matias" && workCinematic.target===f)environmentalVictimFrame(frame,workCinematic);
+  if(workCinematic?.owner.kind==="matias" && workCinematic.target===f)lizardVictimFrame(frame,workCinematic);
   if (workCinematic?.target === f && workCinematic.owner.kind === "angel" && !f.guarding && !workCinematic.blocked) frame.y -= workHookLift(workCinematic.elapsed);
   const { motion, x, y } = frame;
   drawMotionLines({ ...f, x, y }, motion);
@@ -2904,6 +2906,7 @@ function drawFighter(f) {
   }
   if(f.safetyHold>0)drawSafetyRestraint(f,frame,true);
   drawSpriteFrame(frame, opacity);
+  if(workCinematic?.owner.kind==="matias" && workCinematic.target===f)drawAttachedLizards(frame,workCinematic);
   if(f.kind==="angel" && f.action==="special" && !workCinematic) drawLowerLoadCue(f,frame);
   if(f.kind === "galante") drawGalanteProps(f, frame, opacity);
   if(f.kind === "paula") drawWaterCharge(f);
@@ -3189,7 +3192,7 @@ const FIGHT_AUDIO = {
   linares:["cable","transformerSuper"],gabriel:["critical","crash"],
   fernando:["cigarettes","emberImpact","fireSuper","fireScream"],
   german:["safetyChain","safetySuper"],
-  matias:["residues","residuesImpact","environmentalSuper","environmentalCry"]
+  matias:["residues","residuesImpact","lizardRain","lizardBite","environmentalCry"]
 };
 const audioDecodes=[];
 const decodedAudio=new Map();
@@ -4202,13 +4205,13 @@ function workHookLift(t) {
 }
 function startWorkCinematic(owner) {
   const target=owner===player?cpu:player;
-  const duration=owner.kind==="matias"?3.65:owner.kind==="german"?3.25:owner.kind==="fernando"?4.9:owner.kind==="gabriel"?2.85:owner.kind==="linares"?3.1:owner.kind==="tren"?2.8:owner.kind==="peluche"?2.65:1.85;
-  const impactAt=owner.kind==="matias"?2.90:owner.kind==="german"?2.10:owner.kind==="fernando"?3.35:owner.kind==="gabriel"?2.05:owner.kind==="linares"?2.05:owner.kind==="tren"?1.95:owner.kind==="peluche"?1.90:1.12;
+  const duration=owner.kind==="matias"?4.15:owner.kind==="german"?3.25:owner.kind==="fernando"?4.9:owner.kind==="gabriel"?2.85:owner.kind==="linares"?3.1:owner.kind==="tren"?2.8:owner.kind==="peluche"?2.65:1.85;
+  const impactAt=owner.kind==="matias"?3.30:owner.kind==="german"?2.10:owner.kind==="fernando"?3.35:owner.kind==="gabriel"?2.05:owner.kind==="linares"?2.05:owner.kind==="tren"?1.95:owner.kind==="peluche"?1.90:1.12;
   workCinematic={owner,target,elapsed:0,duration,impactAt,impact:false,originX:owner.x,impactX:target.x,direction:owner.facing,
     guardEligible:target.grounded && !target.safetyHold && !target.concreteHold && ["idle","block"].includes(target.action),initialGuard:target.guarding,
     sound:owner.kind==="gabriel"?null:startCombatSound(owner.specialStyle)};
   pauseMusic();
-  if(owner.kind==="matias"){workCinematic.groundY=FLOOR;workCinematic.targetStartY=target.y;}
+  if(owner.kind==="matias")initializeLizardRain(workCinematic);
   if(owner.kind==="fernando"){
     const c=workCinematic;c.direction=Math.sign(target.x-owner.x)||owner.facing;owner.facing=c.direction;
     c.approachX=owner.x+c.direction*Math.max(0,Math.abs(target.x-owner.x)-128);
@@ -4246,25 +4249,20 @@ function hitWorkCinematic(c,damage,knock,lift) {
 function updateWorkCinematic(dt) {
   const c=workCinematic;c.elapsed+=dt;advanceCombatSounds(dt);
   updateWorkGuard(c);
-  if(c.owner.kind==="matias")updateEnvironmentalCapture(c);
+  if(c.owner.kind==="matias")updateLizardRain(c,dt);
   updateParticles(dt);updateEffects(dt);screenShake=Math.max(0,screenShake-dt*24);
   c.owner.animClock+=dt;c.target.animClock+=dt;
   if(c.owner.kind==="fernando")updateFernandoFireSuper(c,dt);
   // Sustained pressure builds before the impact; the simulation/audio clocks stay together.
-  if(c.elapsed>.38 && c.elapsed<c.impactAt) {
+  if(c.owner.kind!=="matias" && c.elapsed>.38 && c.elapsed<c.impactAt) {
     const pressure=Math.min(1,(c.elapsed-.38)/(c.impactAt-.38));
     screenShake=Math.max(screenShake,(c.owner.kind==="peluche"?2:1)+pressure*4);
   }
   if(c.owner.kind==="gabriel") updateGanttCinematic(c);
-  if(c.owner.kind!=="gabriel" && !c.impact && c.elapsed>=c.impactAt) {
+  if(!["gabriel","matias"].includes(c.owner.kind) && !c.impact && c.elapsed>=c.impactAt) {
     const t=c.target,o=c.owner;
-    if(o.kind==="matias"){t.y=t.prevY=FLOOR;t.vx=t.vy=0;t.grounded=true;}
     if(o.kind==="german")c.safetyImpactY=safetyRainImpactY(c);
-    hitWorkCinematic(c,fighterPowers[o.kind].superDamage,o.kind==="matias"?0:240,o.kind==="matias"?0:-140);
-    if(o.kind==="matias" && !c.blocked){
-      t.knockdown={direction:c.direction,phase:"down",age:.4,phaseTime:0};t.vx=t.vy=0;
-      startCombatSound("bodyFall");
-    }
+    hitWorkCinematic(c,fighterPowers[o.kind].superDamage,240,-140);
     c.impact=true;
     burst(t.x,o.kind==="german"?c.safetyImpactY:t.y-95,c.owner.kind==="peluche"?"#e5eadb":"#ffdc62",44);dustBurst(t.x,FLOOR,32);
     if(o.kind==="fernando"){
@@ -4277,7 +4275,6 @@ function updateWorkCinematic(dt) {
     // The cinematic already owns time. Ordinary melee hit-stop used to mute its climax.
     hitStop=0;syncCombatSounds();
   }
-  if(c.owner.kind==="matias" && c.impact && c.target.knockdown && state==="playing")updateKnockdown(c.target,dt);
   if(!c.blocked && ["tren","linares","gabriel","fernando","german"].includes(c.owner.kind) && c.impact && state==="playing" && c.elapsed>c.impactAt+(c.owner.kind==="fernando"?.80:.24)) {
     if(!c.launched){c.launched=true;beginKnockdown(c.target,c.direction*300);}
     if(c.target.knockdown)updateKnockdown(c.target,dt);
@@ -4295,7 +4292,7 @@ function updateWorkCinematic(dt) {
 }
 function drawWorkCinematic() {
   const c=workCinematic,t=c.elapsed,owner=c.owner,target=c.target;
-  if(owner.kind==="matias") {drawEnvironmentalCinematic(c);return;}
+  if(owner.kind==="matias") {drawLizardRain(c);return;}
   if(owner.kind==="german") {drawSafetyCinematic(c);return;}
   if(owner.kind==="fernando") {drawFireCinematic(c);return;}
   if(owner.kind==="gabriel") {drawGanttCinematic(c);return;}
@@ -5328,51 +5325,120 @@ function drawResidues(p) {
   }
   ctx.restore();
 }
-function environmentalLift(c) {
-  if(!c.windCaught || c.elapsed<=.55 || c.elapsed>=c.impactAt)return 0;
-  if(c.elapsed<2.10)return 224*smoothstep((c.elapsed-.55)/1.55);
-  if(c.elapsed<2.30)return 224;
-  return 224*(1-((c.elapsed-2.30)/(c.impactAt-2.30))**2);
+// The approved special: seven green lizards travel in high arcs, cling, bite, then hop away.
+const LIZARD_BITES = [6,6,6,6,5,5];
+const LIZARD_BITE_TIMES = [1.70,2.02,2.34,2.66,2.98,3.30];
+const LIZARD_ATTACHMENTS = [
+  {x:-.6,y:.62,angle:.75},{x:1.15,y:.72,angle:-1.1},{x:-.35,y:.48,angle:.2},
+  {x:.9,y:.45,angle:2.1},{x:-.65,y:.26,angle:.55},{x:.55,y:.11,angle:-.7},{x:1.3,y:.82,angle:.1}
+];
+function initializeLizardRain(c) {
+  c.direction=Math.sign(c.target.x-c.owner.x)||c.owner.facing;c.owner.facing=c.direction;
+  c.flightDuration=.64+Math.min(stats.matias.superRange,Math.abs(c.target.x-c.originX))/2000;
+  c.captureAt=.22+c.flightDuration;c.releaseAt=3.50;c.biteCount=0;
+  c.lizards=Array.from({length:7},(_,i)=>({launchAt:.22+i*.065,arcHeight:135+(i%3)*16,
+    phase:i*2.399,length:54+(i%3)*3}));
 }
-function updateEnvironmentalCapture(c) {
-  if(c.captured){if(c.windCaught && !c.impact){c.target.action="hit";c.target.guarding=c.target.crouching=false;}return;}
-  if(c.elapsed<.55)return;
-  c.captured=true;
-  const t=c.target,inFront=(c.originX-t.x)*t.facing>=0;
-  c.windCaught=!(t.guarding && c.guardEligible && inFront);
-  // Defense is decided at capture; pressing guard after lift cannot cancel it.
-  c.guardEligible=false;
-  if(c.windCaught){t.guarding=t.crouching=false;t.action='hit';c.scream=startCombatSound('environmentalCry');}
-}
-function environmentalVictimFrame(frame,c) {
-  if(!c.windCaught || c.elapsed>=c.impactAt)return;
-  const lift=environmentalLift(c),spin=Math.max(0,c.elapsed-.55);
-  // Visual transforms never mutate fighter animation or simulation positions.
-  frame.motion={...frame.motion,rotation:Math.sin(spin*11)*.48,scaleX:(Math.cos(spin*11)<0?-1:1)*(.42+.48*Math.abs(Math.cos(spin*11))),dy:0};
-  frame.y=FLOOR-lift;frame.x+=Math.sin(spin*11)*18;
-}
-function drawEnvironmentalCinematic(c) {
-  const t=c.elapsed,x=c.impactX-cameraX,fade=Math.min(1,t/.30)*Math.min(1,Math.max(0,(3.25-t)/.40));
-  ctx.save();ctx.fillStyle='rgba(16,25,20,.12)';ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
-  ctx.textAlign='center';ctx.fillStyle='#e5edca';ctx.strokeStyle='#17201b';ctx.lineWidth=5;ctx.font='italic bold 29px Arial';
-  ctx.strokeText('TORBELLINO AMBIENTAL',480,87);ctx.fillText('TORBELLINO AMBIENTAL',480,87);
-  ctx.font='bold 13px Arial';ctx.fillStyle='#e6e3d3';ctx.fillText('VIENTO · RESIDUOS · ELEVACIÓN · CAÍDA',480,111);
-  if(fade>0){
-    const height=310*smoothstep((t-.18)/.85),radius=54+24*smoothstep(t/.8);
-    ctx.lineWidth=3;
-    for(let i=0;i<17;i++) {
-      const v=i/17,y=FLOOR-v*height,r=radius*(.58+v*.65);
-      ctx.strokeStyle=i%2?'rgba(216,217,195,.42)':'rgba(162,147,113,.38)';ctx.globalAlpha=fade;
-      ctx.beginPath();ctx.ellipse(x+Math.sin(v*5+t*7)*10,y,r,10+v*7,-.08,t*13+i*.6,t*13+i*.6+4.8);ctx.stroke();
-    }
-    // Static count, elapsed-time driven: paused animation freezes every object.
-    for(let i=0;i<54;i++) {
-      const v=(i*.173+t*(.39+i%3*.03))%1,a=t*(9+i%4*.9)+i*2.399;
-      const r=radius*(.5+v*.7),xx=x+Math.cos(a)*r,yy=FLOOR-v*height;
-      drawEnvironmentalDebris(ENVIRONMENTAL_DEBRIS[i%6],xx,yy,a,12+i%4*2,fade*(Math.sin(a)>0?.93:.50));
-    }
-    ctx.globalAlpha=fade;drawWorkDust(x,FLOOR,t,1,1.35);drawWorkDust(x,FLOOR,t,-1,1.35);
+function updateLizardRain(c,dt) {
+  const target=c.target;
+  for(const key of ['flash','guardFlash','invuln','comboTime'])target[key]=Math.max(0,target[key]-dt);
+  c.owner.comboTime=Math.max(0,c.owner.comboTime-dt);
+  if(!c.captured && c.elapsed>=c.captureAt) {
+    c.captured=true;
+    c.blocked=!!(target.guarding && c.guardEligible && (c.originX-target.x)*target.facing>=0);
+    c.guardCrouched=c.blocked && target.crouching;c.guardEligible=false;
   }
-  if(c.impact){const phase=Math.min(1,(t-c.impactAt)/.45);ctx.globalAlpha=(1-phase)*.65;ctx.strokeStyle='#e1d5b2';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(x,FLOOR,25+phase*150,7+phase*20,0,0,Math.PI*2);ctx.stroke();}
+  if(c.captured) {
+    target.guarding=c.blocked;target.crouching=!!c.guardCrouched;
+    target.action=c.blocked?'block':'hit';target.actionDuration=target.actionTime=Math.max(0,c.duration-c.elapsed);
+  }
+  // Resolve each scheduled bite once, even when a slow frame crosses several cues.
+  while(c.biteCount<LIZARD_BITES.length && c.elapsed+1e-8>=LIZARD_BITE_TIMES[c.biteCount] && state==='playing') {
+    const index=c.biteCount++,blocked=c.blocked;
+    hitWorkCinematic(c,LIZARD_BITES[index],0,0);
+    c.blocked=blocked;target.vx=target.vy=0;hitStop=0;
+    target.actionDuration=target.actionTime=Math.max(0,c.duration-c.elapsed);
+    if(state==='playing') {
+      startCombatSound('lizardBite');
+      if(index===0 && !blocked)c.scream=startCombatSound('environmentalCry');
+    }
+    screenShake=blocked?1:2.5;
+  }
+  c.impact=c.biteCount===LIZARD_BITES.length;
+  syncCombatSounds();
+}
+function lizardVictimOffset(c) {
+  const last=LIZARD_BITE_TIMES[Math.max(0,c.biteCount-1)],age=c.elapsed-last;
+  const pulse=c.biteCount && age>=0 && age<.18 ? Math.exp(-age*16):0;
+  return {x:Math.sin(age*65)*2.2*pulse,y:-Math.abs(Math.sin(age*37))*1.5*pulse};
+}
+function lizardVictimFrame(frame,c) {
+  const offset=lizardVictimOffset(c);frame.x+=offset.x;frame.y+=offset.y;
+}
+function lizardAttachmentPoint(c,index,elapsed=c.elapsed) {
+  const anchor=LIZARD_ATTACHMENTS[index],target=c.target;
+  const height=(c.guardCrouched?124:stats[target.kind].height)*FIGHTER_SCALE;
+  const width=stats[target.kind].width*FIGHTER_SCALE;
+  const crawl=elapsed>=c.captureAt && elapsed<c.releaseAt?Math.sin(elapsed*14+index*2.399)*1.7:0;
+  return {x:target.x+anchor.x*width*c.direction+crawl,y:target.y-anchor.y*height,
+    angle:anchor.angle+Math.sin(elapsed*9+index)*.08};
+}
+function lizardState(c,index,elapsed=c.elapsed) {
+  const lizard=c.lizards[index],arrival=lizard.launchAt+c.flightDuration;
+  if(elapsed<lizard.launchAt)return {phase:'waiting'};
+  const point=lizardAttachmentPoint(c,index,elapsed);
+  if(elapsed<arrival) {
+    const u=(elapsed-lizard.launchAt)/c.flightDuration;
+    const startX=c.originX+c.direction*58,startY=c.owner.y-122;
+    const dx=point.x-startX,dy=point.y-startY;
+    return {phase:'flight',x:lerp(startX,point.x,u),y:lerp(startY,point.y,u)-4*lizard.arcHeight*u*(1-u),
+      angle:Math.atan2(dy-4*lizard.arcHeight*(1-2*u),Math.max(1,Math.abs(dx))),alpha:1};
+  }
+  const release=c.releaseAt+index*.035;
+  if(elapsed<release)return {phase:'attached',...point,alpha:1};
+  const u=(elapsed-release)/.38;
+  if(u>=1)return {phase:'gone'};
+  return {phase:'leaving',x:point.x+(index%2?-1:1)*(48+index*5)*u,
+    y:lerp(point.y,FLOOR+14,u)-Math.sin(u*Math.PI)*32,angle:.7+u*2,alpha:1-u};
+}
+function drawLizard(x,y,direction,angle,length,pose,alpha=1) {
+  const image=assets.matiasLizards;if(!image.complete || !image.naturalWidth)return;
+  ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha;
+  ctx.translate(Math.round(x),Math.round(y));ctx.scale(direction,1);ctx.rotate(angle);
+  const height=length*96/160;
+  ctx.drawImage(image,pose*160,0,160,96,-length*.64,-height*.5,length,height);
+  ctx.restore();
+}
+function drawAttachedLizards(frame,c) {
+  for(let i=0;i<c.lizards.length;i++) {
+    const item=lizardState(c,i);if(item.phase!=='attached')continue;
+    const m=frame.motion,dx=(item.x-c.target.x)*m.scaleX*(stats[c.target.kind].bodyWidth||1),dy=(item.y-c.target.y)*m.scaleY;
+    const x=frame.x+m.dx+dx*Math.cos(m.rotation)-dy*Math.sin(m.rotation);
+    const y=frame.y+m.dy+dx*Math.sin(m.rotation)+dy*Math.cos(m.rotation);
+    drawLizard(x,y,c.direction,item.angle+m.rotation*c.direction,c.lizards[i].length,2+Math.floor(c.elapsed*13+i)%2);
+    const pulse=LIZARD_BITE_TIMES[c.biteCount-1],since=c.elapsed-pulse;
+    if(c.biteCount && since>=0 && since<.12 && (i+c.biteCount)%2===0) {
+      ctx.save();ctx.globalAlpha=1-since/.12;ctx.strokeStyle=c.blocked?'#d8eab3':'#ffd579';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(x+8,y-7);ctx.lineTo(x+13,y-12);ctx.moveTo(x+10,y);ctx.lineTo(x+17,y-1);ctx.stroke();ctx.restore();
+    }
+  }
+}
+function drawLizardRain(c) {
+  const time=c.elapsed;
+  ctx.save();ctx.fillStyle='rgba(10,21,15,.12)';ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
+  ctx.textAlign='center';ctx.font='italic bold 29px Arial';ctx.strokeStyle='#17201b';ctx.lineWidth=5;ctx.fillStyle='#b4ea71';
+  ctx.strokeText('LLUVIA DE LAGARTIJAS',480,87);ctx.fillText('LLUVIA DE LAGARTIJAS',480,87);
+  ctx.font='bold 13px Arial';ctx.fillStyle='#ecedcf';
+  ctx.fillText(time<c.captureAt?'LANZAMIENTO EN ARCO':time<1.70?'SE PRENDEN AL RIVAL':time<c.releaseAt?
+    c.blocked?'¡GUARDIA! · DAÑO REDUCIDO':'ATAQUES SUCESIVOS · DAÑO PROGRESIVO':'LAS LAGARTIJAS SE SUELTAN',480,111);
+  for(let i=0;i<c.lizards.length;i++) {
+    const item=lizardState(c,i);if(!['flight','leaving'].includes(item.phase))continue;
+    if(item.phase==='flight') {
+      const before=lizardState(c,i,Math.max(c.lizards[i].launchAt,time-.045));
+      ctx.save();ctx.strokeStyle='#e5dfba';ctx.globalAlpha=.45;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(before.x-cameraX,before.y);ctx.lineTo(item.x-cameraX,item.y);ctx.stroke();ctx.restore();
+    }
+    drawLizard(item.x-cameraX,item.y,c.direction,item.angle,c.lizards[i].length,Math.floor(time*14+i)%2,item.alpha);
+  }
   ctx.restore();
 }
