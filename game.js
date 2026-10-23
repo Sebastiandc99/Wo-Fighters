@@ -418,6 +418,7 @@ let workCinematic = null;
 // Cosmetic corner cameo: its own clock never locks fighters or changes combat stats.
 const CORNER_CAMEO={duration:1.45,enter:.12,exit:.16,voiceAt:.10,cooldown:14,uppercutChance:.40,finisherChance:.25,kickChance:.15,punchChance:.08,maxMisses:6};
 let cornerCameo=null,cornerCameoCooldown=0,cornerCameoHits=0,cornerCameoShown=false;
+let cornerCameoLayoutCache=null;
 let particles = [];
 let afterimages = [];
 let effects = [];
@@ -462,6 +463,7 @@ function mobileInput() {
 
 function syncViewport() {
   joystickGeometry = new WeakMap();
+  cornerCameoLayoutCache=null;
   mobileRendering = mobileInput();
   if(mobileRendering)document.body.classList.add("touch-device");
   const sideways = mobileRendering && window.innerHeight > window.innerWidth;
@@ -3426,7 +3428,7 @@ function stopFighterSound(f) {
 }
 
 function stopAllCombatSounds() {
-  cornerCameo=null;cornerCameoCooldown=0;cornerCameoHits=0;cornerCameoShown=false;
+  cornerCameo=null;cornerCameoCooldown=0;cornerCameoHits=0;cornerCameoShown=false;cornerCameoLayoutCache=null;
   stopKOAudio();
   stopSynthSounds();
   projectiles = projectiles.filter(p => p.style !== "boomerang");
@@ -5470,6 +5472,7 @@ function maybeCornerCameo(contact) {
   // Bound unlucky streaks so normal play cannot hide the feature indefinitely.
   const reveal=(!cornerCameoShown && (uppercut || finisher)) || cornerCameoHits>=CORNER_CAMEO.maxMisses;
   if(!reveal && Math.random()>=chance)return false;
+  cornerCameoLayoutCache=null;
   cornerCameo={elapsed:0,voiceStarted:false,sound:null};cornerCameoCooldown=CORNER_CAMEO.cooldown;
   cornerCameoHits=0;cornerCameoShown=true;
   return true;
@@ -5495,16 +5498,43 @@ function cornerCameoFrame(elapsed) {
   const visible=Math.min(1-(1-enter)**3,exit);
   return {slide:(1-visible)*400,drop:(1-visible)*18,visible:elapsed>=0 && elapsed<CORNER_CAMEO.duration};
 }
+// Measure touch controls once per appearance/viewport change, never on every frame.
+function cornerCameoLayout(photo) {
+  if(cornerCameoLayoutCache)return cornerCameoLayoutCache;
+  const height=150,width=height*photo.naturalWidth/photo.naturalHeight;
+  const mobile=mobileRendering || document.body.classList.contains("two-touch") || window.innerWidth>0 && window.innerWidth<=820;
+  if(!mobile)return cornerCameoLayoutCache={mobile:false,width,height,x:VIEW_WIDTH-width,y:VIEW_HEIGHT-height+8,bottom:VIEW_HEIGHT};
+  const x=(VIEW_WIDTH-width+154)/2;
+  let bottom=VIEW_HEIGHT*.67;
+  const rect=canvas.getBoundingClientRect(),rotated=document.body.classList.contains("phone-portrait");
+  if(rect.width>0 && rect.height>0) {
+    bottom=VIEW_HEIGHT;
+    for(const control of document.querySelectorAll(".touch-btn, .joystick")) {
+      if(control.hidden || !control.offsetWidth || !control.offsetHeight)continue;
+      const box=control.getBoundingClientRect();if(!box.width || !box.height)continue;
+      const right=rect.left+rect.width;
+      const left=rotated?(box.top-rect.top)/rect.height*VIEW_WIDTH:(box.left-rect.left)/rect.width*VIEW_WIDTH;
+      const top=rotated?(right-box.left-box.width)/rect.width*VIEW_HEIGHT:(box.top-rect.top)/rect.height*VIEW_HEIGHT;
+      const w=rotated?box.height/rect.height*VIEW_WIDTH:box.width/rect.width*VIEW_WIDTH;
+      const h=rotated?box.width/rect.width*VIEW_HEIGHT:box.height/rect.height*VIEW_HEIGHT;
+      if(left+w<=x-154-12 || left>=x+width+12 || top+h<=0 || top>=VIEW_HEIGHT)continue;
+      bottom=Math.min(bottom,top-12);
+    }
+  }
+  // Use the free lower centre, raising the whole group only where controls overlap it.
+  return cornerCameoLayoutCache={mobile:true,width,height,x,y:bottom-height,bottom};
+}
 function drawCornerCameo() {
   const cameo=cornerCameo,photo=assets.cornerCameo;
   if(!cameo || !photo.complete || !photo.naturalWidth)return;
   if(!["playing","paused"].includes(state))return;
   const frame=cornerCameoFrame(cameo.elapsed);if(!frame.visible)return;
-  const height=150,width=height*photo.naturalWidth/photo.naturalHeight;
+  const layout=cornerCameoLayout(photo),{width,height}=layout;
   ctx.save();
-  // Screen coordinates keep the cameo anchored even while the arena pans or shakes.
-  ctx.beginPath();ctx.rect(0,0,VIEW_WIDTH,VIEW_HEIGHT);ctx.clip();
-  ctx.translate(VIEW_WIDTH-width+frame.slide,VIEW_HEIGHT-height+8+frame.drop);
+  // On phones the bust rises through the lower edge of the unobstructed arena.
+  ctx.beginPath();ctx.rect(0,0,VIEW_WIDTH,layout.bottom);ctx.clip();
+  const hidden=frame.slide/400;
+  ctx.translate(layout.x+(layout.mobile?0:frame.slide),layout.y+(layout.mobile?hidden*height:frame.drop));
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
   ctx.drawImage(photo,0,0,width,height);
   if(cameo.elapsed>=CORNER_CAMEO.voiceAt) {

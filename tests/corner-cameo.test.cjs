@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const{game}=require('./engine-harness.cjs');
 function setup(slot=1,direction=1){
- const g=game();g.run(`gameMode='versus';startGame('${slot===1?'matias':'german'}','${slot===2?'matias':'german'}');state='playing';const owner=${slot===1?'player':'cpu'},target=${slot===1?'cpu':'player'};owner.x=400;target.x=400+${direction}*54;owner.facing=${direction};target.facing=${-direction};Math.random=()=>0;`);return g;
+ const g=game();g.run(`assets.cornerCameo.naturalWidth=512;assets.cornerCameo.naturalHeight=479;gameMode='versus';startGame('${slot===1?'matias':'german'}','${slot===2?'matias':'german'}');state='playing';const owner=${slot===1?'player':'cpu'},target=${slot===1?'cpu':'player'};owner.x=400;target.x=400+${direction}*54;owner.facing=${direction};target.facing=${-direction};Math.random=()=>0;`);return g;
 }
 function uppercut(g){return g.run("hit(target,5,owner.facing*145,-420,owner,{attackType:'uppercut',knockdown:true})");}
 test('a connected uppercut can trigger the photo for either fighter and direction even with an unlucky roll, without changing damage or recovery',()=>{
@@ -82,4 +82,50 @@ test('six ordinary connected keyboard punches reveal the photo even with the wor
   assert.equal(g.run('cornerCameoHits'),0);g.run('startRound()');
   assert.equal(g.run('cornerCameoHits'),0);assert.equal(g.run('cornerCameoShown'),false);
  }
+});
+function mobileLayoutFixture({portrait=false,twoPlayers=false}={}){
+ const g=setup();
+ g.run(`navigator.maxTouchPoints=1;window.innerWidth=${portrait?390:844};window.innerHeight=${portrait?844:390};gameMode='${twoPlayers?'versus':'solo'}';syncViewport()`);
+ const surface=twoPlayers?{left:155,top:5,width:533,height:300}:{left:80,top:5,width:684,height:384};
+ const rect=portrait?{left:surface.top,top:surface.left,width:surface.height,height:surface.width}:surface;
+ const controls=twoPlayers?[{x:-30,y:426,w:365,h:120},{x:625,y:418,w:365,h:120}]:[{x:10,y:382,w:180,h:150},{x:710,y:370,w:235,h:150}];
+ let reads=0;
+ const project=box=>portrait?{
+  left:rect.left+rect.width-(box.y+box.h)/540*rect.width,top:rect.top+box.x/960*rect.height,width:box.h/540*rect.width,height:box.w/960*rect.height
+ }:{left:rect.left+box.x/960*rect.width,top:rect.top+box.y/540*rect.height,width:box.w/960*rect.width,height:box.h/540*rect.height};
+ const buttons=controls.map(box=>({offsetWidth:70,offsetHeight:70,getBoundingClientRect(){reads++;return project(box)}}));
+ // A hidden second-player control must not push the cameo into the HUD.
+ buttons.push({hidden:true,offsetWidth:0,offsetHeight:0,getBoundingClientRect(){throw Error('hidden control measured')}});
+ g.nodes.get('game').getBoundingClientRect=()=>rect;
+ const query=g.sandbox.document.querySelectorAll;g.sandbox.document.querySelectorAll=selector=>selector==='.touch-btn, .joystick'?buttons:query(selector);
+ return {g,controls,reads:()=>reads};
+}
+test('mobile photo and speech bubble fit between or above controls in landscape, rotated portrait and two-player layouts',()=>{
+ for(const portrait of [false,true])for(const twoPlayers of [false,true]){
+  const {g,controls}=mobileLayoutFixture({portrait,twoPlayers});
+  const layout=g.run('cornerCameoLayout(assets.cornerCameo)');
+  assert.equal(layout.mobile,true);assert.ok(layout.y>135,'keep the photo below the HUD');
+  assert.ok(layout.x-154>=0 && layout.x+layout.width<=960,'photo and left-hand balloon stay on screen');
+  assert.ok(Math.abs((layout.x-154+layout.x+layout.width)/2-480)<.001,'centre the photo and bubble together');
+  const relevant=controls.filter(c=>c.x+c.w>layout.x-154-12 && c.x<layout.x+layout.width+12);
+  if(relevant.length)assert.ok(layout.y+layout.height<=Math.min(...relevant.map(c=>c.y))-11.9,'clear overlapping controls vertically');
+  else assert.equal(layout.bottom,540,'use the bottom edge when the centre gap is free');
+  assert.ok(layout.y+85<layout.bottom,'the full speech balloon and tail must also fit');
+  g.run('maybeCornerCameo({attackType:"uppercut"});updateCornerCameo(.3);draw();togglePause();draw()');
+  assert.ok(g.run('cornerCameo'),'layout changes must not cancel the active cameo');
+ }
+});
+test('control layout is measured once and refreshed after viewport changes, without per-frame document reads',()=>{
+ const {g,controls,reads}=mobileLayoutFixture();
+ g.run('maybeCornerCameo({attackType:"uppercut"});updateCornerCameo(.3);for(let i=0;i<20;i++)draw()');
+ assert.equal(reads(),2);const old=g.run('cornerCameoLayoutCache.bottom');controls[1].x=600;controls[1].y-=40;
+ g.run('syncViewport();draw()');assert.equal(reads(),4);assert.ok(g.run('cornerCameoLayoutCache.bottom')<old-39);
+ g.run('for(let i=0;i<20;i++)draw()');assert.equal(reads(),4);
+});
+test('desktop retains its lower-right placement and the mobile fallback stays above the lower control area',()=>{
+ const g=setup();g.run('window.innerWidth=1440;window.innerHeight=900;syncViewport()');
+ const desktop=g.run('cornerCameoLayout(assets.cornerCameo)');
+ assert.equal(desktop.mobile,false);assert.equal(desktop.x+desktop.width,960);assert.equal(desktop.y,398);assert.equal(desktop.bottom,540);
+ g.run('navigator.maxTouchPoints=1;syncViewport()');g.nodes.get('game').getBoundingClientRect=()=>({left:0,top:0,width:0,height:0});
+ const fallback=g.run('cornerCameoLayout(assets.cornerCameo)');assert.equal(fallback.mobile,true);assert.ok(fallback.bottom<370);assert.ok(fallback.y>200);
 });
