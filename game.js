@@ -348,7 +348,7 @@ const KO_AUDIO_BASE64 = "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
 let koVoice = null;
 
 const COMBAT_AUDIO = {
-  cornerCameo:{src:"assets/wo-corner-cameo-v1.mp3",volume:.92,start:0,end:.73,loop:false},
+  cornerCameo:{src:"assets/wo-corner-cameo-v1.mp3",volume:1.5,start:0,end:.73,loop:false},
   residues:{src:"assets/wo-residues-v2.mp3",volume:.85,start:0,loop:false},
   residuesImpact:{src:"assets/wo-residuesImpact-v2.mp3",volume:.85,start:0,loop:false},
   lizardRain:{src:"assets/wo-lizardRain-v1.mp3",volume:.8,start:0,loop:false},
