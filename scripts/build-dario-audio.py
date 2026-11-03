@@ -30,6 +30,23 @@ def write(name,x):
  x=normalize(np.tanh(x),.88)
  subprocess.run(['ffmpeg','-y','-v','error','-f','f32le','-ar',str(RATE),'-ac','1','-i','-','-codec:a','libmp3lame','-b:a','112k',str(ROOT/'assets'/('wo-'+name+'-v1.mp3'))],input=x.astype('<f4').tobytes(),check=True)
  print(name,round(len(x)/RATE,3),'seconds')
+if '--flight-v2' in sys.argv:
+ # Preserve the approved radio/propeller mix; replace only the old metallic impact.
+ path=CACHE/'explosion.mp3'
+ if not path.exists():
+  path.write_bytes(urllib.request.urlopen('https://cdn.freesound.org/previews/592/592000_5487341-hq.mp3',timeout=30).read())
+ blast=decode(path)
+ threshold=float(np.max(abs(blast)))*.04
+ onset=max(0,int(np.flatnonzero(abs(blast)>threshold)[0])-int(.004*RATE))
+ blast=blast[onset:onset+int(1.25*RATE)]
+ blast=envelope(normalize(blast,.93),.003)
+ # Keep a continuous natural bass/reverb tail and fade only its final 90 ms.
+ fade=min(len(blast),int(.09*RATE));blast[-fade:]*=np.linspace(1,0,fade)
+ flight=decode(ROOT/'assets/wo-flightSuper-v1.mp3')[:int(3.65*RATE)]
+ at=int(2.40*RATE);flight[at:]=0;n=min(len(blast),len(flight)-at);flight[at:at+n]=blast[:n]
+ subprocess.run(['ffmpeg','-y','-v','error','-f','f32le','-ar',str(RATE),'-ac','1','-i','-','-codec:a','libmp3lame','-b:a','112k',str(ROOT/'assets/wo-flightSuper-v2.mp3')],input=flight.astype('<f4').tobytes(),check=True)
+ print('flightSuper v2: field-designed explosion at 2.40 s; original radio and flyby retained')
+ sys.exit(0)
 recordings={}
 for name,url in sources.items():
  path=CACHE/(name+'.mp3')

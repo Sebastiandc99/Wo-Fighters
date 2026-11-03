@@ -46,3 +46,16 @@ test('all atlas poses map to real cells and plane descends at impact without cha
  const g=setup();g.run('for(let pose=0;pose<=19;pose++)spriteFrame({kind:"dario",pose});held.down=true;attack(owner,"special")');
  g.run('workCinematic.elapsed=1.55');const high=g.run('flightPlaneFrame(workCinematic)');g.run('workCinematic.elapsed=2.4');const low=g.run('flightPlaneFrame(workCinematic)');assert.ok(low.y>high.y+150);assert.equal(low.x,g.run('workCinematic.impactX-cameraX-workCinematic.direction*205'));assert.ok(low.width>high.width);
 });
+
+test('Darío rolls using four compact grounded poses without spinning a rigid body, retaining the original movement and invulnerability',()=>{
+ for(const slot of [1,2])for(const direction of [-1,1]){
+  const g=setup('gabriel',direction,slot);
+  g.run(`(owner===player?held:held2).${direction===1?'right':'left'}=true;evade(owner);const startX=owner.x;const poses=[]`);
+  assert.equal(g.run('owner.rollDirection'),direction);
+  g.run('for(let i=0;i<80;i++){if(owner.action==="roll"){poses.push(poseFor(owner));const m=fighterMotion(owner);if(m.rotation!==0||m.dy!==0)throw Error("Rigid rotation or hovering");if(renderedFighter(owner).facing!==owner.rollDirection)throw Error("Wrong roll direction")}update(STEP);draw()}');
+  assert.deepEqual(Array.from(g.run('[...new Set(poses)]')),[20,21,22,23]);
+  assert.ok(g.run(`(owner.x-startX)*${direction}>190`));
+  assert.equal(g.run('owner.action'),'idle');assert.ok(Math.abs(g.run('owner.animation.motion.rotation'))<.05);
+  assert.equal(g.run('stats.dario.recovery'),.62);
+ }
+});

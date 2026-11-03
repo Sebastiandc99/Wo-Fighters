@@ -80,6 +80,7 @@ const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(st
 const assets = {
   cornerCameo: loadImage("assets/corner-cameo-v1.webp"),
   dario: loadImage("assets/dario-atlas-v1.webp"),
+  darioRoll: loadImage("assets/dario-roll-v2.webp"),
   personnelBus: loadImage("assets/dario-bus-v1.webp"),
   regionalPlane: loadImage("assets/dario-plane-v1.webp"),
   matias: loadImage("assets/matias-atlas-v2.png"),
@@ -356,7 +357,7 @@ let koVoice = null;
 const COMBAT_AUDIO = {
   personnelBus:{src:"assets/wo-personnelBus-v1.mp3",volume:.85,start:0,loop:false},
   personnelBusImpact:{src:"assets/wo-personnelBusImpact-v1.mp3",volume:.90,start:0,loop:false},
-  flightSuper:{src:"assets/wo-flightSuper-v1.mp3",volume:.90,start:0,loop:false},
+  flightSuper:{src:"assets/wo-flightSuper-v2.mp3",volume:.90,start:0,loop:false},
   cornerCameo:{src:"assets/wo-corner-cameo-v1.mp3",volume:1.5,start:0,end:.73,loop:false},
   residues:{src:"assets/wo-residues-v2.mp3",volume:.85,start:0,loop:false},
   residuesImpact:{src:"assets/wo-residuesImpact-v2.mp3",volume:.85,start:0,loop:false},
@@ -2271,7 +2272,7 @@ function prepareFightRendering() {
   renderWarmQueue=[];
   if(mobileRendering)for(const kind of kinds)if(roster.includes(kind)) {
     const poses=[...new Set([...Object.values(POSES[kind]),...Array.from({length:15},(_,i)=>i),16,17,
-      ...(["angel","linares","gabriel"].includes(kind)?[19]:[]),...(ROUND_TAUNTS[kind]?[20,21]:[]),...(kind==="german"?[19,20,21]:[]),...(kind==="fernando"?[24,25,26,27,28,29]:[])])];
+      ...(["angel","linares","gabriel"].includes(kind)?[19]:[]),...(ROUND_TAUNTS[kind]?[20,21]:[]),...(kind==="german"?[19,20,21]:[]),...(kind==="fernando"?[24,25,26,27,28,29]:[]),...(kind==="dario"?[20,21,22,23]:[])])];
     for(const pose of poses)renderWarmQueue.push({kind,pose});
   }
 }
@@ -2326,7 +2327,7 @@ function drawComboHud(f) {
 function poseFor(f) {
   if(f.kind==="dario" && workCinematic?.owner===f)return 16;
   if(f.kind==="dario" && f.action==="special")return 4;
-  if(f.kind==="dario" && f.action==="roll")return 18;
+  if(f.kind==="dario" && f.action==="roll")return 20+Math.min(3,Math.floor(actionProgress(f)*4));
   if(f.kind==="matias" && workCinematic?.owner===f)return workCinematic.elapsed<.22?12:workCinematic.elapsed<.70?15:workCinematic.elapsed<1.10?4:0;
   const introduction=roundIntroPose(f);
   if(introduction!==null)return introduction;
@@ -2439,7 +2440,7 @@ function fighterMotion(f) {
   }
   const progress = actionProgress(f);
   if(f.action==="roll"){
-    if(f.kind==="tren")return motion;
+    if(["tren","dario"].includes(f.kind))return motion;
     const angle=progress*Math.PI*2*f.rollDirection,radius=stats[f.kind].size*FIGHTER_SCALE*.16;
     motion.rotation=angle;motion.dx=-radius*Math.sin(angle);motion.dy=radius*(Math.cos(angle)-1);
     motion.scaleX=motion.scaleY=.8;return motion;
@@ -2561,7 +2562,7 @@ function renderedFighter(f) {
     motion[key] = lerp(animation.prevMotion[key], animation.motion[key], renderAlpha);
   }
   return { kind: f.kind, mustacheAway: f.mustacheAway, x: lerp(f.prevX, f.x, renderAlpha), y: lerp(f.prevY, f.y, renderAlpha),
-    facing: f.facing, pose: animation.pose, fromPose: animation.fromPose,
+    facing: f.kind==="dario" && f.action==="roll"?f.rollDirection:f.facing, pose: animation.pose, fromPose: animation.fromPose,
     mix: smoothstep(lerp(animation.prevMix, animation.mix, renderAlpha)), motion };
 }
 
@@ -3913,6 +3914,15 @@ requestAnimationFrame(loop);
 function atlasSpriteFrame(frame) {
   const key=frame.kind+':'+frame.pose;
   if(spriteFrames.has(key)) return spriteFrames.get(key);
+  const darioRoll=frame.kind==="dario" && frame.pose>=20 && frame.pose<=23;
+  if(darioRoll){
+    const image=assets.darioRoll;
+    if(!image.complete || !image.naturalWidth)return atlasSpriteFrame({...frame,pose:8});
+    const surface=document.createElement('canvas');surface.width=surface.height=270;
+    const paint=surface.getContext('2d');paint.imageSmoothingEnabled=false;
+    paint.drawImage(image,(frame.pose-20)*270,0,270,270,0,0,270,270);
+    spriteFrames.set(key,surface);return surface;
+  }
   const germanSignal=frame.kind==="german" && [16,17,20,21].includes(frame.pose);
   const workerGuard=["linares","gabriel"].includes(frame.kind) && [9,19].includes(frame.pose);
   if(workerGuard && frame.kind==="gabriel" && (!assets.gabrielGuards.complete || !assets.gabrielGuards.naturalWidth))return atlasSpriteFrame({...frame,pose:frame.pose===19?8:0});
