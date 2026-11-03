@@ -79,6 +79,9 @@ const stageImages = Object.fromEntries(stageRoster.map(key => [key, loadImage(st
 
 const assets = {
   cornerCameo: loadImage("assets/corner-cameo-v1.webp"),
+  dario: loadImage("assets/dario-atlas-v1.webp"),
+  personnelBus: loadImage("assets/dario-bus-v1.webp"),
+  regionalPlane: loadImage("assets/dario-plane-v1.webp"),
   matias: loadImage("assets/matias-atlas-v2.png"),
   matiasLizards: loadImage("assets/matias-lizards-v1.webp"),
   german: loadImage("assets/german-atlas-v1.webp"),
@@ -132,6 +135,7 @@ for (const [key, src] of Object.entries({
 }
 
 const POSES = {
+  dario: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
   matias: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
   german: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
   fernando: {idle:0,punch:1,kick:2,hit:3,power:4,sweep:5},
@@ -154,6 +158,7 @@ const POSES = {
 };
 
 const stats = {
+  dario: {name:"DARÍO",normalDamage:9,resistance:102,powerDamage:22,superDamage:35,agility:6,speed:262,jump:605,defaultFace:1,size:249,height:196,width:28,bodyWidth:1.06,recovery:.62,meleeReach:5,powerRange:608,superRange:684,description:"TRASLADO DE PERSONAL (30%) · ↓ + PODER: VUELO PROGRAMADO (100%)",ability:null},
   matias: {name:"MATÍAS",normalDamage:8,resistance:92,powerDamage:22,superDamage:34,agility:7,speed:274,jump:615,defaultFace:1,size:280,height:210,width:25,bodyWidth:1.05,recovery:.54,meleeReach:6,powerRange:608,superRange:608,description:"DESCARGA DE RESIDUOS (30%) · ↓ + PODER: LLUVIA DE LAGARTIJAS (100%)",ability:null},
   german: {name:"GERMÁN", normalDamage:10, resistance:116, powerDamage:22, superDamage:34, agility:4, speed:238, jump:595, defaultFace:1, size:296, height:210, width:33, bodyWidth:1.03, recovery:.70, meleeReach:6, powerRange:608, superRange:608, description:"ZONA DE EXCLUSIÓN (30%) · ↓ + PODER: PARADA TOTAL (100%)", ability:null},
   fernando: {name:"HERALDO FICHERO", normalDamage:9, resistance:98, powerDamage:21, superDamage:33, agility:6, speed:262, jump:605, defaultFace:1, size:254, height:200, width:24, bodyWidth:.99, recovery:.60, meleeReach:5, powerRange:532, superRange:608, description:"LLUVIA DE CIGARRILLOS (30%) · ↓ + PODER: INCENDIO DE OBRA (100%)", ability:null},
@@ -176,13 +181,14 @@ const stats = {
 };
 
 // Reference strong hit 10 maps to the existing 5-point uppercut; bars stay normalized.
-const powerDamage = f => ["angel","primitivo","peluche","tren","linares","gabriel","fernando","german","matias"].includes(f.kind) ? stats[f.kind].powerDamage : stats[f.kind].powerDamage * .5;
+const powerDamage = f => ["angel","primitivo","peluche","tren","linares","gabriel","fernando","german","matias","dario"].includes(f.kind) ? stats[f.kind].powerDamage : stats[f.kind].powerDamage * .5;
 const mobilityTempo = f => .82 + stats[f.kind].agility * .035;
 const DAMAGE_SCALE = .70;
 const ROUND_SECONDS = 90;
 const ENERGY_GAIN_SCALE = .75;
 const damageTaken = (f, damage) => Math.round(damage * DAMAGE_SCALE * 100000 / stats[f.kind].resistance) / 1000;
 const fighterPowers = {
+  dario: {common:"Traslado de Personal",super:"Vuelo Programado",superDamage:35,profile:"Logística de personal · contundente, resistente y de media/larga distancia"},
   matias: {common:"Descarga de Residuos",super:"Lluvia de Lagartijas",superDamage:34,profile:"Área Medio Ambiente · ágil, técnico y de media/larga distancia"},
   german: {common:"Zona de Exclusión", super:"Parada Total", superDamage:34, profile:"Inspector de Seguridad e Higiene · fuerte, resistente y de largo alcance"},
   fernando: {common:"Lluvia de Cigarrillos", super:"Incendio de Obra", superDamage:33, profile:"Ingeniero civil · media distancia, fuego y humo"},
@@ -285,7 +291,7 @@ function updateSelectionGuide(kind) {
   const panel=document.getElementById("selectionGuide");
   panel.dataset.kind=kind;
   if(!p){panel.innerHTML="";return;}
-  const art={matias:["matias-residues.svg","matias-lizard-icon-v1.webp"],german:["german-chain.svg","german-stop.svg"],fernando:["fernando-cigarettes.svg","fernando-fire.svg"],gabriel:["gabriel-critical.svg","gabriel-gantt.svg"],linares:["linares-cable.svg","linares-transformer-v1.webp"],tren:["tren-voltaic.svg","tren-storm.svg"],angel:["load-v4.webp","hook-v4.webp"],primitivo:["forklift-v4.webp","container-v4.webp"],peluche:["concrete-v1.webp","concrete-hose-v1.webp"]}[kind];
+  const art={dario:["dario-bus-v1.webp","dario-plane-v1.webp"],matias:["matias-residues.svg","matias-lizard-icon-v1.webp"],german:["german-chain.svg","german-stop.svg"],fernando:["fernando-cigarettes.svg","fernando-fire.svg"],gabriel:["gabriel-critical.svg","gabriel-gantt.svg"],linares:["linares-cable.svg","linares-transformer-v1.webp"],tren:["tren-voltaic.svg","tren-storm.svg"],angel:["load-v4.webp","hook-v4.webp"],primitivo:["forklift-v4.webp","container-v4.webp"],peluche:["concrete-v1.webp","concrete-hose-v1.webp"]}[kind];
   const icon=name=>`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${{
     shield:"M12 2 21 6v6c0 5-9 10-9 10S3 17 3 12V6Z M12 6v11",
     bolt:"m14 2-9 12h6l-1 8 9-13h-6Z",
@@ -318,7 +324,7 @@ function timedMove(f, spec, evasion=false, action=null) {
   return {...spec, reach: f.kind==="peluche" && spec.reach ? spec.reach*.82 : ["gabriel","fernando"].includes(f.kind) && spec.reach ? spec.reach*5/6 : spec.reach, startup:spec.startup/(evasion?tempo:1), active:spec.active/(evasion?tempo:1), recovery:fixedRecovery && !evasion ? stats[f.kind].recovery : spec.recovery/tempo};
 }
 
-const roster = ["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando", "german", "matias"];
+const roster = ["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando", "german", "matias", "dario"];
 const FLOOR = 448;
 const STEP = 1 / 120;
 const JUMP_BOOST = 1.25;
@@ -348,6 +354,9 @@ const KO_AUDIO_BASE64 = "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
 let koVoice = null;
 
 const COMBAT_AUDIO = {
+  personnelBus:{src:"assets/wo-personnelBus-v1.mp3",volume:.85,start:0,loop:false},
+  personnelBusImpact:{src:"assets/wo-personnelBusImpact-v1.mp3",volume:.90,start:0,loop:false},
+  flightSuper:{src:"assets/wo-flightSuper-v1.mp3",volume:.90,start:0,loop:false},
   cornerCameo:{src:"assets/wo-corner-cameo-v1.mp3",volume:1.5,start:0,end:.73,loop:false},
   residues:{src:"assets/wo-residues-v2.mp3",volume:.85,start:0,loop:false},
   residuesImpact:{src:"assets/wo-residuesImpact-v2.mp3",volume:.85,start:0,loop:false},
@@ -680,11 +689,11 @@ const DIFFICULTIES = [
 ];
 // Keep the first opponent intact, then increase the pressure with widening steps.
 const TOURNAMENT_DIFFICULTIES=Array.from({length:roster.length-1},(_,i)=>i===0?DIFFICULTIES[0]:{
-  name:DIFFICULTIES[i].name,
-  reaction:[.23,.18,.135,.095,.065,.04,.035,.030][i],
-  guard:[.49,.63,.75,.85,.93,.98,.99,.995][i],attack:Math.min(1,.83+.07*i),
+  name:DIFFICULTIES[Math.min(i,DIFFICULTIES.length-1)].name,
+  reaction:[.23,.18,.135,.095,.065,.04,.035,.030,.025][i],
+  guard:[.49,.63,.75,.85,.93,.98,.99,.995,.997][i],attack:Math.min(1,.83+.07*i),
   speed:.87+.04*i+.01*i*i,
-  power:.29+.07*i+.01*i*i,tactics:[.49,.62,.74,.85,.94,.99,1,1][i]
+  power:.29+.07*i+.01*i*i,tactics:[.49,.62,.74,.85,.94,.99,1,1,1][i]
 });
 function difficulty() { return campaign && gameMode==="solo" ? TOURNAMENT_DIFFICULTIES[Math.min(campaign.index,TOURNAMENT_DIFFICULTIES.length-1)] : DIFFICULTIES[3]; }
 // Tournament presentation shares the campaign's fixed opponents and difficulty index.
@@ -695,7 +704,7 @@ const towerPortraits = Object.fromEntries(Object.entries({
   angel:"assets/angel-cutout-v2.webp", primitivo:"assets/primitivo-cutout-v4.webp",
   peluche:"assets/peluche-presentation-v3.webp", tren:"assets/tren-presentation-v3.webp",
   linares:"assets/linares-portrait-v1.webp", gabriel:"assets/gabriel-portrait-v1.webp",
-  fernando:"assets/fernando-portrait-v1.webp", german:"assets/german-portrait-v1.webp",matias:"assets/matias-presentation-v4.png"
+  fernando:"assets/fernando-portrait-v1.webp", german:"assets/german-portrait-v1.webp",matias:"assets/matias-presentation-v4.png",dario:"assets/dario-presentation-v1.webp"
 }).map(([kind,src])=>[kind,loadImage(src)]));
 const TOWER_FLOORS = Array.from({length:roster.length-1},(_,i)=>1127-i*855/(roster.length-2));
 const TOWER_TIMING_SCALE = 1.8; // More time to follow the camera and read the rival.
@@ -1618,7 +1627,7 @@ function attack(f, type, chainStep=null, forcedToken=null) {
     return false;
   }
   if (type === "special" && f.kind === "facu" && f.mustacheAway) return false;
-  const workFighter = ["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando", "german", "matias"].includes(f.kind);
+  const workFighter = ["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando", "german", "matias", "dario"].includes(f.kind);
   const workSuper = workFighter && type === "special" && (humanFighter(f) ? fighterInput(f).down : f.power >= 100 && Math.random() < .55);
   const crash = f.kind === "jairo" && type === "special" && (humanFighter(f) ? fighterInput(f).down : f.power >= 45 && Math.random() < .45);
   const cost = type === "special" ? (workFighter ? workSuper ? 100 : 30 : crash ? 45 : 35) : type === "slam" ? 30 : 0;
@@ -1655,7 +1664,7 @@ function attack(f, type, chainStep=null, forcedToken=null) {
   f.power -= cost;
   if(!chainStep&&["punch","kick"].includes(type)&&token)startMeleeChain(f,token);
   if (workSuper) {
-    f.specialStyle = f.kind === "matias" ? "lizardRain" : f.kind === "german" ? "safetySuper" : f.kind === "fernando" ? "fireSuper" : f.kind === "gabriel" ? "ganttSuper" : f.kind === "linares" ? "transformerSuper" : f.kind === "tren" ? "stormSuper" : f.kind === "peluche" ? "concreteSuper" : f.kind === "angel" ? "hookSuper" : "containerSuper";
+    f.specialStyle = f.kind === "dario" ? "flightSuper" : f.kind === "matias" ? "lizardRain" : f.kind === "german" ? "safetySuper" : f.kind === "fernando" ? "fireSuper" : f.kind === "gabriel" ? "ganttSuper" : f.kind === "linares" ? "transformerSuper" : f.kind === "tren" ? "stormSuper" : f.kind === "peluche" ? "concreteSuper" : f.kind === "angel" ? "hookSuper" : "containerSuper";
     f.vx = 0;
     startWorkCinematic(f);
     return true;
@@ -1684,7 +1693,7 @@ function attack(f, type, chainStep=null, forcedToken=null) {
     f.vx = f.vy = 0;
   } else if (type === "special") {
     f.specialSpawned = false;
-    f.specialStyle = f.kind === "matias" ? "residues" : f.kind === "german" ? "safetyChain" : f.kind === "fernando" ? "cigarettes" : f.kind === "gabriel" ? "critical" : f.kind === "linares" ? "cable" : f.kind === "tren" ? "voltaic" : f.kind === "peluche" ? "concrete" : f.kind === "angel" ? "beam" : f.kind === "primitivo" ? "forklift" : f.kind === "jairo" ? (crash ? "crash" : "critical") : f.kind === "paula" ? "water" : f.kind === "padrino" ? "dog" : f.kind === "galante" ? "whip" : f.kind === "flor" ? "hockey" : f.kind === "facu" ? "boomerang" : f.kind === "sergio" ? (f.projectileToggle++ % 2 ? "bottle" : "meat") : f.kind === "tunki" ? "flowers" : f.kind === "marechal" ? "lightning" : "ki";
+    f.specialStyle = f.kind === "dario" ? "personnelBus" : f.kind === "matias" ? "residues" : f.kind === "german" ? "safetyChain" : f.kind === "fernando" ? "cigarettes" : f.kind === "gabriel" ? "critical" : f.kind === "linares" ? "cable" : f.kind === "tren" ? "voltaic" : f.kind === "peluche" ? "concrete" : f.kind === "angel" ? "beam" : f.kind === "primitivo" ? "forklift" : f.kind === "jairo" ? (crash ? "crash" : "critical") : f.kind === "paula" ? "water" : f.kind === "padrino" ? "dog" : f.kind === "galante" ? "whip" : f.kind === "flor" ? "hockey" : f.kind === "facu" ? "boomerang" : f.kind === "sergio" ? (f.projectileToggle++ % 2 ? "bottle" : "meat") : f.kind === "tunki" ? "flowers" : f.kind === "marechal" ? "lightning" : "ki";
     if (COMBAT_AUDIO[f.specialStyle]) f.attackSound = startCombatSound(f.specialStyle);
     f.vx = 0;
   } else if (f.kickStyle === "volley") {
@@ -1710,6 +1719,7 @@ function spawnProjectile(owner, style) {
   if(style==="cable") {spawnCable(owner);return;}
   if(style==="voltaic") { spawnVoltaic(owner); return; }
   if(style==="concrete") { spawnConcrete(owner); return; }
+  if(style==="personnelBus"){spawnPersonnelBus(owner);return;}
   if (["beam","forklift"].includes(style)) { spawnWorkProjectile(owner,style); return; }
   if (["critical", "crash"].includes(style)) { spawnSchedule(owner, style); return; }
   if (style === "whip") { strikeWhip(owner); return; }
@@ -1742,6 +1752,7 @@ function updateProjectiles(dt) {
     if(p.style==="voltaic") {updateVoltaic(p,dt);if(state!=="playing")return;continue;}
     if (["critical", "crash"].includes(p.style)) { updateSchedule(p, dt); if (state !== "playing") return; continue; }
     if(p.style==="concrete") { updateConcrete(p,dt); if(state!=="playing")return; continue; }
+    if(p.style==="personnelBus"){updatePersonnelBus(p,dt);if(state!=="playing")return;continue;}
     if (["beam","forklift"].includes(p.style)) { updateWorkProjectile(p,dt); if (state !== "playing") return; continue; }
     if (p.style === "boomerang") { updateBoomerang(p, dt); if (state !== "playing") return; continue; }
     p.life -= dt;
@@ -2313,6 +2324,9 @@ function drawComboHud(f) {
 }
 
 function poseFor(f) {
+  if(f.kind==="dario" && workCinematic?.owner===f)return 16;
+  if(f.kind==="dario" && f.action==="special")return 4;
+  if(f.kind==="dario" && f.action==="roll")return 18;
   if(f.kind==="matias" && workCinematic?.owner===f)return workCinematic.elapsed<.22?12:workCinematic.elapsed<.70?15:workCinematic.elapsed<1.10?4:0;
   const introduction=roundIntroPose(f);
   if(introduction!==null)return introduction;
@@ -2356,7 +2370,7 @@ function poseFor(f) {
   }
   if(f.action==="kick" && f.kickStyle==="airKick")return progress<.12?10:13;
   if(f.action==="kick" && f.kickStyle==="volley")return progress<.19?POSES[f.kind].idle:14;
-  if (["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando", "german", "matias"].includes(f.kind) && f.lowAttack && f.action === "kick") return POSES[f.kind].sweep;
+  if (["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando", "german", "matias", "dario"].includes(f.kind) && f.lowAttack && f.action === "kick") return POSES[f.kind].sweep;
   if (f.kind === "flor" && f.lowAttack && f.action === "kick") return POSES.flor.sweep;
   if (f.kind === "facu" && f.lowAttack && f.action === "kick") return POSES.facu.sweep;
   if (f.kind === "marechal" && f.lowAttack && f.action === "kick") return POSES.marechal.sweep;
@@ -2371,7 +2385,7 @@ function poseFor(f) {
   if (f.action === "kick") return progress < .12 ? POSES[f.kind].idle : POSES[f.kind].kick;
   if (f.action === "special") {
     if (progress < .15) return POSES[f.kind].idle;
-    if (["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando", "german", "matias"].includes(f.kind)) return POSES[f.kind].power;
+    if (["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando", "german", "matias", "dario"].includes(f.kind)) return POSES[f.kind].power;
     if (f.kind === "blotta") return POSES.blotta.power;
     if (f.kind === "tunki") return POSES.tunki.power;
     if (f.kind === "padrino") return POSES.padrino.power;
@@ -2651,7 +2665,7 @@ function drawMotionLines(f, motion) {
 }
 
 function spriteFrame(frame) {
-  if(["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando", "german", "matias", "galante", "padrino", "paula", "jairo"].includes(frame.kind)) return atlasSpriteFrame(frame);
+  if(["angel", "primitivo", "peluche", "tren", "linares", "gabriel", "fernando", "german", "matias", "dario", "galante", "padrino", "paula", "jairo"].includes(frame.kind)) return atlasSpriteFrame(frame);
   if(frame.pose===13 || frame.pose===14)return classicKickFrame(frame);
   if (frame.kind === "flor") return florSpriteFrame(frame);
   if (frame.kind === "facu") return facuSpriteFrame(frame);
@@ -2941,7 +2955,7 @@ function drawFighter(f) {
 }
 
 function drawProjectileTrail(p) {
-  if(p.style==="residues")return;
+  if(["residues","personnelBus"].includes(p.style))return;
   if (["water", "critical", "crash", "beam", "forklift", "concrete", "voltaic", "cable"].includes(p.style)) return;
   if (!p.trail || p.trail.length < 2) return;
   const x = lerp(p.prevX, p.x, renderAlpha);
@@ -2965,6 +2979,7 @@ function drawProjectileTrail(p) {
 }
 
 function drawProjectile(p) {
+  if(p.style==="personnelBus"){drawPersonnelBus(p);return;}
   if(p.style==="residues"){drawResidues(p);return;}
   if(p.style==="safetyChain") {drawSafetyChain(p);return;}
   if(p.style==="cigarettes") {drawCigarettes(p);return;}
@@ -3202,6 +3217,7 @@ const FIGHT_AUDIO = {
   linares:["cable","transformerSuper"],gabriel:["critical","crash"],
   fernando:["cigarettes","emberImpact","fireSuper","fireScream"],
   german:["safetyChain","safetySuper"],
+  dario:["personnelBus","personnelBusImpact","flightSuper"],
   matias:["residues","residuesImpact","lizardRain","lizardBite","environmentalCry"]
 };
 const audioDecodes=[];
@@ -3738,7 +3754,7 @@ window.addEventListener("keydown", event => {
     return;
   }
   if (state === "select") {
-    const offsets={KeyA:-1,ArrowLeft:-1,KeyD:1,ArrowRight:1,KeyW:-3,ArrowUp:-3,KeyS:3,ArrowDown:3};
+    const offsets={KeyA:-1,ArrowLeft:-1,KeyD:1,ArrowRight:1,KeyW:-5,ArrowUp:-5,KeyS:5,ArrowDown:5};
     if (code in offsets) {
       const selected = selectionPlayer === 2 ? opponentChoice : playerChoice;
       const choices=roster;
@@ -3908,7 +3924,7 @@ function atlasSpriteFrame(frame) {
   const angelLower=frame.kind==="angel" && [18,19].includes(frame.pose);
   const special=["peluche","angel"].includes(frame.kind) && [16,17].includes(frame.pose);
   const image=germanSignal?assets.germanSignals:introSheet || (fernandoSuper?assets.fernandoSuper:fernandoHit?assets.fernandoHit:workerGuard?(frame.kind==="gabriel"?assets.gabrielGuards:assets.workerGuards):angelLower?assets.angelLowerLoad:special?(frame.kind==="angel"?assets.angelSignals:assets.pelucheSpecial):assets[frame.kind]);
-  const pose=frame.kind==="matias" ? [0,1,2,3,4,5,6,7,10,9,8,11,12,2,2,13,14,14,8,10][frame.pose] : frame.kind==="german" ? [0,1,2,3,4,5,6,7,8,9,10,11,12,14,2,13,0,1,8,15,2,3][frame.pose] : angelLower?frame.pose-18:frame.kind==="angel" && special ? frame.pose-16 : ["linares","gabriel"].includes(frame.kind) ? [0,1,2,3,4,5,6,7,8,0,9,8,11,10,12,13,14,15,8][frame.pose] : frame.kind==="tren" ? [0,1,2,3,4,5,6,7,8,9,10,8,12,11,13,3,14,15,8][frame.pose] : frame.kind==="peluche" ? special ? frame.pose-16 : [0,1,2,3,4,5,6,7,8,12,14,8,9,10,11,15,0,0,13][frame.pose] : frame.pose;
+  const pose=frame.kind==="dario" ? [0,1,2,3,4,5,6,7,8,9,10,11,12,11,2,13,14,14,15,8][frame.pose] : frame.kind==="matias" ? [0,1,2,3,4,5,6,7,10,9,8,11,12,2,2,13,14,14,8,10][frame.pose] : frame.kind==="german" ? [0,1,2,3,4,5,6,7,8,9,10,11,12,14,2,13,0,1,8,15,2,3][frame.pose] : angelLower?frame.pose-18:frame.kind==="angel" && special ? frame.pose-16 : ["linares","gabriel"].includes(frame.kind) ? [0,1,2,3,4,5,6,7,8,0,9,8,11,10,12,13,14,15,8][frame.pose] : frame.kind==="tren" ? [0,1,2,3,4,5,6,7,8,9,10,8,12,11,13,3,14,15,8][frame.pose] : frame.kind==="peluche" ? special ? frame.pose-16 : [0,1,2,3,4,5,6,7,8,12,14,8,9,10,11,15,0,0,13][frame.pose] : frame.pose;
   if(!image.complete || !image.naturalWidth) return null;
   const surface=document.createElement('canvas');surface.width=surface.height=270;
   const paint=surface.getContext('2d');paint.imageSmoothingEnabled=false;
@@ -4208,6 +4224,81 @@ function drawWorkProjectile(p) {
     }ctx.restore();
   }ctx.restore();
 }
+// A coach has one collision front; its long visual body keeps travelling after contact.
+function spawnPersonnelBus(owner) {
+  const direction=owner.facing,x=owner.x+direction*50;
+  const sound=owner.attackSound||startCombatSound("personnelBus");owner.attackSound=null;
+  projectiles.push({owner,style:"personnelBus",direction,x,prevX:x,y:FLOOR,prevY:FLOOR,
+    originX:owner.x,vx:direction*720,age:0,life:2.25,contactDone:false,damage:powerDamage(owner),sound});
+}
+function updatePersonnelBus(p,dt) {
+  p.prevX=p.x;p.prevY=p.y;p.age+=dt;p.life-=dt;p.x+=p.vx*dt;
+  if(!p.contactDone) {
+    const target=p.owner===player?cpu:player,range=stats[p.owner.kind].powerRange;
+    const end=p.originX+p.direction*range;
+    const front=p.direction>0?Math.min(p.x,end):Math.max(p.x,end);
+    const within=(p.prevX-p.originX)*p.direction<=range;
+    const box={left:Math.min(p.prevX,front)-8,right:Math.max(p.prevX,front)+8,top:FLOOR-130,bottom:FLOOR};
+    if(within && target.invuln<=0 && overlaps(box,hurtBox(target))) {
+      p.contactDone=true;startCombatSound("personnelBusImpact");
+      hit(target,p.damage,p.direction*510,-190,p.owner,
+        {sourceX:p.originX,direction:p.direction,projectile:true,x:front,y:FLOOR-70});
+      dustBurst(front,FLOOR,20);burst(front,FLOOR-65,"#ffc177",24);
+      addEffect("impact",front,FLOOR-70,"#ffe2a2",70,.25);screenShake=Math.max(screenShake,7);
+    }
+  }
+  const rear=p.x-p.direction*390;
+  if(p.life<=0 || (p.direction>0?rear>STAGE_RIGHT+80:rear<STAGE_LEFT-80)) {
+    stopCombatSound(p.sound,true);const i=projectiles.indexOf(p);if(i>=0)projectiles.splice(i,1);
+  }
+}
+function drawPersonnelBus(p) {
+  const front=lerp(p.prevX,p.x,renderAlpha),bounce=Math.sin(p.age*38)*.8;
+  drawWorkDust(front-p.direction*335,FLOOR,p.age,p.direction,.85);
+  ctx.save();ctx.translate(front-p.direction*195,FLOOR+bounce);ctx.scale(p.direction,1);ctx.imageSmoothingEnabled=false;
+  const image=assets.personnelBus;
+  if(image.complete && image.naturalWidth)ctx.drawImage(image,-195,-390*image.naturalHeight/image.naturalWidth,390,390*image.naturalHeight/image.naturalWidth);
+  ctx.restore();
+}
+// Screen coordinates share the cinematic camera, not the normal projectile camera.
+function flightPlaneFrame(c) {
+  const t=c.elapsed,goal=c.impactX-cameraX,d=c.direction;
+  if(t<.55 || t>c.impactAt+.38)return null;
+  if(t<1.55) {
+    const q=smoothstep((t-.55)/1);
+    return {x:lerp(goal-d*740,goal-d*320,q),y:lerp(95,140,q),width:lerp(220,370,q),angle:d*.02,alpha:1};
+  }
+  const q=Math.min(1,(t-1.55)/(c.impactAt-1.55)),fall=q*q;
+  return {x:lerp(goal-d*320,goal-d*205,fall),y:lerp(140,FLOOR-150,fall),width:lerp(370,480,q),angle:d*(.04+fall*.43),alpha:t<=c.impactAt?1:Math.max(0,1-(t-c.impactAt)/.38)};
+}
+function drawFlightCinematic(c) {
+  const t=c.elapsed,x=c.impactX-cameraX;
+  ctx.save();ctx.fillStyle="rgba(6,13,29,.24)";ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
+  drawSuperAtmosphere(c);
+  ctx.textAlign="center";ctx.font='italic bold 32px Arial';ctx.fillStyle="#ffd181";
+  ctx.strokeStyle="#10182b";ctx.lineWidth=5;ctx.strokeText("VUELO PROGRAMADO",480,90);ctx.fillText("VUELO PROGRAMADO",480,90);
+  if(t<1.15) {
+    ctx.font='bold 15px Arial';ctx.fillStyle="#edf5ff";ctx.fillText("LOGÍSTICA · TRASLADO AUTORIZADO",480,118);
+    const ox=c.originX-cameraX;
+    for(let i=0;i<3;i++){ctx.strokeStyle=`rgba(153,213,255,${.65-i*.15})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(ox+c.direction*28,FLOOR-164,14+i*9+Math.sin(t*19)*2,-1.1,1.1);ctx.stroke();}
+  }
+  const plane=flightPlaneFrame(c),image=assets.regionalPlane;
+  if(plane && image.complete && image.naturalWidth) {
+    ctx.save();ctx.globalAlpha=plane.alpha;ctx.translate(plane.x,plane.y);ctx.rotate(plane.angle);ctx.scale(c.direction,1);ctx.imageSmoothingEnabled=false;
+    const h=plane.width*image.naturalHeight/image.naturalWidth;
+    ctx.drawImage(image,-plane.width/2,-h/2,plane.width,h);
+    // Fast propeller discs are driven by the cinematic clock and freeze on pause.
+    ctx.strokeStyle="rgba(207,224,237,.65)";ctx.lineWidth=3;
+    ctx.beginPath();ctx.ellipse(plane.width*.02,-h*.04,4,22+3*Math.sin(t*90),0,0,Math.PI*2);ctx.stroke();ctx.restore();
+  }
+  if(c.impact) {
+    const q=Math.min(1,(t-c.impactAt)/.95);
+    ctx.globalAlpha=1-q;ctx.fillStyle="#aa9c86";
+    for(let i=0;i<12;i++){const a=i*2.399;ctx.beginPath();ctx.ellipse(x+Math.cos(a)*q*150,FLOOR-15-q*(35+i%4*18),25+q*38,15+q*26,0,0,Math.PI*2);ctx.fill();}
+    ctx.globalAlpha=1;
+  }
+  drawSuperImpact(c);ctx.restore();
+}
 function workHookLift(t) {
   if(t<.38)return 0;
   if(t<.78)return 76*smoothstep((t-.38)/.4);
@@ -4217,8 +4308,8 @@ function workHookLift(t) {
 function startWorkCinematic(owner) {
   clearCornerCameo();
   const target=owner===player?cpu:player;
-  const duration=owner.kind==="matias"?4.15:owner.kind==="german"?3.25:owner.kind==="fernando"?4.9:owner.kind==="gabriel"?2.85:owner.kind==="linares"?3.1:owner.kind==="tren"?2.8:owner.kind==="peluche"?2.65:1.85;
-  const impactAt=owner.kind==="matias"?3.30:owner.kind==="german"?2.10:owner.kind==="fernando"?3.35:owner.kind==="gabriel"?2.05:owner.kind==="linares"?2.05:owner.kind==="tren"?1.95:owner.kind==="peluche"?1.90:1.12;
+  const duration=owner.kind==="dario"?3.65:owner.kind==="matias"?4.15:owner.kind==="german"?3.25:owner.kind==="fernando"?4.9:owner.kind==="gabriel"?2.85:owner.kind==="linares"?3.1:owner.kind==="tren"?2.8:owner.kind==="peluche"?2.65:1.85;
+  const impactAt=owner.kind==="dario"?2.40:owner.kind==="matias"?3.30:owner.kind==="german"?2.10:owner.kind==="fernando"?3.35:owner.kind==="gabriel"?2.05:owner.kind==="linares"?2.05:owner.kind==="tren"?1.95:owner.kind==="peluche"?1.90:1.12;
   workCinematic={owner,target,elapsed:0,duration,impactAt,impact:false,originX:owner.x,impactX:target.x,direction:owner.facing,
     guardEligible:target.grounded && !target.safetyHold && !target.concreteHold && ["idle","block"].includes(target.action),initialGuard:target.guarding,
     sound:owner.kind==="gabriel"?null:startCombatSound(owner.specialStyle)};
@@ -4274,9 +4365,10 @@ function updateWorkCinematic(dt) {
   if(!["gabriel","matias"].includes(c.owner.kind) && !c.impact && c.elapsed>=c.impactAt) {
     const t=c.target,o=c.owner;
     if(o.kind==="german")c.safetyImpactY=safetyRainImpactY(c);
-    hitWorkCinematic(c,fighterPowers[o.kind].superDamage,240,-140);
+    hitWorkCinematic(c,fighterPowers[o.kind].superDamage,o.kind==="dario"?420:240,o.kind==="dario"?-260:-140);
     c.impact=true;
     burst(t.x,o.kind==="german"?c.safetyImpactY:t.y-95,c.owner.kind==="peluche"?"#e5eadb":"#ffdc62",44);dustBurst(t.x,FLOOR,32);
+    if(o.kind==="dario"){smokeBurst(t.x,t.y-45,24);burst(t.x,t.y-65,"#ffb852",36);}
     if(o.kind==="fernando"){
       smokeBurst(t.x,t.y-85,18);burst(t.x,t.y-95,"#ff6032",40);
       if(!c.blocked){t.fernandoBurn=1.45;c.scream=startCombatSound("fireScream");}
@@ -4287,7 +4379,7 @@ function updateWorkCinematic(dt) {
     // The cinematic already owns time. Ordinary melee hit-stop used to mute its climax.
     hitStop=0;syncCombatSounds();
   }
-  if(!c.blocked && ["tren","linares","gabriel","fernando","german"].includes(c.owner.kind) && c.impact && state==="playing" && c.elapsed>c.impactAt+(c.owner.kind==="fernando"?.80:.24)) {
+  if(!c.blocked && ["tren","linares","gabriel","fernando","german","dario"].includes(c.owner.kind) && c.impact && state==="playing" && c.elapsed>c.impactAt+(c.owner.kind==="fernando"?.80:.24)) {
     if(!c.launched){c.launched=true;beginKnockdown(c.target,c.direction*300);}
     if(c.target.knockdown)updateKnockdown(c.target,dt);
   }
@@ -4295,7 +4387,7 @@ function updateWorkCinematic(dt) {
     stopCombatSound(c.sound,true);
     if(state==="playing")stopCombatSound(c.scream,true);
     c.owner.action="idle";c.owner.actionTime=c.owner.actionDuration=0;c.owner.moveSpec=null;
-    if(c.owner.kind==="matias" && state==="playing") {
+    if(["matias","dario"].includes(c.owner.kind) && state==="playing" && !c.target.knockdown) {
       // Its reaction timer reaches zero inside the cinematic, so ordinary recovery cannot run.
       const target=c.target;
       target.action="idle";target.actionTime=target.actionDuration=0;target.moveSpec=null;
@@ -4310,6 +4402,7 @@ function updateWorkCinematic(dt) {
 }
 function drawWorkCinematic() {
   const c=workCinematic,t=c.elapsed,owner=c.owner,target=c.target;
+  if(owner.kind==="dario") {drawFlightCinematic(c);return;}
   if(owner.kind==="matias") {drawLizardRain(c);return;}
   if(owner.kind==="german") {drawSafetyCinematic(c);return;}
   if(owner.kind==="fernando") {drawFireCinematic(c);return;}

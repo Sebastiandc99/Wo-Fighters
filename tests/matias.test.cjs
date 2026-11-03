@@ -4,10 +4,10 @@ function setup(rival='primitivo',direction=1,slot=1){
  const g=game();g.run(`gameMode='versus';startGame('${slot===1?'matias':rival}','${slot===2?'matias':rival}');state='playing';const owner=${slot===1?'player':'cpu'},target=${slot===1?'cpu':'player'};owner.x=400;target.x=400+${direction}*270;owner.facing=${direction};target.facing=${-direction};owner.power=100`);return g;
 }
 function frames(g,seconds){g.run(`for(let n=0;n<${Math.round(seconds*120)};n++){update(STEP);draw();}`);}
-test('Matías exact attributes, selection, artwork, eight-rival tower and keyboard grid',()=>{
+test('Matías exact attributes, selection, artwork, nine-rival tower and keyboard grid',()=>{
  const g=setup();assert.deepEqual(Array.from(g.run('[stats.matias.normalDamage,stats.matias.resistance,stats.matias.agility,stats.matias.meleeReach,stats.matias.recovery,stats.matias.powerDamage,stats.matias.superDamage,stats.matias.powerRange,stats.matias.superRange]')),[8,92,7,6,.54,22,34,608,608]);
- g.run("gameMode='solo';openSelection()");g.nodes.get('pick-matias').listeners.click();assert.equal(g.run('playerChoice'),'matias');assert.match(g.nodes.get('selectionGuide').innerHTML,/matias-lizard-icon-v1.webp/);g.key('ArrowUp');assert.equal(g.run('playerChoice'),'gabriel');
- g.run("playerChoice='matias';beginGame()");assert.equal(g.run('campaign.opponents.length'),8);assert.equal(g.run('campaign.opponents.includes("matias")'),false);assert.equal(g.run('TOURNAMENT_DIFFICULTIES.every(d=>Object.values(d).every(v=>typeof v==="string"||Number.isFinite(v)))'),true);
+ g.run("gameMode='solo';openSelection()");g.nodes.get('pick-matias').listeners.click();assert.equal(g.run('playerChoice'),'matias');assert.match(g.nodes.get('selectionGuide').innerHTML,/matias-lizard-icon-v1.webp/);g.key('ArrowUp');assert.equal(g.run('playerChoice'),'tren');
+ g.run("playerChoice='matias';beginGame()");assert.equal(g.run('campaign.opponents.length'),9);assert.equal(g.run('campaign.opponents.includes("matias")'),false);assert.equal(g.run('TOURNAMENT_DIFFICULTIES.every(d=>Object.values(d).every(v=>typeof v==="string"||Number.isFinite(v)))'),true);
 });
 test('residue burst costs 30 and hits every worker stature only once in either direction and player slot',()=>{
  for(const rival of ['angel','peluche','primitivo','german','matias'])for(const d of [-1,1])for(const slot of [1,2]){

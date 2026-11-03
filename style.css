@@ -1264,3 +1264,10 @@ button[hidden], .arcade-btn[hidden] { display:none !important; }
 /* Three rows leave room for random selection and confirmation on 16:9 phones. */
 .select-screen .choice-dock,.phone-portrait .select-screen .choice-dock {top:29%;}
 .select-screen .choice-tile img {aspect-ratio:1.55;}
+
+/* Ten fighters in two rows; keyboard navigation uses the same five columns. */
+.choice-row {grid-template-columns:repeat(5,minmax(0,1fr));}
+.portrait-dario {left:7%;border:0;background:transparent;box-shadow:none;}
+.portrait-dario img {height:86%;object-fit:contain;object-position:center bottom;filter:drop-shadow(4px 6px 2px #0009);}
+.choice-tile[data-pick="dario"] img {object-fit:contain;object-position:center;background:#142341;}
+.selection-guide[data-kind="dario"] {--skill-accent:#ffc27a;--skill-fill:#e9692c;}
